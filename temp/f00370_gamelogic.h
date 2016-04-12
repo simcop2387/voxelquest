@@ -496,18 +496,28 @@ void GameLogic::applyBehavior ()
 		}
 		
 	}
-GamePageHolder * GameLogic::getHolderById (int blockId, int holderId)
-                                                                 {
+GamePageHolder * GameLogic::getHolderById (int blockId, int chunkId, int holderId)
+                                                                              {
 		
-		if ((blockId < 0) || (holderId < 0)) {
+		if ((blockId < 0) || (holderId < 0) || (chunkId < 0)) {
 			return NULL;
 		}
 		
 		GameBlock* curBlock = singleton->gw->blockData[blockId];
 		GamePageHolder* curHolder;
+		GameChunk* curChunk;
 		if (curBlock != NULL) {
-			curHolder = curBlock->holderData[holderId];
-			return curHolder;
+			curChunk = curBlock->chunkData[chunkId];
+			
+			if (curChunk != NULL) {
+				curHolder = curChunk->holderData[holderId];
+				return curHolder;
+			}
+			else {
+				return NULL;
+			}
+			
+			
 		}
 		else {
 			return NULL;
@@ -515,18 +525,20 @@ GamePageHolder * GameLogic::getHolderById (int blockId, int holderId)
 	}
 GamePageHolder * GameLogic::getHolderByPR (PathResult * pr)
                                                       {
-		int blockId = pr->blockId;
-		int holderId = pr->holderId;
+		// int blockId = pr->blockId;
+		// int holderId = pr->holderId;
 		
-		GamePageHolder* curHolder;
-		GameBlock* curBlock = singleton->gw->blockData[blockId];
-		if (curBlock != NULL) {
-			curHolder = curBlock->holderData[holderId];
-			return curHolder;
-		}
-		else {
-			return NULL;
-		}
+		return singleton->gw->getHolderAtId(pr->blockId,pr->chunkId,pr->holderId);
+		
+		// GamePageHolder* curHolder;
+		// GameBlock* curBlock = singleton->gw->blockData[blockId];
+		// if (curBlock != NULL) {
+		// 	curHolder = curBlock->holderData[holderId];
+		// 	return curHolder;
+		// }
+		// else {
+		// 	return NULL;
+		// }
 	}
 bool GameLogic::holdersEqual (GamePageHolder * h0, GamePageHolder * h1)
                                                                   {
@@ -642,12 +654,14 @@ bool GameLogic::addGroupToStack (ConnectingNodeStruct * testConNode, GamePageHol
 		
 		if (lastHolder == NULL) {
 			lastRes->lastBlockId = -1;
+			lastRes->lastChunkId = -1;
 			lastRes->lastHolderId = -1;
 			lastRes->lastGroupId = -1;
 			lastRes->lastIndex = -1;
 		}
 		else {
 			lastRes->lastBlockId = lastHolder->blockId;
+			lastRes->lastChunkId = lastHolder->chunkId;
 			lastRes->lastHolderId = lastHolder->holderId;
 			lastRes->lastGroupId = groupId;
 			lastRes->lastIndex = lastIndex;
@@ -774,7 +788,11 @@ void GameLogic::fillAllGroups (GamePageHolder * begHolder, GamePageHolder * endH
 				
 				if (testConNode->groupIdFrom == curGroupId) {
 					
-					testHolder = getHolderById(testConNode->blockIdTo,testConNode->holderIdTo);
+					testHolder = getHolderById(
+						testConNode->blockIdTo,
+						testConNode->chunkIdTo,
+						testConNode->holderIdTo
+					);
 					groupIdTo = testConNode->groupIdTo;
 					
 					if (testHolder != NULL) {
@@ -1110,7 +1128,11 @@ void GameLogic::getPath (PathInfo * pathInfo)
 					for (i = 0; i < pathFinalStack.size(); i++) {
 						curPR = &(pathFinalStack[i]);
 						
-						tempHolder = getHolderById(curPR->blockId,curPR->holderId);
+						tempHolder = getHolderById(
+							curPR->blockId,
+							curPR->chunkId,
+							curPR->holderId
+						);
 						if ((tempHolder != NULL)) {
 							tempInd = tempHolder->groupInfoStack[curPR->groupId].centerInd;
 							// if (tempInd > -1) {
@@ -1118,8 +1140,16 @@ void GameLogic::getPath (PathInfo * pathInfo)
 							// }
 						}
 						
-						conHolder1 = getHolderById(curPR->conNode.blockIdFrom, curPR->conNode.holderIdFrom);
-						conHolder2 = getHolderById(curPR->conNode.blockIdTo, curPR->conNode.holderIdTo); 
+						conHolder1 = getHolderById(
+							curPR->conNode.blockIdFrom,
+							curPR->conNode.chunkIdFrom,
+							curPR->conNode.holderIdFrom
+						);
+						conHolder2 = getHolderById(
+							curPR->conNode.blockIdTo,
+							curPR->conNode.chunkIdTo,
+							curPR->conNode.holderIdTo
+						); 
 						
 						if (conHolder1 != NULL) {
 							getPointsForPath(conHolder1, curPR->conNode.cellIndFrom, pathInfo, false);
@@ -1602,7 +1632,11 @@ void GameLogic::drawRegions (int offX, int offY, int offZ)
 			curInd = testConNode->cellIndFrom;
 			
 			
-			curHolderTo = getHolderById(testConNode->blockIdTo,testConNode->holderIdTo);
+			curHolderTo = getHolderById(
+				testConNode->blockIdTo,
+				testConNode->chunkIdTo,
+				testConNode->holderIdTo
+			);
 			
 			if (curHolderTo != NULL) {
 				drawLineAtIndices(
@@ -1686,7 +1720,9 @@ void GameLogic::freePD ()
 			else {
 				curHolder = getHolderById(
 					singleton->pdPool[q].boundToHolder.v0,
-					singleton->pdPool[q].boundToHolder.v1
+					singleton->pdPool[q].boundToHolder.v1,
+					singleton->pdPool[q].boundToHolder.v2
+					
 				);
 				if (curHolder != NULL) {
 					if (curHolder->lockWrite) {
@@ -1719,7 +1755,7 @@ void GameLogic::loadNearestHolders (int rad, bool doUpdate)
 		int q;
 		int r;
 		
-		int holdersPerBlock = singleton->holdersPerBlock;
+		//int holdersPerBlock = singleton->holdersPerBlock;
 		
 		int i, j, k;
 		int ii, jj, kk;
@@ -1740,7 +1776,7 @@ void GameLogic::loadNearestHolders (int rad, bool doUpdate)
 		int curPD;
 		intPair curId;
 		
-		float maxStackDis = 32.0f;
+		float maxStackDis = 8.0f;
 		
 		FIVector4 tempFIV;
 		
@@ -1873,7 +1909,8 @@ void GameLogic::loadNearestHolders (int rad, bool doUpdate)
 											
 											threadPoolPath->intData[0] = E_TT_GENPATHS;
 											threadPoolPath->intData[1] = curHolder->blockId;
-											threadPoolPath->intData[2] = curHolder->holderId;
+											threadPoolPath->intData[2] = curHolder->chunkId;
+											threadPoolPath->intData[3] = curHolder->holderId;
 											
 											if (threadPoolPath->startThread()) {
 												genCount++;
@@ -1905,7 +1942,8 @@ void GameLogic::loadNearestHolders (int rad, bool doUpdate)
 											
 											threadPoolList->intData[0] = E_TT_GENLIST;
 											threadPoolList->intData[1] = curHolder->blockId;
-											threadPoolList->intData[2] = curHolder->holderId;
+											threadPoolList->intData[2] = curHolder->chunkId;
+											threadPoolList->intData[3] = curHolder->holderId;
 											
 											if (threadPoolList->startThread()) {
 												genCount++;

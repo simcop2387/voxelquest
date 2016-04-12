@@ -28,6 +28,9 @@ public:
 	bool lockWrite;
 	bool lockRead;
 	
+	int begMip[NUM_MIP_LEVELS_WITH_FIRST];
+	int endMip[NUM_MIP_LEVELS_WITH_FIRST];
+	
 	//VBOWrapper vboWrapper;
 	vector<float> vertexVec;
 	
@@ -43,6 +46,7 @@ public:
 	int curPD;
 	
 	int blockId;
+	int chunkId;
 	int holderId;
 	
 	//bool isBlockHolder;
@@ -91,7 +95,7 @@ public:
 
 	Singleton* singleton;
 
-	intPairVec containsEntIds[E_ET_LENGTH];
+	//intPairVec containsEntIds[E_ET_LENGTH];
 	
 	bool wasGenerated;
 
@@ -129,6 +133,13 @@ public:
 	
 
 	GamePageHolder() {
+		
+		int i;
+		
+		for (i = 0; i < NUM_MIP_LEVELS_WITH_FIRST; i++) {
+			begMip[i] = 0;
+			endMip[i] = 0;
+		}
 		
 		// boxShape = NULL;
 		// trimeshShape = NULL;
@@ -169,6 +180,7 @@ public:
 	void init(
 		Singleton* _singleton,
 		int _blockId, 			// MUST BE UNIQUE FOR ENTITES
+		int _chunkId,
 		int _holderId,
 		
 		int trueX,
@@ -202,6 +214,7 @@ public:
 		
 
 		blockId = _blockId;
+		chunkId = _chunkId;
 		holderId = _holderId;
 
 		singleton = _singleton;
@@ -1105,6 +1118,7 @@ FIRST_FILL_DONE:
 		for (i = 0; i < bestConnectingNodes.size(); i++) {
 			curHolder = singleton->gameLogic->getHolderById(
 				bestConnectingNodes[i].blockIdTo,
+				bestConnectingNodes[i].chunkIdTo,
 				bestConnectingNodes[i].holderIdTo
 			);
 			
@@ -1269,6 +1283,7 @@ FIRST_FILL_DONE:
 						
 						if (
 							(targetHolder->holderId == holderId) &&
+							(targetHolder->chunkId == chunkId) &&
 							(targetHolder->blockId == blockId)
 						) {
 							// same holder, do nothing
@@ -1292,6 +1307,7 @@ FIRST_FILL_DONE:
 									
 									if (
 										(cNode->blockIdTo == targetHolder->blockId) &&
+										(cNode->chunkIdTo == targetHolder->chunkId) &&
 										(cNode->holderIdTo == targetHolder->holderId) &&
 										(cNode->groupIdFrom == curGroupId) &&
 										(cNode->groupIdTo == targetGroupId)
@@ -1345,7 +1361,9 @@ FIRST_FILL_DONE:
 									
 									cNode->blockIdFrom = blockId;
 									cNode->holderIdFrom = holderId;
+									cNode->chunkIdFrom = chunkId;
 									cNode->blockIdTo = targetHolder->blockId;
+									cNode->chunkIdTo = targetHolder->chunkId;
 									cNode->holderIdTo = targetHolder->holderId;
 									cNode->groupIdFrom = curGroupId;
 									cNode->groupIdTo = targetGroupId;
@@ -2114,7 +2132,8 @@ FIRST_FILL_DONE:
 		singleton->pdPool[curPD].isFree = false;
 		
 		singleton->pdPool[curPD].boundToHolder.v0 = blockId;
-		singleton->pdPool[curPD].boundToHolder.v1 = holderId;
+		singleton->pdPool[curPD].boundToHolder.v1 = chunkId;
+		singleton->pdPool[curPD].boundToHolder.v2 = holderId;
 	}
 	
 	void unbindPD() {
@@ -2129,7 +2148,7 @@ FIRST_FILL_DONE:
 		bool res;
 		
 		if (hasCache) {
-			res = singleton->loadCacheEntry(blockId,holderId);
+			res = singleton->loadCacheEntry(blockId,chunkId,holderId);
 			listEmpty = (vertexVec.size() == 0); //vboWrapper.
 			
 			// if (res) {
@@ -2153,7 +2172,7 @@ FIRST_FILL_DONE:
 					
 				}
 				else {
-					res = singleton->saveCacheEntry(blockId,holderId);
+					res = singleton->saveCacheEntry(blockId,chunkId,holderId);
 					
 					// if (res) {
 					// 	//cout << "saved cache\n";
@@ -2633,7 +2652,7 @@ FIRST_FILL_DONE:
 	}
 
 	bool checkCache() {
-		hasCache = singleton->checkCacheEntry(blockId,holderId);
+		hasCache = singleton->checkCacheEntry(blockId,chunkId,holderId);
 		return hasCache;
 	}
 

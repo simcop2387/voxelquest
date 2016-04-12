@@ -3219,10 +3219,13 @@ public:
 	
 	int procCount;
 
-	std::vector<float> vertexVec; //btScalar
-	std::vector<uint> indexVec; //unsigned short
+	VIStruct* vi;
+
+	bool viIsShared;
 
 	VBOWrapper() {
+		vi = new VIStruct();
+		viIsShared = false;
 		lastVMUsage = 0.0f;
 		ibo = 0;
 		vbo = 0;
@@ -3231,8 +3234,36 @@ public:
 		procCount = 0;
 	}
 	
+	
+	void remVI() {
+		if (vi == NULL) {
+			
+		}
+		else {
+			
+			if (viIsShared) {
+				// manually delete
+			}
+			else {
+				delete vi;
+				vi = NULL;
+			}
+			
+		}
+	}
+	
+	~VBOWrapper() {
+		remVI();
+	}
+	
+	void setVI(VIStruct* _vi, bool _viIsShared) {
+		remVI();
+		viIsShared = _viIsShared;
+		vi = _vi;
+	}
+	
 	int getNumVerts() {
-		return (vertexVec.size()/(numVecs*4));
+		return (vi->vertexVec.size()/(numVecs*4));
 	}
 	
 	void init(
@@ -3262,12 +3293,16 @@ public:
 		hasInit = false;
 	}
 	
-	void clearVecs() {
-		vertexVec.clear();
-		vertexVec.shrink_to_fit();
+	void clearVecs(bool shrinkToFit = true) {
+				
+		vi->vertexVec.clear();
+		vi->indexVec.clear();
 		
-		indexVec.clear();
-		indexVec.shrink_to_fit();
+		if (shrinkToFit) {
+			vi->vertexVec.shrink_to_fit();
+			vi->indexVec.shrink_to_fit();	
+		}
+		
 	}
 	
 	void checkInit() {
@@ -3276,24 +3311,24 @@ public:
 		}
 		else {
 			if (
-				(vertexVec.size() > 0) &&
-				(indexVec.size() > 0)	
+				(vi->vertexVec.size() > 0) &&
+				(vi->indexVec.size() > 0)	
 			) {
 				initBase(
-					&(vertexVec[0]),
-					vertexVec.size(),
-					vertexVec.size(),
-					&(indexVec[0]),
-					indexVec.size(),
-					indexVec.size()
+					&(vi->vertexVec[0]),
+					vi->vertexVec.size(),
+					vi->vertexVec.size(),
+					&(vi->indexVec[0]),
+					vi->indexVec.size(),
+					vi->indexVec.size()
 				);
 			}
 			else {
-				if (vertexVec.size() > 0) {
+				if (vi->vertexVec.size() > 0) {
 					initBase(
-						&(vertexVec[0]),
-						vertexVec.size(),
-						vertexVec.size(),
+						&(vi->vertexVec[0]),
+						vi->vertexVec.size(),
+						vi->vertexVec.size(),
 						NULL,
 						0,
 						0
@@ -3319,18 +3354,18 @@ public:
 		
 		GLfloat* vertexPtr = NULL;
 		GLuint* indexPtr = NULL;
-		if (vertexVec.size() > 0) {
-			vertexPtr = &(vertexVec[0]);
+		if (vi->vertexVec.size() > 0) {
+			vertexPtr = &(vi->vertexVec[0]);
 		}
-		if (indexVec.size() > 0) {
-			indexPtr = &(indexVec[0]);
+		if (vi->indexVec.size() > 0) {
+			indexPtr = &(vi->indexVec[0]);
 		}
 		
 		updateBase(
 			vertexPtr,
-			vertexVec.size(),
+			vi->vertexVec.size(),
 			indexPtr,
-			indexVec.size()
+			vi->indexVec.size()
 		);
 	}
 	void updateNew() {
@@ -3339,32 +3374,32 @@ public:
 		
 		GLfloat* vertexPtr = NULL;
 		GLuint* indexPtr = NULL;
-		if (vertexVec.size() > 0) {
-			vertexPtr = &(vertexVec[0]);
+		if (vi->vertexVec.size() > 0) {
+			vertexPtr = &(vi->vertexVec[0]);
 		}
-		if (indexVec.size() > 0) {
-			indexPtr = &(indexVec[0]);
+		if (vi->indexVec.size() > 0) {
+			indexPtr = &(vi->indexVec[0]);
 		}
 		
 		updateNewBase(
 			vertexPtr,
-			vertexVec.size(),
+			vi->vertexVec.size(),
 			indexPtr,
-			indexVec.size()
+			vi->indexVec.size()
 		);
 	}
 	
 	void beginFill() {
 		procCount = 0;
-		vertexVec.clear();
-		indexVec.clear();
+		vi->vertexVec.clear();
+		vi->indexVec.clear();
 		
 	}
 	void endFill() {
 		
 		
 		
-		if (vertexVec.size() > 0) {
+		if (vi->vertexVec.size() > 0) {
 			updateNew();
 		}
 		else {
@@ -3372,7 +3407,7 @@ public:
 		}
 		
 		VERTEX_MEM_USAGE -= lastVMUsage;
-		float vertMem = (vertexVec.size()+indexVec.size())*4;
+		float vertMem = (vi->vertexVec.size()+vi->indexVec.size())*4;
 		VERTEX_MEM_USAGE += vertMem/(1024.0f*1024.0f);
 		lastVMUsage = vertMem/(1024.0f*1024.0f);
 		
@@ -3413,23 +3448,23 @@ public:
 	
 	
 	// inline void getIndVal(int procCount) {
-	// 	indexVec.push_back(0+procCount*4);
-	// 	indexVec.push_back(1+procCount*4);
-	// 	indexVec.push_back(2+procCount*4);
-	// 	indexVec.push_back(2+procCount*4);
-	// 	indexVec.push_back(1+procCount*4);
-	// 	indexVec.push_back(3+procCount*4);
+	// 	vi->indexVec.push_back(0+procCount*4);
+	// 	vi->indexVec.push_back(1+procCount*4);
+	// 	vi->indexVec.push_back(2+procCount*4);
+	// 	vi->indexVec.push_back(2+procCount*4);
+	// 	vi->indexVec.push_back(1+procCount*4);
+	// 	vi->indexVec.push_back(3+procCount*4);
 	// }
 	
 	
 	
 	// inline void getIndVal2(int procCount) {
-	// 	indexVec.push_back(2+procCount*4);
-	// 	indexVec.push_back(1+procCount*4);
-	// 	indexVec.push_back(0+procCount*4);
-	// 	indexVec.push_back(3+procCount*4);
-	// 	indexVec.push_back(1+procCount*4);
-	// 	indexVec.push_back(2+procCount*4);
+	// 	vi->indexVec.push_back(2+procCount*4);
+	// 	vi->indexVec.push_back(1+procCount*4);
+	// 	vi->indexVec.push_back(0+procCount*4);
+	// 	vi->indexVec.push_back(3+procCount*4);
+	// 	vi->indexVec.push_back(1+procCount*4);
+	// 	vi->indexVec.push_back(2+procCount*4);
 	// }
 	
 	inline void getPixVal(
@@ -3443,25 +3478,25 @@ public:
 	) {
 		//int maskInd = xm + ym*2 + zm*4;
 		
-		// vertexVec.push_back(xb+xm+NET_MASKS[mv[maskInd]].getX());
-		// vertexVec.push_back(yb+ym+NET_MASKS[mv[maskInd]].getY());
-		// vertexVec.push_back(zb+zm+NET_MASKS[mv[maskInd]].getZ());
-		// vertexVec.push_back(1.0f);
+		// vi->vertexVec.push_back(xb+xm+NET_MASKS[mv[maskInd]].getX());
+		// vi->vertexVec.push_back(yb+ym+NET_MASKS[mv[maskInd]].getY());
+		// vi->vertexVec.push_back(zb+zm+NET_MASKS[mv[maskInd]].getZ());
+		// vi->vertexVec.push_back(1.0f);
 		
-		vertexVec.push_back(xb+xm);
-		vertexVec.push_back(yb+ym);
-		vertexVec.push_back(zb+zm);
-		vertexVec.push_back(1.0f);
+		vi->vertexVec.push_back(xb+xm);
+		vi->vertexVec.push_back(yb+ym);
+		vi->vertexVec.push_back(zb+zm);
+		vi->vertexVec.push_back(1.0f);
 		
 		
-		// vertexVec.push_back(xb+xm);
-		// vertexVec.push_back(yb+ym);
-		// vertexVec.push_back(zb+zm);
+		// vi->vertexVec.push_back(xb+xm);
+		// vi->vertexVec.push_back(yb+ym);
+		// vi->vertexVec.push_back(zb+zm);
 		
 		int i;
 		
 		for (i = 0; i < dataLen; i++) {
-			vertexVec.push_back(data[i]);
+			vi->vertexVec.push_back(data[i]);
 		}
 		
 		
@@ -3526,24 +3561,24 @@ public:
 		
 		if (procFlags[0]&procFlag) { // x+
 			
-			indexVec.push_back(5+procCount);
-			indexVec.push_back(1+procCount);
-			indexVec.push_back(3+procCount);
-			indexVec.push_back(3+procCount);
-			indexVec.push_back(7+procCount);
-			indexVec.push_back(5+procCount);
+			vi->indexVec.push_back(5+procCount);
+			vi->indexVec.push_back(1+procCount);
+			vi->indexVec.push_back(3+procCount);
+			vi->indexVec.push_back(3+procCount);
+			vi->indexVec.push_back(7+procCount);
+			vi->indexVec.push_back(5+procCount);
 			
 			
 			
 		}
 		if (procFlags[1]&procFlag) { // x-
 			
-			indexVec.push_back(6+procCount);
-			indexVec.push_back(2+procCount);
-			indexVec.push_back(0+procCount);
-			indexVec.push_back(0+procCount);
-			indexVec.push_back(4+procCount);
-			indexVec.push_back(6+procCount);
+			vi->indexVec.push_back(6+procCount);
+			vi->indexVec.push_back(2+procCount);
+			vi->indexVec.push_back(0+procCount);
+			vi->indexVec.push_back(0+procCount);
+			vi->indexVec.push_back(4+procCount);
+			vi->indexVec.push_back(6+procCount);
 			
 			
 		}
@@ -3553,43 +3588,43 @@ public:
 		
 		if (procFlags[2]&procFlag) { // y+
 			
-			indexVec.push_back(7+procCount);
-			indexVec.push_back(3+procCount);
-			indexVec.push_back(2+procCount);
-			indexVec.push_back(2+procCount);
-			indexVec.push_back(6+procCount);
-			indexVec.push_back(7+procCount);
+			vi->indexVec.push_back(7+procCount);
+			vi->indexVec.push_back(3+procCount);
+			vi->indexVec.push_back(2+procCount);
+			vi->indexVec.push_back(2+procCount);
+			vi->indexVec.push_back(6+procCount);
+			vi->indexVec.push_back(7+procCount);
 			
 			
 		}
 		if (procFlags[3]&procFlag) { // y-
 			
-			indexVec.push_back(4+procCount);
-			indexVec.push_back(0+procCount);
-			indexVec.push_back(1+procCount);
-			indexVec.push_back(1+procCount);
-			indexVec.push_back(5+procCount);
-			indexVec.push_back(4+procCount);
+			vi->indexVec.push_back(4+procCount);
+			vi->indexVec.push_back(0+procCount);
+			vi->indexVec.push_back(1+procCount);
+			vi->indexVec.push_back(1+procCount);
+			vi->indexVec.push_back(5+procCount);
+			vi->indexVec.push_back(4+procCount);
 			
 		}
 		if (procFlags[4]&procFlag) { // z+
 			
-			indexVec.push_back(4+procCount);
-			indexVec.push_back(5+procCount);
-			indexVec.push_back(7+procCount);
-			indexVec.push_back(7+procCount);
-			indexVec.push_back(6+procCount);
-			indexVec.push_back(4+procCount);
+			vi->indexVec.push_back(4+procCount);
+			vi->indexVec.push_back(5+procCount);
+			vi->indexVec.push_back(7+procCount);
+			vi->indexVec.push_back(7+procCount);
+			vi->indexVec.push_back(6+procCount);
+			vi->indexVec.push_back(4+procCount);
 			
 		}
 		if (procFlags[5]&procFlag) { // z-
 			
-			indexVec.push_back(3+procCount);
-			indexVec.push_back(1+procCount);
-			indexVec.push_back(0+procCount);
-			indexVec.push_back(0+procCount);
-			indexVec.push_back(2+procCount);
-			indexVec.push_back(3+procCount);
+			vi->indexVec.push_back(3+procCount);
+			vi->indexVec.push_back(1+procCount);
+			vi->indexVec.push_back(0+procCount);
+			vi->indexVec.push_back(0+procCount);
+			vi->indexVec.push_back(2+procCount);
+			vi->indexVec.push_back(3+procCount);
 			
 		}
 		
@@ -3723,17 +3758,17 @@ public:
 			fj = j;
 			for (i = 0; i < xpitch; i++) {
 				fi = i;
-				vboWrapper.vertexVec.push_back(i);
-				vboWrapper.vertexVec.push_back(j);
-				vboWrapper.vertexVec.push_back(1.0f);
-				vboWrapper.vertexVec.push_back(0.0f);
+				vboWrapper.vi->vertexVec.push_back(i);
+				vboWrapper.vi->vertexVec.push_back(j);
+				vboWrapper.vi->vertexVec.push_back(1.0f);
+				vboWrapper.vi->vertexVec.push_back(0.0f);
 				
 				
 				
-				vboWrapper.vertexVec.push_back(fi/fxp);
-				vboWrapper.vertexVec.push_back(fj/fyp);
-				vboWrapper.vertexVec.push_back(0.0f);
-				vboWrapper.vertexVec.push_back(0.0f);
+				vboWrapper.vi->vertexVec.push_back(fi/fxp);
+				vboWrapper.vi->vertexVec.push_back(fj/fyp);
+				vboWrapper.vi->vertexVec.push_back(0.0f);
+				vboWrapper.vi->vertexVec.push_back(0.0f);
 				
 			}
 		}
@@ -3768,13 +3803,13 @@ public:
 				// 0 1
 				// 2 3
 				
-				vboWrapper.indexVec.push_back(ind0);
-				vboWrapper.indexVec.push_back(ind1);
-				vboWrapper.indexVec.push_back(ind3);
+				vboWrapper.vi->indexVec.push_back(ind0);
+				vboWrapper.vi->indexVec.push_back(ind1);
+				vboWrapper.vi->indexVec.push_back(ind3);
 				
-				vboWrapper.indexVec.push_back(ind3);
-				vboWrapper.indexVec.push_back(ind2);
-				vboWrapper.indexVec.push_back(ind0);
+				vboWrapper.vi->indexVec.push_back(ind3);
+				vboWrapper.vi->indexVec.push_back(ind2);
+				vboWrapper.vi->indexVec.push_back(ind0);
 				
 				
 			}
@@ -4234,7 +4269,7 @@ struct VoxelCell {
 
 struct VoxelMip {
 	bool* mipArr;
-	vector<int> mipList;
+	//vector<int> mipList;
 };
 
 struct VoxelBuffer {
@@ -4332,7 +4367,7 @@ struct VoxelBuffer {
 			for (j = 0; j < mipVol; j++) {
 				mipMaps[i].mipArr[j] = false;
 			}
-			mipMaps[i].mipList.clear();
+			//mipMaps[i].mipList.clear();
 			mipSize /= 2;
 		}
 		
@@ -4345,7 +4380,7 @@ struct PaddedData {
 	vector<VectorI3> fillStack;
 	VoxelBuffer voxelBuffer;
 	
-	intPair boundToHolder;
+	intTrip boundToHolder;
 	bool isFree;
 };
 

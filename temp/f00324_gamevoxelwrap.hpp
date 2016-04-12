@@ -163,6 +163,8 @@ public:
 		int cellInd2;
 		int curSize;
 		
+		//VoxelEntry ve;
+		
 		float totWeight = 0.0f;
 		float weightCount = 1.0f;
 		
@@ -173,41 +175,7 @@ public:
 		int curMipSize;
 		int mipInd;
 		
-		if (DO_MIP) {
-			mipAmount = 2;
-			
-			for (t = 0; t < NUM_MIP_LEVELS; t++) {
-				for (p = 0; p < totSize; p++) {
-					q = voxelBuffer->voxelList[p].viIndex;
-					kk = q/(voxelsPerHolderPad*voxelsPerHolderPad);
-					jj = (q-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
-					ii = q-(kk*voxelsPerHolderPad*voxelsPerHolderPad + jj*voxelsPerHolderPad);
-					
-					if (voxelBuffer->getFlag(q,E_OCT_SURFACE)) {
-						
-						curMipSize = voxelsPerHolderPad/mipAmount;
-						
-						kk2 = kk/mipAmount;
-						jj2 = jj/mipAmount;
-						ii2 = ii/mipAmount;
-						
-						mipInd = kk2*curMipSize*curMipSize + jj2*curMipSize + ii2;
-						
-						if (voxelBuffer->mipMaps[t].mipArr[mipInd]) {
-							
-						}
-						else {
-							voxelBuffer->mipMaps[t].mipArr[mipInd] = true;
-							voxelBuffer->mipMaps[t].mipList.push_back(p);
-						}
-						
-					}
-				}
-				
-				mipAmount *= 2;
-			}
-			
-		}
+		
 		
 		if (DO_AO) {
 			for (p = 0; p < totSize; p++) {
@@ -486,12 +454,12 @@ public:
 							
 							
 							//voxOffset += paddingInVoxels;
-							voxOffset += offsetInVoxels;
+							//voxOffset += offsetInVoxels;
 							
 							fVO.x = voxOffset.x;
 							fVO.y = voxOffset.y;
 							fVO.z = voxOffset.z;
-							fVO *= fVPC;
+							//fVO *= fVPC;
 							
 							totNorm = voxelBuffer->voxelList[p].normal;
 							
@@ -501,7 +469,7 @@ public:
 								tempData[0] = fVO.x;
 								tempData[1] = fVO.y;
 								tempData[2] = fVO.z;
-								tempData[3] = 1.0f;
+								tempData[3] = 0.0f;// mipLevel 1.0f;
 								tempData[4] = totNorm.x;
 								tempData[5] = totNorm.y;
 								tempData[6] = totNorm.z;
@@ -579,6 +547,109 @@ public:
 				}
 				
 			}
+		}
+		
+		
+		/*
+		tempData[0] = fVO.x;
+		tempData[1] = fVO.y;
+		tempData[2] = fVO.z;
+		tempData[3] = 1.0f;
+		tempData[4] = totNorm.x;
+		tempData[5] = totNorm.y;
+		tempData[6] = totNorm.z;
+		tempData[7] = curMat*256;
+		
+		for (m = 0; m < dataSize; m++) {
+			gph->vertexVec.push_back(tempData[m]);
+		}
+		
+		
+		
+		voxOffset += offsetInVoxels;
+		
+		fVO.x = voxOffset.x;
+		fVO.y = voxOffset.y;
+		fVO.z = voxOffset.z;
+		fVO *= fVPC;
+		
+		voxOffset += offsetInVoxels;
+		fVO *= fVPC;
+		
+		*/
+		
+		
+		totSize = gph->vertexVec.size();
+		gph->begMip[0] = 0;
+		gph->endMip[0] = totSize;
+		
+		
+		
+		if (DO_MIP) {
+			mipAmount = 2;
+			
+			for (t = 0; t < NUM_MIP_LEVELS; t++) {
+				gph->begMip[t+1] = gph->endMip[t];
+				
+				for (p = 0; p < totSize; p += dataSize) {
+					//q = voxelBuffer->voxelList[p].viIndex;
+					kk = gph->vertexVec[p+2];//q/(voxelsPerHolderPad*voxelsPerHolderPad);
+					jj = gph->vertexVec[p+1];//(q-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
+					ii = gph->vertexVec[p+0];//q-(kk*voxelsPerHolderPad*voxelsPerHolderPad + jj*voxelsPerHolderPad);
+					
+					curMipSize = voxelsPerHolderPad/mipAmount;
+					
+					kk2 = kk/mipAmount;
+					jj2 = jj/mipAmount;
+					ii2 = ii/mipAmount;
+					
+					mipInd = kk2*curMipSize*curMipSize + jj2*curMipSize + ii2;
+					
+					if (voxelBuffer->mipMaps[t].mipArr[mipInd]) {
+						
+					}
+					else {
+						voxelBuffer->mipMaps[t].mipArr[mipInd] = true;
+						
+						tempData[0] = ii2*mipAmount + mipAmount/2;
+						tempData[1] = jj2*mipAmount + mipAmount/2;
+						tempData[2] = kk2*mipAmount + mipAmount/2;
+						tempData[3] = t+1;//gph->vertexVec[p+3];
+						tempData[4] = gph->vertexVec[p+4];
+						tempData[5] = gph->vertexVec[p+5];
+						tempData[6] = gph->vertexVec[p+6];
+						tempData[7] = gph->vertexVec[p+7];
+						
+						for (m = 0; m < dataSize; m++) {
+							gph->vertexVec.push_back(tempData[m]);
+						}
+						
+						// voxelBuffer->mipMaps[t].mipList.push_back(ve);
+						// voxelBuffer->mipMaps[t].mipList.back().ind = p;
+						// voxelBuffer->mipMaps[t].mipList.back().x = ii2*mipAmount + mipAmount/2;
+						// voxelBuffer->mipMaps[t].mipList.back().y = jj2*mipAmount + mipAmount/2;
+						// voxelBuffer->mipMaps[t].mipList.back().z = kk2*mipAmount + mipAmount/2;
+					}
+					
+					
+				}
+				
+				gph->endMip[t+1] = gph->vertexVec.size();
+				
+				mipAmount *= 2;
+			}
+			
+		}
+		
+		
+		totSize = gph->vertexVec.size();
+		for (p = 0; p < totSize; p += dataSize) {
+				gph->vertexVec[p] = (gph->vertexVec[p] + offsetInVoxels.x)*fVPC; p++;
+				gph->vertexVec[p] = (gph->vertexVec[p] + offsetInVoxels.y)*fVPC; p++;
+				gph->vertexVec[p] = (gph->vertexVec[p] + offsetInVoxels.z)*fVPC;
+				
+				p -= 2;
+				
 		}
 		
 	}

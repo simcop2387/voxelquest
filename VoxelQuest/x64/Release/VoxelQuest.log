@@ -1,4 +1,4 @@
-﻿Build started 4/10/2016 3:20:43 AM.
+﻿Build started 4/12/2016 3:15:30 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -40,7 +40,8 @@
          .\src\cpp\f00347_gamephysrig.hpp
          .\src\cpp\f00349_gameentmanager.hpp
          .\src\cpp\f00351_gamepageholder.hpp
-         .\src\cpp\f00352_gameblock.hpp
+         .\src\cpp\f00352_gamechunk.hpp
+         .\src\cpp\f00353_gameblock.hpp
          .\src\cpp\f00355_volumewrapper.hpp
          .\src\cpp\f00360_threadpoolwrapper.hpp
          .\src\cpp\f00370_gamelogic.hpp
@@ -49,11 +50,11 @@
          .\src\cpp\f00375_gamephysics.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         44 File(s) copied
+         45 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         28
+         29
          copying headers to one file
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
@@ -75,7 +76,8 @@
          .\f00347_gamephysrig.e
          .\f00349_gameentmanager.e
          .\f00351_gamepageholder.e
-         .\f00352_gameblock.e
+         .\f00352_gamechunk.e
+         .\f00353_gameblock.e
          .\f00355_volumewrapper.e
          .\f00360_threadpoolwrapper.e
          .\f00370_gamelogic.e
@@ -86,7 +88,7 @@
                  1 file(s) copied.
          Missing operator.
          tot e
-         28
+         29
          .
          copying files to compiled
          .\temp\f00293_gamesound.e
@@ -109,7 +111,8 @@
          .\temp\f00347_gamephysrig.e
          .\temp\f00349_gameentmanager.e
          .\temp\f00351_gamepageholder.e
-         .\temp\f00352_gameblock.e
+         .\temp\f00352_gamechunk.e
+         .\temp\f00353_gameblock.e
          .\temp\f00355_volumewrapper.e
          .\temp\f00360_threadpoolwrapper.e
          .\temp\f00370_gamelogic.e
@@ -117,7 +120,7 @@
          .\temp\f00374_myglhelper.e
          .\temp\f00375_gamephysics.e
          .\temp\f00380_gameworld.e
-         28 File(s) copied
+         29 File(s) copied
          .\temp\f00020_includes.h
          .\temp\f00022_enums.h
          .\temp\f00024_mat.h
@@ -154,7 +157,8 @@
          .\temp\f00347_gamephysrig.h
          .\temp\f00349_gameentmanager.h
          .\temp\f00351_gamepageholder.h
-         .\temp\f00352_gameblock.h
+         .\temp\f00352_gamechunk.h
+         .\temp\f00353_gameblock.h
          .\temp\f00355_volumewrapper.h
          .\temp\f00360_threadpoolwrapper.h
          .\temp\f00370_gamelogic.h
@@ -183,8 +187,11 @@
          running EXE
          curCLFull e:\vqcache\world001\
          Loading:  e:\vqcache\world001\meta.js         
-         Could Not Open File For Loading          
-         Cache metadata not loaded, creating new metadata
+         Load Successful          
+         
+         Valid JSON
+                   
+         Cache metadata loaded
          
          
          
@@ -361,12 +368,12 @@
          
          cellsPerNodeXY: 16
          cellsPerNodeZ: 8
-         holdersPerBlock: 4
-         cellsPerBlock: 64
-         terDataBufPitchScaledXY 6
-         cellsPerHolder: 16
-         cellsPerWorld: 16384
-         blocksPerWorld: 256
+         holdersPerBlock: 32
+         cellsPerBlock: 256
+         terDataBufPitchScaledXY 16
+         cellsPerHolder: 8
+         cellsPerWorld: 32768
+         blocksPerWorld: 128
          MAX_UNIFORMS: 65536
          
          
@@ -1011,17 +1018,239 @@
                    
          GW DONE          
          reshape
-         curHeight 0 newHeight 2594.13
+         curHeight 0 newHeight 2273.88
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
          GL_MAX_TEXTURE_BUFFER_SIZE 134217728
          updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         updateShadows
+         updateShadows
+         updateShadows
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         reshape
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         
+         updateHolders 0
          command:
+         debugViewOn 1
+         command:
+         debugViewOn 0
          updateShadows
          updateShadows
          updateShadows
          updateShadows
          updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         
+         updateHolders 1
+         command:
+         debugViewOn 1
+         updateShadows
+         updateShadows
+         
+         updateHolders 0
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         command:
+         debugViewOn 0
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         No code for key: 33
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         iNumSteps:  8         
+         iNumSteps:  4         
+         iNumSteps:  4         
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         No code for key: 33
+         
+         updateHolders 1
+         
+         updateHolders 0
+         No code for key: 119
          updateShadows
          updateShadows
          updateShadows
@@ -1032,4 +1261,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:03:20.79
+Time Elapsed 02:15:18.95

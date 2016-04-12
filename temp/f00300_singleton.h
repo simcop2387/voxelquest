@@ -98,10 +98,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		}
 		
 		for (i = 0; i < 32; i++) {
-			fsQuad.vertexVec.push_back(vertexDataQuad[i]);
+			fsQuad.vi->vertexVec.push_back(vertexDataQuad[i]);
 		}
 		for (i = 0; i < 6; i++) {
-			fsQuad.indexVec.push_back(indexDataQuad[i]);
+			fsQuad.vi->indexVec.push_back(indexDataQuad[i]);
 		}
 		fsQuad.init(
 			2,
@@ -406,7 +406,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		heightMapMaxInCells = HM_MAX_IN_CELLS;
 		//mapSampScale = 2.0f;
-		int newPitch = (imageHM0->width);// * 2; //*2;
+		int newPitch = (imageHM0->width) * 2 * HOLDER_MOD; //*2;
 		mapPitch = (imageHM0->width); //newPitch;// //
 		int curMipSize = 0;
 		
@@ -414,14 +414,17 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		paddingInCells = PADDING_IN_CELLS;
 		
 		cellsPerHolder = CELLS_PER_HOLDER;
-		holdersPerBlock = 4;
-		
+		holdersPerChunk = 4;
+		chunksPerBlock = 8;
 		holdersPerWorld = newPitch;
+		
+		
+		holdersPerBlock = holdersPerChunk*chunksPerBlock;//8 * HOLDER_MOD;
 		cellsPerWorld = holdersPerWorld*cellsPerHolder;
 		cellsPerBlock = holdersPerBlock * cellsPerHolder;
 		blocksPerWorld = holdersPerWorld/holdersPerBlock;
-		
-
+		cellsPerChunk = cellsPerHolder*holdersPerChunk;
+		chunksPerWorld = blocksPerWorld*chunksPerBlock;
 		
 		cellsPerHolderPad = cellsPerHolder+paddingInCells*2;
 		voxelsPerHolderPad = voxelsPerCell*cellsPerHolderPad;
@@ -4381,6 +4384,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 					case 'd':
 						debugViewOn = !debugViewOn;
+						cout << "debugViewOn " << debugViewOn << "\n";
 					break;
 					case 's':
 						stopAllThreads();
@@ -5530,14 +5534,14 @@ void Singleton::mouseMove (int _x, int _y)
 			}
 			else {
 				
-				gw->findNearestEnt(
-					&highlightedEnts,
-					E_ET_GEOM,
-					2,
-					1,
-					&mouseMovePD
-				);
-				highlightedEnt = highlightedEnts.getSelectedEnt();
+				// gw->findNearestEnt(
+				// 	&highlightedEnts,
+				// 	E_ET_GEOM,
+				// 	2,
+				// 	1,
+				// 	&mouseMovePD
+				// );
+				// highlightedEnt = highlightedEnts.getSelectedEnt();
 
 
 			}
@@ -5893,99 +5897,99 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 							
 
 							
-							gw->findNearestEnt(
-								&selectedEnts,
-								E_ET_GEOM,
-								2,
-								1,
-								&mouseUpPD,
-								true
-							);
+							// gw->findNearestEnt(
+							// 	&selectedEnts,
+							// 	E_ET_GEOM,
+							// 	2,
+							// 	1,
+							// 	&mouseUpPD,
+							// 	true
+							// );
 							
-							selectedEnt = selectedEnts.getSelectedEnt();
+							// selectedEnt = selectedEnts.getSelectedEnt();
 
-							if (
-								(selectedEnt == NULL) ||
-								(mouseState == E_MOUSE_STATE_PICKING) ||
-								(mouseState == E_MOUSE_STATE_BRUSH)
-							)	{
+							// if (
+							// 	(selectedEnt == NULL) ||
+							// 	(mouseState == E_MOUSE_STATE_PICKING) ||
+							// 	(mouseState == E_MOUSE_STATE_BRUSH)
+							// )	{
 
-							}
-							else {
+							// }
+							// else {
 
-								switch (selectedEnt->buildingType)
-								{
-								case E_CT_DOOR:
-								case E_CT_WINDOW:
+							// 	switch (selectedEnt->buildingType)
+							// 	{
+							// 	case E_CT_DOOR:
+							// 	case E_CT_WINDOW:
 									
 									
 									
-									if (selectedEnt->toggled) {
-										// open
-										switch (selectedEnt->buildingType)
-										{
-											case E_CT_DOOR:
-												playSoundPosAndPitch(
-													"open3",
-													cameraGetPosNoShake(),
-													selectedEnt->getVisMinInPixelsT(),
-													0.3f
-												);
-											break;
-											case E_CT_WINDOW:
-												playSoundPosAndPitch(
-													"open1",
-													cameraGetPosNoShake(),
-													selectedEnt->getVisMinInPixelsT(),
-													0.3f
-												);
-											break;
-										}
-									}
-									else {
-										// close
+							// 		if (selectedEnt->toggled) {
+							// 			// open
+							// 			switch (selectedEnt->buildingType)
+							// 			{
+							// 				case E_CT_DOOR:
+							// 					playSoundPosAndPitch(
+							// 						"open3",
+							// 						cameraGetPosNoShake(),
+							// 						selectedEnt->getVisMinInPixelsT(),
+							// 						0.3f
+							// 					);
+							// 				break;
+							// 				case E_CT_WINDOW:
+							// 					playSoundPosAndPitch(
+							// 						"open1",
+							// 						cameraGetPosNoShake(),
+							// 						selectedEnt->getVisMinInPixelsT(),
+							// 						0.3f
+							// 					);
+							// 				break;
+							// 			}
+							// 		}
+							// 		else {
+							// 			// close
 										
-										switch (selectedEnt->buildingType)
-										{
-											case E_CT_DOOR:
-												playSoundPosAndPitch(
-													"close2",
-													cameraGetPosNoShake(),
-													selectedEnt->getVisMinInPixelsT(),
-													0.3f
-												);
-											break;
-											case E_CT_WINDOW:
-												playSoundPosAndPitch(
-													"close1",
-													cameraGetPosNoShake(),
-													selectedEnt->getVisMinInPixelsT(),
-													0.3f
-												);
-											break;
-										}
-									}
+							// 			switch (selectedEnt->buildingType)
+							// 			{
+							// 				case E_CT_DOOR:
+							// 					playSoundPosAndPitch(
+							// 						"close2",
+							// 						cameraGetPosNoShake(),
+							// 						selectedEnt->getVisMinInPixelsT(),
+							// 						0.3f
+							// 					);
+							// 				break;
+							// 				case E_CT_WINDOW:
+							// 					playSoundPosAndPitch(
+							// 						"close1",
+							// 						cameraGetPosNoShake(),
+							// 						selectedEnt->getVisMinInPixelsT(),
+							// 						0.3f
+							// 					);
+							// 				break;
+							// 			}
+							// 		}
 									
 
 									
-									wsBufferInvalid = true;
-									break;
+							// 		wsBufferInvalid = true;
+							// 		break;
 
-								case E_CT_LANTERN:
-									selectedEnt->light->toggle();
-									playSoundPosAndPitch(
-										"castinet0",
-										cameraGetPosNoShake(),
-										selectedEnt->getVisMinInPixelsT(),
-										0.3f
-									);
-									gw->updateLights();
-									cout << "final toggle " << selectedEnt->light->toggled << "\n";
-									break;
+							// 	case E_CT_LANTERN:
+							// 		selectedEnt->light->toggle();
+							// 		playSoundPosAndPitch(
+							// 			"castinet0",
+							// 			cameraGetPosNoShake(),
+							// 			selectedEnt->getVisMinInPixelsT(),
+							// 			0.3f
+							// 		);
+							// 		//gw->updateLights();
+							// 		cout << "final toggle " << selectedEnt->light->toggled << "\n";
+							// 		break;
 
-								}
+							// 	}
 
-							}
+							// }
 
 
 
@@ -7591,6 +7595,14 @@ void Singleton::loadConstants ()
 		
 		STEP_TIME_IN_SEC = conVals[E_CONST_STEP_TIME_IN_MICRO_SEC]/1000000.0;
 		
+		mipDis[0] = conVals[E_CONST_MIPDIS0];
+		mipDis[1] = conVals[E_CONST_MIPDIS1];
+		mipDis[2] = conVals[E_CONST_MIPDIS2];
+		mipDis[3] = conVals[E_CONST_MIPDIS3];
+		mipDis[4] = conVals[E_CONST_MIPDIS4];
+		mipDis[5] = conVals[E_CONST_MIPDIS5];
+		mipDis[6] = conVals[E_CONST_MIPDIS6];
+		mipDis[7] = conVals[E_CONST_MIPDIS7];
 		
 	}
 void Singleton::loadGUI ()
@@ -7684,10 +7696,10 @@ std::ifstream::pos_type Singleton::filesize (char const * filename)
 	    std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
 	    return in.tellg();
 	}
-bool Singleton::checkCacheEntry (int blockId, int holderId)
-                                                        {
-		string entryName = "b" + i__s(blockId) + "h" + i__s(holderId);
-		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,holderId);
+bool Singleton::checkCacheEntry (int blockId, int chunkId, int holderId)
+                                                                     {
+		string entryName = "b" + i__s(blockId) + "c" + i__s(chunkId) + "h" + i__s(holderId);
+		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,chunkId,holderId);
 		
 		if (curHolder == NULL) {
 			return false;
@@ -7703,12 +7715,13 @@ bool Singleton::checkCacheEntry (int blockId, int holderId)
 		return false;
 		
 	}
-bool Singleton::loadCacheEntry (int blockId, int holderId)
-                                                       {
-		string entryName = "b" + i__s(blockId) + "h" + i__s(holderId);
-		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,holderId);
+bool Singleton::loadCacheEntry (int blockId, int chunkId, int holderId)
+                                                                    {
+		string entryName = "b" + i__s(blockId) + "c" + i__s(chunkId) + "h" + i__s(holderId);
+		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,chunkId,holderId);
 		JSONValue* curEntry;
 		
+		int i;
 		int curVersion;
 		int curDataSizeInFloats;
 		
@@ -7729,6 +7742,11 @@ bool Singleton::loadCacheEntry (int blockId, int holderId)
 				return true;
 			}
 			
+			for (i = 0; i < NUM_MIP_LEVELS_WITH_FIRST; i++) {
+				curHolder->begMip[i] = curEntry->array_value[i*2 + 0]->number_value;
+				curHolder->endMip[i] = curEntry->array_value[i*2 + 1]->number_value;
+			}
+			
 			curHolder->vertexVec.resize(curDataSizeInFloats);
 			
 			if (
@@ -7745,14 +7763,14 @@ bool Singleton::loadCacheEntry (int blockId, int holderId)
 		
 		return false;
 	}
-bool Singleton::saveCacheEntry (int blockId, int holderId)
-                                                       {
-		string entryName = "b" + i__s(blockId) + "h" + i__s(holderId);
+bool Singleton::saveCacheEntry (int blockId, int chunkId, int holderId)
+                                                                    {
+		string entryName = "b" + i__s(blockId) + "c" + i__s(chunkId) + "h" + i__s(holderId);
 		JSONValue* curEntry;
 		bool justCreated = false;
 		int i;
 		
-		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,holderId);
+		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,chunkId,holderId);
 		
 		int dataSizeInFloats;
 		
@@ -7799,6 +7817,11 @@ bool Singleton::saveCacheEntry (int blockId, int holderId)
 			
 			curEntry->array_value[E_CMD_VERSION]->number_value = cacheVersion;
 			curEntry->array_value[E_CMD_SIZEINFLOATS]->number_value = dataSizeInFloats;
+			
+			for (i = 0; i < NUM_MIP_LEVELS_WITH_FIRST; i++) {
+				curEntry->array_value[i*2 + 0]->number_value = curHolder->begMip[i];
+				curEntry->array_value[i*2 + 1]->number_value = curHolder->endMip[i];
+			}
 			
 			
 			return true;
@@ -8109,8 +8132,10 @@ void Singleton::checkFluid (GameFluid * gf)
 		//(getAvailPD() < MAX_PDPOOL_SIZE)
 		
 		if (updateHolders) {
-			gw->rastHolder(iGetConst(E_CONST_RASTER_HOLDER_RAD), RH_FLAG_DOCHECK);
+			
 		}
+		
+		gw->rastChunk(iGetConst(E_CONST_RASTER_CHUNK_RAD), RH_FLAG_DOCHECK);
 		
 		gameLogic->loadNearestHolders(2, updateHolders);		
 		return;

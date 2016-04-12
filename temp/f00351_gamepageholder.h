@@ -16,6 +16,13 @@ void GamePageHolder::reset ()
 GamePageHolder::GamePageHolder ()
                          {
 		
+		int i;
+		
+		for (i = 0; i < NUM_MIP_LEVELS_WITH_FIRST; i++) {
+			begMip[i] = 0;
+			endMip[i] = 0;
+		}
+		
 		// boxShape = NULL;
 		// trimeshShape = NULL;
 		// meshInterface = NULL;
@@ -49,7 +56,7 @@ GamePageHolder::GamePageHolder ()
 		
 		wasGenerated = false;
 	}
-void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ)
+void GamePageHolder::init (Singleton * _singleton, int _blockId, int _chunkId, int _holderId, int trueX, int trueY, int trueZ)
           {
 
 		curPD = -1;
@@ -75,6 +82,7 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		
 
 		blockId = _blockId;
+		chunkId = _chunkId;
 		holderId = _holderId;
 
 		singleton = _singleton;
@@ -924,6 +932,7 @@ void GamePageHolder::sortConNodes (GamePageHolder * endHolder, int endInd)
 		for (i = 0; i < bestConnectingNodes.size(); i++) {
 			curHolder = singleton->gameLogic->getHolderById(
 				bestConnectingNodes[i].blockIdTo,
+				bestConnectingNodes[i].chunkIdTo,
 				bestConnectingNodes[i].holderIdTo
 			);
 			
@@ -1088,6 +1097,7 @@ void GamePageHolder::linkRegions ()
 						
 						if (
 							(targetHolder->holderId == holderId) &&
+							(targetHolder->chunkId == chunkId) &&
 							(targetHolder->blockId == blockId)
 						) {
 							// same holder, do nothing
@@ -1111,6 +1121,7 @@ void GamePageHolder::linkRegions ()
 									
 									if (
 										(cNode->blockIdTo == targetHolder->blockId) &&
+										(cNode->chunkIdTo == targetHolder->chunkId) &&
 										(cNode->holderIdTo == targetHolder->holderId) &&
 										(cNode->groupIdFrom == curGroupId) &&
 										(cNode->groupIdTo == targetGroupId)
@@ -1164,7 +1175,9 @@ void GamePageHolder::linkRegions ()
 									
 									cNode->blockIdFrom = blockId;
 									cNode->holderIdFrom = holderId;
+									cNode->chunkIdFrom = chunkId;
 									cNode->blockIdTo = targetHolder->blockId;
+									cNode->chunkIdTo = targetHolder->chunkId;
 									cNode->holderIdTo = targetHolder->holderId;
 									cNode->groupIdFrom = curGroupId;
 									cNode->groupIdTo = targetGroupId;
@@ -1514,7 +1527,8 @@ void GamePageHolder::bindPD (int pd)
 		singleton->pdPool[curPD].isFree = false;
 		
 		singleton->pdPool[curPD].boundToHolder.v0 = blockId;
-		singleton->pdPool[curPD].boundToHolder.v1 = holderId;
+		singleton->pdPool[curPD].boundToHolder.v1 = chunkId;
+		singleton->pdPool[curPD].boundToHolder.v2 = holderId;
 	}
 void GamePageHolder::unbindPD ()
                         {
@@ -1529,7 +1543,7 @@ void GamePageHolder::applyFill ()
 		bool res;
 		
 		if (hasCache) {
-			res = singleton->loadCacheEntry(blockId,holderId);
+			res = singleton->loadCacheEntry(blockId,chunkId,holderId);
 			listEmpty = (vertexVec.size() == 0); //vboWrapper.
 			
 			// if (res) {
@@ -1553,7 +1567,7 @@ void GamePageHolder::applyFill ()
 					
 				}
 				else {
-					res = singleton->saveCacheEntry(blockId,holderId);
+					res = singleton->saveCacheEntry(blockId,chunkId,holderId);
 					
 					// if (res) {
 					// 	//cout << "saved cache\n";
@@ -2014,7 +2028,7 @@ void GamePageHolder::wrapPolys ()
 	}
 bool GamePageHolder::checkCache ()
                           {
-		hasCache = singleton->checkCacheEntry(blockId,holderId);
+		hasCache = singleton->checkCacheEntry(blockId,chunkId,holderId);
 		return hasCache;
 	}
 void GamePageHolder::generateList ()

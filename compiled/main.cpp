@@ -81,7 +81,8 @@ const static bool SINGLE_THREADED = false;
 
 int TOT_POINT_COUNT = 0;
 
-const static int NUM_MIP_LEVELS = 3;
+const static int NUM_MIP_LEVELS = 4;
+const static int NUM_MIP_LEVELS_WITH_FIRST = NUM_MIP_LEVELS+1;
 const static bool DO_AO = false;
 const static bool DO_MIP = true;
 const static bool DO_POINTS = true;
@@ -92,9 +93,12 @@ const static int MAX_HOLDER_LOAD_COUNT = 512;
 //const static int RASTER_HOLDER_RAD = 8;
 
 const static int VOXELS_PER_CELL = 16;
-const static int CELLS_PER_HOLDER = 16;
+const static int CELLS_PER_HOLDER = 8;
+const static int HOLDER_MOD = 2; // HOLDER_MOD*CELLS_PER_HOLDER should == 16
+
+
 const static int PADDING_IN_CELLS = 1;
-const static float HM_MAX_IN_CELLS = CELLS_PER_HOLDER*256;//8192.0f;
+const static float HM_MAX_IN_CELLS = CELLS_PER_HOLDER*256*HOLDER_MOD;//8192.0f;
 
 const static int MAX_PDPOOL_SIZE = MAX_THREADS;
 // const static int MAX_TBOPOOL_SIZE = 8;
@@ -3663,13 +3667,23 @@ bool replaceStr(std::string& str, const std::string& from, const std::string& to
 
 
 #define E_CONST(DDD) \
-DDD(E_CONST_MAX_BLOCK_TICKS) \
+DDD(E_CONST_MIPDIS0) \
+DDD(E_CONST_MIPDIS1) \
+DDD(E_CONST_MIPDIS2) \
+DDD(E_CONST_MIPDIS3) \
+DDD(E_CONST_MIPDIS4) \
+DDD(E_CONST_MIPDIS5) \
+DDD(E_CONST_MIPDIS6) \
+DDD(E_CONST_MIPDIS7) \
+DDD(E_CONST_SHADOWBIASMIN) \
+DDD(E_CONST_SHADOWBIASMAX) \
+DDD(E_CONST_MAX_CHUNK_TICKS) \
 DDD(E_CONST_MAX_HOLDER_GEN) \
 DDD(E_CONST_MAX_CLIPDIST) \
 DDD(E_CONST_LIGHTTHRESH) \
 DDD(E_CONST_LIGHTORTHOSIZE) \
 DDD(E_CONST_LIGHTDIS) \
-DDD(E_CONST_RASTER_HOLDER_RAD) \
+DDD(E_CONST_RASTER_CHUNK_RAD) \
 DDD(E_CONST_VOXEL_NORM_RAD) \
 DDD(E_CONST_CELL_AO_RAD) \
 DDD(E_CONST_GROWPOINTSTEPS) \
@@ -3774,6 +3788,24 @@ enum E_PERFORMANCE_PROFILE {
 };
 
 enum E_CACHE_METADATA {
+	E_CMD_MIPMIN_0,
+	E_CMD_MIPMAX_0,
+	
+	E_CMD_MIPMIN_1,
+	E_CMD_MIPMAX_1,
+	
+	E_CMD_MIPMIN_2,
+	E_CMD_MIPMAX_2,
+	
+	E_CMD_MIPMIN_3,
+	E_CMD_MIPMAX_3,
+	
+	E_CMD_MIPMIN_4,
+	E_CMD_MIPMAX_4,
+	
+	E_CMD_MIPMIN_5,
+	E_CMD_MIPMAX_5,
+	
 	E_CMD_VERSION,
 	E_CMD_SIZEINFLOATS,
 	E_CMD_LENGTH
@@ -3832,6 +3864,12 @@ enum E_VOCAB_TYPE {
 	E_VCT_VARIABLE,
 	E_VCT_PREDICATE,
 	E_VCT_LENGTH
+};
+
+
+struct VIStruct {
+	std::vector<float> vertexVec; //btScalar
+	std::vector<uint> indexVec; //unsigned short
 };
 
 struct FluidPlane {
@@ -5029,9 +5067,11 @@ struct ConnectingNodeStruct {
 	float dist;
 	
 	int blockIdFrom;
+	int chunkIdFrom;
 	int holderIdFrom;
 	
 	int blockIdTo;
+	int chunkIdTo;
 	int holderIdTo;
 	
 	int groupIdFrom;
@@ -5081,11 +5121,17 @@ struct PathResult {
 	ConnectingNodeStruct conNode;
 	
 	int blockId;
+	int chunkId;
 	int holderId;
-	int groupId;
 	
 	int lastBlockId;
+	int lastChunkId;
 	int lastHolderId;
+	
+	int groupId;
+	
+	
+	
 	int lastGroupId;
 	
 	int lastIndex;
@@ -5474,6 +5520,14 @@ struct intPair {
 	int v1;
 };
 
+struct intTrip {
+	int v0; // blockId
+	int v1; // chunkId
+	int v2; // holderId
+};
+
+
+
 bool operator==(const intPair& lhs, const intPair& rhs)
 {
     return (lhs.v0 == rhs.v0)&&(lhs.v1==rhs.v1);
@@ -5508,9 +5562,49 @@ bool operator<(const intPair& lhs, const intPair& rhs)
 	return (lhs2) < (rhs2);
 }
 
-struct intPairVec {
-	std::vector<intPair> data;	
-};
+
+
+
+
+bool operator==(const intTrip& lhs, const intTrip& rhs)
+{
+    return (lhs.v0 == rhs.v0)&&(lhs.v1==rhs.v1)&&(lhs.v2 == rhs.v2);
+}
+
+bool operator>(const intTrip& lhs, const intTrip& rhs)
+{
+
+	if (lhs.v0 == rhs.v0) {
+		if (lhs.v1 == rhs.v1) {
+			return lhs.v2 > rhs.v2;
+		}
+		else {
+			return lhs.v1 > rhs.v1;
+		}
+	}
+	else {
+		return lhs.v0 > rhs.v0;
+	}
+	
+}
+
+bool operator<(const intTrip& lhs, const intTrip& rhs)
+{
+  
+  if (lhs.v0 == rhs.v0) {
+  	if (lhs.v1 == rhs.v1) {
+  		return lhs.v2 < rhs.v2;
+  	}
+  	else {
+  		return lhs.v1 < rhs.v1;
+  	}
+  }
+  else {
+  	return lhs.v0 < rhs.v0;
+  }
+}
+
+
 struct intVec {
 	std::vector<int> data;	
 };
@@ -11644,10 +11738,13 @@ public:
 	
 	int procCount;
 
-	std::vector<float> vertexVec; //btScalar
-	std::vector<uint> indexVec; //unsigned short
+	VIStruct* vi;
+
+	bool viIsShared;
 
 	VBOWrapper() {
+		vi = new VIStruct();
+		viIsShared = false;
 		lastVMUsage = 0.0f;
 		ibo = 0;
 		vbo = 0;
@@ -11656,8 +11753,36 @@ public:
 		procCount = 0;
 	}
 	
+	
+	void remVI() {
+		if (vi == NULL) {
+			
+		}
+		else {
+			
+			if (viIsShared) {
+				// manually delete
+			}
+			else {
+				delete vi;
+				vi = NULL;
+			}
+			
+		}
+	}
+	
+	~VBOWrapper() {
+		remVI();
+	}
+	
+	void setVI(VIStruct* _vi, bool _viIsShared) {
+		remVI();
+		viIsShared = _viIsShared;
+		vi = _vi;
+	}
+	
 	int getNumVerts() {
-		return (vertexVec.size()/(numVecs*4));
+		return (vi->vertexVec.size()/(numVecs*4));
 	}
 	
 	void init(
@@ -11687,12 +11812,16 @@ public:
 		hasInit = false;
 	}
 	
-	void clearVecs() {
-		vertexVec.clear();
-		vertexVec.shrink_to_fit();
+	void clearVecs(bool shrinkToFit = true) {
+				
+		vi->vertexVec.clear();
+		vi->indexVec.clear();
 		
-		indexVec.clear();
-		indexVec.shrink_to_fit();
+		if (shrinkToFit) {
+			vi->vertexVec.shrink_to_fit();
+			vi->indexVec.shrink_to_fit();	
+		}
+		
 	}
 	
 	void checkInit() {
@@ -11701,24 +11830,24 @@ public:
 		}
 		else {
 			if (
-				(vertexVec.size() > 0) &&
-				(indexVec.size() > 0)	
+				(vi->vertexVec.size() > 0) &&
+				(vi->indexVec.size() > 0)	
 			) {
 				initBase(
-					&(vertexVec[0]),
-					vertexVec.size(),
-					vertexVec.size(),
-					&(indexVec[0]),
-					indexVec.size(),
-					indexVec.size()
+					&(vi->vertexVec[0]),
+					vi->vertexVec.size(),
+					vi->vertexVec.size(),
+					&(vi->indexVec[0]),
+					vi->indexVec.size(),
+					vi->indexVec.size()
 				);
 			}
 			else {
-				if (vertexVec.size() > 0) {
+				if (vi->vertexVec.size() > 0) {
 					initBase(
-						&(vertexVec[0]),
-						vertexVec.size(),
-						vertexVec.size(),
+						&(vi->vertexVec[0]),
+						vi->vertexVec.size(),
+						vi->vertexVec.size(),
 						NULL,
 						0,
 						0
@@ -11744,18 +11873,18 @@ public:
 		
 		GLfloat* vertexPtr = NULL;
 		GLuint* indexPtr = NULL;
-		if (vertexVec.size() > 0) {
-			vertexPtr = &(vertexVec[0]);
+		if (vi->vertexVec.size() > 0) {
+			vertexPtr = &(vi->vertexVec[0]);
 		}
-		if (indexVec.size() > 0) {
-			indexPtr = &(indexVec[0]);
+		if (vi->indexVec.size() > 0) {
+			indexPtr = &(vi->indexVec[0]);
 		}
 		
 		updateBase(
 			vertexPtr,
-			vertexVec.size(),
+			vi->vertexVec.size(),
 			indexPtr,
-			indexVec.size()
+			vi->indexVec.size()
 		);
 	}
 	void updateNew() {
@@ -11764,32 +11893,32 @@ public:
 		
 		GLfloat* vertexPtr = NULL;
 		GLuint* indexPtr = NULL;
-		if (vertexVec.size() > 0) {
-			vertexPtr = &(vertexVec[0]);
+		if (vi->vertexVec.size() > 0) {
+			vertexPtr = &(vi->vertexVec[0]);
 		}
-		if (indexVec.size() > 0) {
-			indexPtr = &(indexVec[0]);
+		if (vi->indexVec.size() > 0) {
+			indexPtr = &(vi->indexVec[0]);
 		}
 		
 		updateNewBase(
 			vertexPtr,
-			vertexVec.size(),
+			vi->vertexVec.size(),
 			indexPtr,
-			indexVec.size()
+			vi->indexVec.size()
 		);
 	}
 	
 	void beginFill() {
 		procCount = 0;
-		vertexVec.clear();
-		indexVec.clear();
+		vi->vertexVec.clear();
+		vi->indexVec.clear();
 		
 	}
 	void endFill() {
 		
 		
 		
-		if (vertexVec.size() > 0) {
+		if (vi->vertexVec.size() > 0) {
 			updateNew();
 		}
 		else {
@@ -11797,7 +11926,7 @@ public:
 		}
 		
 		VERTEX_MEM_USAGE -= lastVMUsage;
-		float vertMem = (vertexVec.size()+indexVec.size())*4;
+		float vertMem = (vi->vertexVec.size()+vi->indexVec.size())*4;
 		VERTEX_MEM_USAGE += vertMem/(1024.0f*1024.0f);
 		lastVMUsage = vertMem/(1024.0f*1024.0f);
 		
@@ -11838,23 +11967,23 @@ public:
 	
 	
 	// inline void getIndVal(int procCount) {
-	// 	indexVec.push_back(0+procCount*4);
-	// 	indexVec.push_back(1+procCount*4);
-	// 	indexVec.push_back(2+procCount*4);
-	// 	indexVec.push_back(2+procCount*4);
-	// 	indexVec.push_back(1+procCount*4);
-	// 	indexVec.push_back(3+procCount*4);
+	// 	vi->indexVec.push_back(0+procCount*4);
+	// 	vi->indexVec.push_back(1+procCount*4);
+	// 	vi->indexVec.push_back(2+procCount*4);
+	// 	vi->indexVec.push_back(2+procCount*4);
+	// 	vi->indexVec.push_back(1+procCount*4);
+	// 	vi->indexVec.push_back(3+procCount*4);
 	// }
 	
 	
 	
 	// inline void getIndVal2(int procCount) {
-	// 	indexVec.push_back(2+procCount*4);
-	// 	indexVec.push_back(1+procCount*4);
-	// 	indexVec.push_back(0+procCount*4);
-	// 	indexVec.push_back(3+procCount*4);
-	// 	indexVec.push_back(1+procCount*4);
-	// 	indexVec.push_back(2+procCount*4);
+	// 	vi->indexVec.push_back(2+procCount*4);
+	// 	vi->indexVec.push_back(1+procCount*4);
+	// 	vi->indexVec.push_back(0+procCount*4);
+	// 	vi->indexVec.push_back(3+procCount*4);
+	// 	vi->indexVec.push_back(1+procCount*4);
+	// 	vi->indexVec.push_back(2+procCount*4);
 	// }
 	
 	inline void getPixVal(
@@ -11868,25 +11997,25 @@ public:
 	) {
 		//int maskInd = xm + ym*2 + zm*4;
 		
-		// vertexVec.push_back(xb+xm+NET_MASKS[mv[maskInd]].getX());
-		// vertexVec.push_back(yb+ym+NET_MASKS[mv[maskInd]].getY());
-		// vertexVec.push_back(zb+zm+NET_MASKS[mv[maskInd]].getZ());
-		// vertexVec.push_back(1.0f);
+		// vi->vertexVec.push_back(xb+xm+NET_MASKS[mv[maskInd]].getX());
+		// vi->vertexVec.push_back(yb+ym+NET_MASKS[mv[maskInd]].getY());
+		// vi->vertexVec.push_back(zb+zm+NET_MASKS[mv[maskInd]].getZ());
+		// vi->vertexVec.push_back(1.0f);
 		
-		vertexVec.push_back(xb+xm);
-		vertexVec.push_back(yb+ym);
-		vertexVec.push_back(zb+zm);
-		vertexVec.push_back(1.0f);
+		vi->vertexVec.push_back(xb+xm);
+		vi->vertexVec.push_back(yb+ym);
+		vi->vertexVec.push_back(zb+zm);
+		vi->vertexVec.push_back(1.0f);
 		
 		
-		// vertexVec.push_back(xb+xm);
-		// vertexVec.push_back(yb+ym);
-		// vertexVec.push_back(zb+zm);
+		// vi->vertexVec.push_back(xb+xm);
+		// vi->vertexVec.push_back(yb+ym);
+		// vi->vertexVec.push_back(zb+zm);
 		
 		int i;
 		
 		for (i = 0; i < dataLen; i++) {
-			vertexVec.push_back(data[i]);
+			vi->vertexVec.push_back(data[i]);
 		}
 		
 		
@@ -11951,24 +12080,24 @@ public:
 		
 		if (procFlags[0]&procFlag) { // x+
 			
-			indexVec.push_back(5+procCount);
-			indexVec.push_back(1+procCount);
-			indexVec.push_back(3+procCount);
-			indexVec.push_back(3+procCount);
-			indexVec.push_back(7+procCount);
-			indexVec.push_back(5+procCount);
+			vi->indexVec.push_back(5+procCount);
+			vi->indexVec.push_back(1+procCount);
+			vi->indexVec.push_back(3+procCount);
+			vi->indexVec.push_back(3+procCount);
+			vi->indexVec.push_back(7+procCount);
+			vi->indexVec.push_back(5+procCount);
 			
 			
 			
 		}
 		if (procFlags[1]&procFlag) { // x-
 			
-			indexVec.push_back(6+procCount);
-			indexVec.push_back(2+procCount);
-			indexVec.push_back(0+procCount);
-			indexVec.push_back(0+procCount);
-			indexVec.push_back(4+procCount);
-			indexVec.push_back(6+procCount);
+			vi->indexVec.push_back(6+procCount);
+			vi->indexVec.push_back(2+procCount);
+			vi->indexVec.push_back(0+procCount);
+			vi->indexVec.push_back(0+procCount);
+			vi->indexVec.push_back(4+procCount);
+			vi->indexVec.push_back(6+procCount);
 			
 			
 		}
@@ -11978,43 +12107,43 @@ public:
 		
 		if (procFlags[2]&procFlag) { // y+
 			
-			indexVec.push_back(7+procCount);
-			indexVec.push_back(3+procCount);
-			indexVec.push_back(2+procCount);
-			indexVec.push_back(2+procCount);
-			indexVec.push_back(6+procCount);
-			indexVec.push_back(7+procCount);
+			vi->indexVec.push_back(7+procCount);
+			vi->indexVec.push_back(3+procCount);
+			vi->indexVec.push_back(2+procCount);
+			vi->indexVec.push_back(2+procCount);
+			vi->indexVec.push_back(6+procCount);
+			vi->indexVec.push_back(7+procCount);
 			
 			
 		}
 		if (procFlags[3]&procFlag) { // y-
 			
-			indexVec.push_back(4+procCount);
-			indexVec.push_back(0+procCount);
-			indexVec.push_back(1+procCount);
-			indexVec.push_back(1+procCount);
-			indexVec.push_back(5+procCount);
-			indexVec.push_back(4+procCount);
+			vi->indexVec.push_back(4+procCount);
+			vi->indexVec.push_back(0+procCount);
+			vi->indexVec.push_back(1+procCount);
+			vi->indexVec.push_back(1+procCount);
+			vi->indexVec.push_back(5+procCount);
+			vi->indexVec.push_back(4+procCount);
 			
 		}
 		if (procFlags[4]&procFlag) { // z+
 			
-			indexVec.push_back(4+procCount);
-			indexVec.push_back(5+procCount);
-			indexVec.push_back(7+procCount);
-			indexVec.push_back(7+procCount);
-			indexVec.push_back(6+procCount);
-			indexVec.push_back(4+procCount);
+			vi->indexVec.push_back(4+procCount);
+			vi->indexVec.push_back(5+procCount);
+			vi->indexVec.push_back(7+procCount);
+			vi->indexVec.push_back(7+procCount);
+			vi->indexVec.push_back(6+procCount);
+			vi->indexVec.push_back(4+procCount);
 			
 		}
 		if (procFlags[5]&procFlag) { // z-
 			
-			indexVec.push_back(3+procCount);
-			indexVec.push_back(1+procCount);
-			indexVec.push_back(0+procCount);
-			indexVec.push_back(0+procCount);
-			indexVec.push_back(2+procCount);
-			indexVec.push_back(3+procCount);
+			vi->indexVec.push_back(3+procCount);
+			vi->indexVec.push_back(1+procCount);
+			vi->indexVec.push_back(0+procCount);
+			vi->indexVec.push_back(0+procCount);
+			vi->indexVec.push_back(2+procCount);
+			vi->indexVec.push_back(3+procCount);
 			
 		}
 		
@@ -12148,17 +12277,17 @@ public:
 			fj = j;
 			for (i = 0; i < xpitch; i++) {
 				fi = i;
-				vboWrapper.vertexVec.push_back(i);
-				vboWrapper.vertexVec.push_back(j);
-				vboWrapper.vertexVec.push_back(1.0f);
-				vboWrapper.vertexVec.push_back(0.0f);
+				vboWrapper.vi->vertexVec.push_back(i);
+				vboWrapper.vi->vertexVec.push_back(j);
+				vboWrapper.vi->vertexVec.push_back(1.0f);
+				vboWrapper.vi->vertexVec.push_back(0.0f);
 				
 				
 				
-				vboWrapper.vertexVec.push_back(fi/fxp);
-				vboWrapper.vertexVec.push_back(fj/fyp);
-				vboWrapper.vertexVec.push_back(0.0f);
-				vboWrapper.vertexVec.push_back(0.0f);
+				vboWrapper.vi->vertexVec.push_back(fi/fxp);
+				vboWrapper.vi->vertexVec.push_back(fj/fyp);
+				vboWrapper.vi->vertexVec.push_back(0.0f);
+				vboWrapper.vi->vertexVec.push_back(0.0f);
 				
 			}
 		}
@@ -12193,13 +12322,13 @@ public:
 				// 0 1
 				// 2 3
 				
-				vboWrapper.indexVec.push_back(ind0);
-				vboWrapper.indexVec.push_back(ind1);
-				vboWrapper.indexVec.push_back(ind3);
+				vboWrapper.vi->indexVec.push_back(ind0);
+				vboWrapper.vi->indexVec.push_back(ind1);
+				vboWrapper.vi->indexVec.push_back(ind3);
 				
-				vboWrapper.indexVec.push_back(ind3);
-				vboWrapper.indexVec.push_back(ind2);
-				vboWrapper.indexVec.push_back(ind0);
+				vboWrapper.vi->indexVec.push_back(ind3);
+				vboWrapper.vi->indexVec.push_back(ind2);
+				vboWrapper.vi->indexVec.push_back(ind0);
 				
 				
 			}
@@ -12659,7 +12788,7 @@ struct VoxelCell {
 
 struct VoxelMip {
 	bool* mipArr;
-	vector<int> mipList;
+	//vector<int> mipList;
 };
 
 struct VoxelBuffer {
@@ -12757,7 +12886,7 @@ struct VoxelBuffer {
 			for (j = 0; j < mipVol; j++) {
 				mipMaps[i].mipArr[j] = false;
 			}
-			mipMaps[i].mipList.clear();
+			//mipMaps[i].mipList.clear();
 			mipSize /= 2;
 		}
 		
@@ -12770,7 +12899,7 @@ struct PaddedData {
 	vector<VectorI3> fillStack;
 	VoxelBuffer voxelBuffer;
 	
-	intPair boundToHolder;
+	intTrip boundToHolder;
 	bool isFree;
 };
 
@@ -24209,6 +24338,7 @@ public:
   CompareStruct compareStruct;
   typedef map <string, UICStruct>::iterator itUICStruct;
   typedef map <string, JSONStruct>::iterator itJSStruct;
+  float (mipDis) [8];
   bool (keysPressed) [MAX_KEYS];
   double (keyDownTimes) [MAX_KEYS];
   unsigned char (keyMap) [KEYMAP_LENGTH];
@@ -24404,6 +24534,10 @@ public:
   int voxelsPerHolderPad;
   int cellsPerBlock;
   int holdersPerBlock;
+  int holdersPerChunk;
+  int chunksPerBlock;
+  int chunksPerWorld;
+  int cellsPerChunk;
   int cellsPerWorld;
   int holdersPerWorld;
   int blocksPerWorld;
@@ -24603,6 +24737,7 @@ public:
   GameLogic * gameLogic;
   GameNetwork * gameNetwork;
   GameAI * gameAI;
+  VIStruct (chunkVI) [NUM_MIP_LEVELS_WITH_FIRST];
   float (lightArr) [MAX_LIGHTS * 16];
   int numLights;
   bool multiLights;
@@ -24796,9 +24931,9 @@ public:
   void loadGUI ();
   string loadFileString (string fnString);
   std::ifstream::pos_type filesize (char const * filename);
-  bool checkCacheEntry (int blockId, int holderId);
-  bool loadCacheEntry (int blockId, int holderId);
-  bool saveCacheEntry (int blockId, int holderId);
+  bool checkCacheEntry (int blockId, int chunkId, int holderId);
+  bool loadCacheEntry (int blockId, int chunkId, int holderId);
+  bool saveCacheEntry (int blockId, int chunkId, int holderId);
   bool loadCacheMetaData ();
   bool saveCacheMetaData ();
   void clearCache ();
@@ -25822,11 +25957,14 @@ public:
   bool wasStacked;
   bool lockWrite;
   bool lockRead;
+  int (begMip) [NUM_MIP_LEVELS_WITH_FIRST];
+  int (endMip) [NUM_MIP_LEVELS_WITH_FIRST];
   vector <float> vertexVec;
   VolumeWrapper * terVW;
   GameVoxelWrap * voxelWrap;
   int curPD;
   int blockId;
+  int chunkId;
   int holderId;
   int pathSize;
   int totIdealNodes;
@@ -25850,11 +25988,10 @@ public:
   FIVector4 gphCenInCells;
   FIVector4 origOffset;
   Singleton * singleton;
-  intPairVec (containsEntIds) [E_ET_LENGTH];
   bool wasGenerated;
   void reset ();
   GamePageHolder ();
-  void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ);
+  void init (Singleton * _singleton, int _blockId, int _chunkId, int _holderId, int trueX, int trueY, int trueZ);
   int getCellAtCoordsLocal (int xx, int yy, int zz);
   int getCellAtInd (int ind);
   void getArrAtInd (int ind, int * tempCellData, int * tempCellData2);
@@ -25903,17 +26040,50 @@ LZZ_INLINE PaddedDataEntry * GamePageHolder::getPadData (int ii, int jj, int kk)
 	}
 #undef LZZ_INLINE
 #endif
-// f00352_gameblock.e
+// f00352_gamechunk.e
 //
 
-#ifndef LZZ_f00352_gameblock_e
-#define LZZ_f00352_gameblock_e
+#ifndef LZZ_f00352_gamechunk_e
+#define LZZ_f00352_gamechunk_e
+#define LZZ_INLINE inline
+class GameChunk
+{
+public:
+  Singleton * singleton;
+  VBOWrapper (vboWrapper) [NUM_MIP_LEVELS_WITH_FIRST];
+  int lastPointCount;
+  int mipLev;
+  int changeTick;
+  bool readyToRender;
+  bool listEmpty;
+  bool changeFlag;
+  int iHolderSize;
+  int holdersPerChunk;
+  GamePageHolder * * holderData;
+  FIVector4 offsetInChunks;
+  FIVector4 chunkCenInCells;
+  int chunkId;
+  int blockId;
+  GameChunk ();
+  void init (Singleton * _singleton, int _blockId, int _chunkId, int trueX, int trueY, int trueZ);
+  VBOWrapper * getCurVBO ();
+  void drawLoadingHolders ();
+  void checkHolders ();
+  void reset ();
+  void fillVBO ();
+};
+#undef LZZ_INLINE
+#endif
+// f00353_gameblock.e
+//
+
+#ifndef LZZ_f00353_gameblock_e
+#define LZZ_f00353_gameblock_e
 #define LZZ_INLINE inline
 class GameBlock
 {
 public:
   Singleton * singleton;
-  int lastPointCount;
   int blockId;
   int holdersPerBlock;
   int terDataBufAmount;
@@ -25932,7 +26102,6 @@ public:
   int terDataVisSize;
   int terDataBufSize;
   int cellsPerBlock;
-  int iHolderSize;
   int maxFloors;
   float fCellsPerBlock;
   int (dirModX) [6];
@@ -25979,21 +26148,13 @@ public:
   GameEnt baseEnt;
   EntVec (gameEnts) [E_ET_LENGTH];
   GameWorld * gw;
-  GamePageHolder * * holderData;
+  int iChunkSize;
+  GameChunk * * chunkData;
   BuildingNode * buildingData;
   MapNode * mapData;
   uint * terData;
   BuildingCon * curCon;
-  VBOWrapper vboWrapper;
-  bool readyToRender;
-  bool listEmpty;
-  bool changeFlag;
-  int changeTick;
   GameBlock ();
-  void drawLoadingHolders ();
-  void checkHolders ();
-  void reset ();
-  void fillVBO ();
   void init (Singleton * _singleton, int _blockId, int _x, int _y, int _z, int _xw, int _yw, int _zw);
   int getNodeIndexClamped (int _x, int _y, int _z);
   int getNodeIndex (int x, int y, int z, int bufAmount);
@@ -26105,7 +26266,7 @@ public:
   void init (Singleton * _singleton);
   void applyTBBehavior ();
   void applyBehavior ();
-  GamePageHolder * getHolderById (int blockId, int holderId);
+  GamePageHolder * getHolderById (int blockId, int chunkId, int holderId);
   GamePageHolder * getHolderByPR (PathResult * pr);
   bool holdersEqual (GamePageHolder * h0, GamePageHolder * h1);
   void addHolderToStack (GamePageHolder * curHolder);
@@ -26258,6 +26419,9 @@ public:
   int mapSwapFlag;
   int holdersPerBlock;
   int shiftCounter;
+  int holdersPerChunk;
+  int chunksPerWorld;
+  int chunksPerBlock;
   int renderCount;
   float invalidCount;
   float invalidCountMax;
@@ -26303,7 +26467,7 @@ public:
   int visFlagO;
   int activeFBO;
   bool noiseGenerated;
-  std::vector <intPair> gamePageHolderList;
+  std::vector <intTrip> gamePageHolderList;
   std::vector <coordAndIndex> roadCoords;
   std::vector <int> ocThreads;
   btVector3 (offsetVal) [4];
@@ -26320,6 +26484,7 @@ public:
   FIVector4 entMax;
   FIVector4 camHolderPos;
   FIVector4 camBlockPos;
+  FIVector4 camChunkPos;
   FIVector4 iPixelWorldCoords;
   FIVector4 pagePos;
   FIVector4 unitPos;
@@ -26362,8 +26527,10 @@ public:
   void init (Singleton * _singleton);
   GameBlock * getBlockAtCoords (int xInBlocks, int yInBlocks, int zInBlocks, bool createOnNull = false);
   void clearAllHolders ();
+  GameChunk * getChunkAtCoords (int x, int y, int z, bool createOnNull = false);
   GamePageHolder * getHolderAtCoords (int x, int y, int z, bool createOnNull = false);
-  GamePageHolder * getHolderAtId (int blockId, int holderId);
+  GameChunk * getChunkAtId (int blockId, int chunkId);
+  GamePageHolder * getHolderAtId (int blockId, int chunkId, int holderId);
   GameBlock * getBlockAtId (int id);
   int getCellInd (btVector3 cParam, GamePageHolder * & curHolder);
   int getCellInd (GamePageHolder * & curHolder, int xv, int yv, int zv);
@@ -26378,7 +26545,6 @@ public:
   void update ();
   void toggleVis (GameEnt * se);
   void ensureBlocks ();
-  void findNearestEnt (EntSelection * entSelection, int entType, int maxLoadRad, int radStep, FIVector4 * testPoint, bool onlyInteractive = false, bool ignoreDistance = false);
   void drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * maxc, bool copyToTex, bool forceFinish, bool getVoro = false, bool getBlockHolders = false);
   void updateLimbTBOData (bool showLimbs);
   void drawPrim (bool doSphereMap, bool doTer, bool doPoly);
@@ -26386,7 +26552,7 @@ public:
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void polyCombine ();
   void drawPolys (string fboName, int minPeel, int maxPeel);
-  void rastHolder (int rad, uint flags);
+  void rastChunk (int rad, uint flags);
   void renderGeom ();
   void updateMouseCoords (FIVector4 * fPixelWorldCoordsBase);
   float weighPath (float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean);
@@ -26394,7 +26560,6 @@ public:
   void initMap ();
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
-  void updateLights ();
   void rasterHolders (bool doShadow);
   void rasterGrid (VBOGrid * vboGrid, bool showResults);
   void renderDebug ();
@@ -26606,10 +26771,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		}
 		
 		for (i = 0; i < 32; i++) {
-			fsQuad.vertexVec.push_back(vertexDataQuad[i]);
+			fsQuad.vi->vertexVec.push_back(vertexDataQuad[i]);
 		}
 		for (i = 0; i < 6; i++) {
-			fsQuad.indexVec.push_back(indexDataQuad[i]);
+			fsQuad.vi->indexVec.push_back(indexDataQuad[i]);
 		}
 		fsQuad.init(
 			2,
@@ -26914,7 +27079,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		heightMapMaxInCells = HM_MAX_IN_CELLS;
 		//mapSampScale = 2.0f;
-		int newPitch = (imageHM0->width);// * 2; //*2;
+		int newPitch = (imageHM0->width) * 2 * HOLDER_MOD; //*2;
 		mapPitch = (imageHM0->width); //newPitch;// //
 		int curMipSize = 0;
 		
@@ -26922,14 +27087,17 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		paddingInCells = PADDING_IN_CELLS;
 		
 		cellsPerHolder = CELLS_PER_HOLDER;
-		holdersPerBlock = 4;
-		
+		holdersPerChunk = 4;
+		chunksPerBlock = 8;
 		holdersPerWorld = newPitch;
+		
+		
+		holdersPerBlock = holdersPerChunk*chunksPerBlock;//8 * HOLDER_MOD;
 		cellsPerWorld = holdersPerWorld*cellsPerHolder;
 		cellsPerBlock = holdersPerBlock * cellsPerHolder;
 		blocksPerWorld = holdersPerWorld/holdersPerBlock;
-		
-
+		cellsPerChunk = cellsPerHolder*holdersPerChunk;
+		chunksPerWorld = blocksPerWorld*chunksPerBlock;
 		
 		cellsPerHolderPad = cellsPerHolder+paddingInCells*2;
 		voxelsPerHolderPad = voxelsPerCell*cellsPerHolderPad;
@@ -30889,6 +31057,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 					case 'd':
 						debugViewOn = !debugViewOn;
+						cout << "debugViewOn " << debugViewOn << "\n";
 					break;
 					case 's':
 						stopAllThreads();
@@ -32038,14 +32207,14 @@ void Singleton::mouseMove (int _x, int _y)
 			}
 			else {
 				
-				gw->findNearestEnt(
-					&highlightedEnts,
-					E_ET_GEOM,
-					2,
-					1,
-					&mouseMovePD
-				);
-				highlightedEnt = highlightedEnts.getSelectedEnt();
+				// gw->findNearestEnt(
+				// 	&highlightedEnts,
+				// 	E_ET_GEOM,
+				// 	2,
+				// 	1,
+				// 	&mouseMovePD
+				// );
+				// highlightedEnt = highlightedEnts.getSelectedEnt();
 
 
 			}
@@ -32401,99 +32570,99 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 							
 
 							
-							gw->findNearestEnt(
-								&selectedEnts,
-								E_ET_GEOM,
-								2,
-								1,
-								&mouseUpPD,
-								true
-							);
+							// gw->findNearestEnt(
+							// 	&selectedEnts,
+							// 	E_ET_GEOM,
+							// 	2,
+							// 	1,
+							// 	&mouseUpPD,
+							// 	true
+							// );
 							
-							selectedEnt = selectedEnts.getSelectedEnt();
+							// selectedEnt = selectedEnts.getSelectedEnt();
 
-							if (
-								(selectedEnt == NULL) ||
-								(mouseState == E_MOUSE_STATE_PICKING) ||
-								(mouseState == E_MOUSE_STATE_BRUSH)
-							)	{
+							// if (
+							// 	(selectedEnt == NULL) ||
+							// 	(mouseState == E_MOUSE_STATE_PICKING) ||
+							// 	(mouseState == E_MOUSE_STATE_BRUSH)
+							// )	{
 
-							}
-							else {
+							// }
+							// else {
 
-								switch (selectedEnt->buildingType)
-								{
-								case E_CT_DOOR:
-								case E_CT_WINDOW:
+							// 	switch (selectedEnt->buildingType)
+							// 	{
+							// 	case E_CT_DOOR:
+							// 	case E_CT_WINDOW:
 									
 									
 									
-									if (selectedEnt->toggled) {
-										// open
-										switch (selectedEnt->buildingType)
-										{
-											case E_CT_DOOR:
-												playSoundPosAndPitch(
-													"open3",
-													cameraGetPosNoShake(),
-													selectedEnt->getVisMinInPixelsT(),
-													0.3f
-												);
-											break;
-											case E_CT_WINDOW:
-												playSoundPosAndPitch(
-													"open1",
-													cameraGetPosNoShake(),
-													selectedEnt->getVisMinInPixelsT(),
-													0.3f
-												);
-											break;
-										}
-									}
-									else {
-										// close
+							// 		if (selectedEnt->toggled) {
+							// 			// open
+							// 			switch (selectedEnt->buildingType)
+							// 			{
+							// 				case E_CT_DOOR:
+							// 					playSoundPosAndPitch(
+							// 						"open3",
+							// 						cameraGetPosNoShake(),
+							// 						selectedEnt->getVisMinInPixelsT(),
+							// 						0.3f
+							// 					);
+							// 				break;
+							// 				case E_CT_WINDOW:
+							// 					playSoundPosAndPitch(
+							// 						"open1",
+							// 						cameraGetPosNoShake(),
+							// 						selectedEnt->getVisMinInPixelsT(),
+							// 						0.3f
+							// 					);
+							// 				break;
+							// 			}
+							// 		}
+							// 		else {
+							// 			// close
 										
-										switch (selectedEnt->buildingType)
-										{
-											case E_CT_DOOR:
-												playSoundPosAndPitch(
-													"close2",
-													cameraGetPosNoShake(),
-													selectedEnt->getVisMinInPixelsT(),
-													0.3f
-												);
-											break;
-											case E_CT_WINDOW:
-												playSoundPosAndPitch(
-													"close1",
-													cameraGetPosNoShake(),
-													selectedEnt->getVisMinInPixelsT(),
-													0.3f
-												);
-											break;
-										}
-									}
+							// 			switch (selectedEnt->buildingType)
+							// 			{
+							// 				case E_CT_DOOR:
+							// 					playSoundPosAndPitch(
+							// 						"close2",
+							// 						cameraGetPosNoShake(),
+							// 						selectedEnt->getVisMinInPixelsT(),
+							// 						0.3f
+							// 					);
+							// 				break;
+							// 				case E_CT_WINDOW:
+							// 					playSoundPosAndPitch(
+							// 						"close1",
+							// 						cameraGetPosNoShake(),
+							// 						selectedEnt->getVisMinInPixelsT(),
+							// 						0.3f
+							// 					);
+							// 				break;
+							// 			}
+							// 		}
 									
 
 									
-									wsBufferInvalid = true;
-									break;
+							// 		wsBufferInvalid = true;
+							// 		break;
 
-								case E_CT_LANTERN:
-									selectedEnt->light->toggle();
-									playSoundPosAndPitch(
-										"castinet0",
-										cameraGetPosNoShake(),
-										selectedEnt->getVisMinInPixelsT(),
-										0.3f
-									);
-									gw->updateLights();
-									cout << "final toggle " << selectedEnt->light->toggled << "\n";
-									break;
+							// 	case E_CT_LANTERN:
+							// 		selectedEnt->light->toggle();
+							// 		playSoundPosAndPitch(
+							// 			"castinet0",
+							// 			cameraGetPosNoShake(),
+							// 			selectedEnt->getVisMinInPixelsT(),
+							// 			0.3f
+							// 		);
+							// 		//gw->updateLights();
+							// 		cout << "final toggle " << selectedEnt->light->toggled << "\n";
+							// 		break;
 
-								}
+							// 	}
 
-							}
+							// }
 
 
 
@@ -34099,6 +34268,14 @@ void Singleton::loadConstants ()
 		
 		STEP_TIME_IN_SEC = conVals[E_CONST_STEP_TIME_IN_MICRO_SEC]/1000000.0;
 		
+		mipDis[0] = conVals[E_CONST_MIPDIS0];
+		mipDis[1] = conVals[E_CONST_MIPDIS1];
+		mipDis[2] = conVals[E_CONST_MIPDIS2];
+		mipDis[3] = conVals[E_CONST_MIPDIS3];
+		mipDis[4] = conVals[E_CONST_MIPDIS4];
+		mipDis[5] = conVals[E_CONST_MIPDIS5];
+		mipDis[6] = conVals[E_CONST_MIPDIS6];
+		mipDis[7] = conVals[E_CONST_MIPDIS7];
 		
 	}
 void Singleton::loadGUI ()
@@ -34192,10 +34369,10 @@ std::ifstream::pos_type Singleton::filesize (char const * filename)
 	    std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
 	    return in.tellg();
 	}
-bool Singleton::checkCacheEntry (int blockId, int holderId)
-                                                        {
-		string entryName = "b" + i__s(blockId) + "h" + i__s(holderId);
-		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,holderId);
+bool Singleton::checkCacheEntry (int blockId, int chunkId, int holderId)
+                                                                     {
+		string entryName = "b" + i__s(blockId) + "c" + i__s(chunkId) + "h" + i__s(holderId);
+		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,chunkId,holderId);
 		
 		if (curHolder == NULL) {
 			return false;
@@ -34211,12 +34388,13 @@ bool Singleton::checkCacheEntry (int blockId, int holderId)
 		return false;
 		
 	}
-bool Singleton::loadCacheEntry (int blockId, int holderId)
-                                                       {
-		string entryName = "b" + i__s(blockId) + "h" + i__s(holderId);
-		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,holderId);
+bool Singleton::loadCacheEntry (int blockId, int chunkId, int holderId)
+                                                                    {
+		string entryName = "b" + i__s(blockId) + "c" + i__s(chunkId) + "h" + i__s(holderId);
+		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,chunkId,holderId);
 		JSONValue* curEntry;
 		
+		int i;
 		int curVersion;
 		int curDataSizeInFloats;
 		
@@ -34237,6 +34415,11 @@ bool Singleton::loadCacheEntry (int blockId, int holderId)
 				return true;
 			}
 			
+			for (i = 0; i < NUM_MIP_LEVELS_WITH_FIRST; i++) {
+				curHolder->begMip[i] = curEntry->array_value[i*2 + 0]->number_value;
+				curHolder->endMip[i] = curEntry->array_value[i*2 + 1]->number_value;
+			}
+			
 			curHolder->vertexVec.resize(curDataSizeInFloats);
 			
 			if (
@@ -34253,14 +34436,14 @@ bool Singleton::loadCacheEntry (int blockId, int holderId)
 		
 		return false;
 	}
-bool Singleton::saveCacheEntry (int blockId, int holderId)
-                                                       {
-		string entryName = "b" + i__s(blockId) + "h" + i__s(holderId);
+bool Singleton::saveCacheEntry (int blockId, int chunkId, int holderId)
+                                                                    {
+		string entryName = "b" + i__s(blockId) + "c" + i__s(chunkId) + "h" + i__s(holderId);
 		JSONValue* curEntry;
 		bool justCreated = false;
 		int i;
 		
-		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,holderId);
+		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,chunkId,holderId);
 		
 		int dataSizeInFloats;
 		
@@ -34307,6 +34490,11 @@ bool Singleton::saveCacheEntry (int blockId, int holderId)
 			
 			curEntry->array_value[E_CMD_VERSION]->number_value = cacheVersion;
 			curEntry->array_value[E_CMD_SIZEINFLOATS]->number_value = dataSizeInFloats;
+			
+			for (i = 0; i < NUM_MIP_LEVELS_WITH_FIRST; i++) {
+				curEntry->array_value[i*2 + 0]->number_value = curHolder->begMip[i];
+				curEntry->array_value[i*2 + 1]->number_value = curHolder->endMip[i];
+			}
 			
 			
 			return true;
@@ -34617,8 +34805,10 @@ void Singleton::checkFluid (GameFluid * gf)
 		//(getAvailPD() < MAX_PDPOOL_SIZE)
 		
 		if (updateHolders) {
-			gw->rastHolder(iGetConst(E_CONST_RASTER_HOLDER_RAD), RH_FLAG_DOCHECK);
+			
 		}
+		
+		gw->rastChunk(iGetConst(E_CONST_RASTER_CHUNK_RAD), RH_FLAG_DOCHECK);
 		
 		gameLogic->loadNearestHolders(2, updateHolders);		
 		return;
@@ -37240,6 +37430,8 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 		int cellInd2;
 		int curSize;
 		
+		//VoxelEntry ve;
+		
 		float totWeight = 0.0f;
 		float weightCount = 1.0f;
 		
@@ -37250,41 +37442,7 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 		int curMipSize;
 		int mipInd;
 		
-		if (DO_MIP) {
-			mipAmount = 2;
-			
-			for (t = 0; t < NUM_MIP_LEVELS; t++) {
-				for (p = 0; p < totSize; p++) {
-					q = voxelBuffer->voxelList[p].viIndex;
-					kk = q/(voxelsPerHolderPad*voxelsPerHolderPad);
-					jj = (q-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
-					ii = q-(kk*voxelsPerHolderPad*voxelsPerHolderPad + jj*voxelsPerHolderPad);
-					
-					if (voxelBuffer->getFlag(q,E_OCT_SURFACE)) {
-						
-						curMipSize = voxelsPerHolderPad/mipAmount;
-						
-						kk2 = kk/mipAmount;
-						jj2 = jj/mipAmount;
-						ii2 = ii/mipAmount;
-						
-						mipInd = kk2*curMipSize*curMipSize + jj2*curMipSize + ii2;
-						
-						if (voxelBuffer->mipMaps[t].mipArr[mipInd]) {
-							
-						}
-						else {
-							voxelBuffer->mipMaps[t].mipArr[mipInd] = true;
-							voxelBuffer->mipMaps[t].mipList.push_back(p);
-						}
-						
-					}
-				}
-				
-				mipAmount *= 2;
-			}
-			
-		}
+		
 		
 		if (DO_AO) {
 			for (p = 0; p < totSize; p++) {
@@ -37563,12 +37721,12 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 							
 							
 							//voxOffset += paddingInVoxels;
-							voxOffset += offsetInVoxels;
+							//voxOffset += offsetInVoxels;
 							
 							fVO.x = voxOffset.x;
 							fVO.y = voxOffset.y;
 							fVO.z = voxOffset.z;
-							fVO *= fVPC;
+							//fVO *= fVPC;
 							
 							totNorm = voxelBuffer->voxelList[p].normal;
 							
@@ -37578,7 +37736,7 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 								tempData[0] = fVO.x;
 								tempData[1] = fVO.y;
 								tempData[2] = fVO.z;
-								tempData[3] = 1.0f;
+								tempData[3] = 0.0f;// mipLevel 1.0f;
 								tempData[4] = totNorm.x;
 								tempData[5] = totNorm.y;
 								tempData[6] = totNorm.z;
@@ -37656,6 +37814,109 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 				}
 				
 			}
+		}
+		
+		
+		/*
+		tempData[0] = fVO.x;
+		tempData[1] = fVO.y;
+		tempData[2] = fVO.z;
+		tempData[3] = 1.0f;
+		tempData[4] = totNorm.x;
+		tempData[5] = totNorm.y;
+		tempData[6] = totNorm.z;
+		tempData[7] = curMat*256;
+		
+		for (m = 0; m < dataSize; m++) {
+			gph->vertexVec.push_back(tempData[m]);
+		}
+		
+		
+		
+		voxOffset += offsetInVoxels;
+		
+		fVO.x = voxOffset.x;
+		fVO.y = voxOffset.y;
+		fVO.z = voxOffset.z;
+		fVO *= fVPC;
+		
+		voxOffset += offsetInVoxels;
+		fVO *= fVPC;
+		
+		*/
+		
+		
+		totSize = gph->vertexVec.size();
+		gph->begMip[0] = 0;
+		gph->endMip[0] = totSize;
+		
+		
+		
+		if (DO_MIP) {
+			mipAmount = 2;
+			
+			for (t = 0; t < NUM_MIP_LEVELS; t++) {
+				gph->begMip[t+1] = gph->endMip[t];
+				
+				for (p = 0; p < totSize; p += dataSize) {
+					//q = voxelBuffer->voxelList[p].viIndex;
+					kk = gph->vertexVec[p+2];//q/(voxelsPerHolderPad*voxelsPerHolderPad);
+					jj = gph->vertexVec[p+1];//(q-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
+					ii = gph->vertexVec[p+0];//q-(kk*voxelsPerHolderPad*voxelsPerHolderPad + jj*voxelsPerHolderPad);
+					
+					curMipSize = voxelsPerHolderPad/mipAmount;
+					
+					kk2 = kk/mipAmount;
+					jj2 = jj/mipAmount;
+					ii2 = ii/mipAmount;
+					
+					mipInd = kk2*curMipSize*curMipSize + jj2*curMipSize + ii2;
+					
+					if (voxelBuffer->mipMaps[t].mipArr[mipInd]) {
+						
+					}
+					else {
+						voxelBuffer->mipMaps[t].mipArr[mipInd] = true;
+						
+						tempData[0] = ii2*mipAmount + mipAmount/2;
+						tempData[1] = jj2*mipAmount + mipAmount/2;
+						tempData[2] = kk2*mipAmount + mipAmount/2;
+						tempData[3] = t+1;//gph->vertexVec[p+3];
+						tempData[4] = gph->vertexVec[p+4];
+						tempData[5] = gph->vertexVec[p+5];
+						tempData[6] = gph->vertexVec[p+6];
+						tempData[7] = gph->vertexVec[p+7];
+						
+						for (m = 0; m < dataSize; m++) {
+							gph->vertexVec.push_back(tempData[m]);
+						}
+						
+						// voxelBuffer->mipMaps[t].mipList.push_back(ve);
+						// voxelBuffer->mipMaps[t].mipList.back().ind = p;
+						// voxelBuffer->mipMaps[t].mipList.back().x = ii2*mipAmount + mipAmount/2;
+						// voxelBuffer->mipMaps[t].mipList.back().y = jj2*mipAmount + mipAmount/2;
+						// voxelBuffer->mipMaps[t].mipList.back().z = kk2*mipAmount + mipAmount/2;
+					}
+					
+					
+				}
+				
+				gph->endMip[t+1] = gph->vertexVec.size();
+				
+				mipAmount *= 2;
+			}
+			
+		}
+		
+		
+		totSize = gph->vertexVec.size();
+		for (p = 0; p < totSize; p += dataSize) {
+				gph->vertexVec[p] = (gph->vertexVec[p] + offsetInVoxels.x)*fVPC; p++;
+				gph->vertexVec[p] = (gph->vertexVec[p] + offsetInVoxels.y)*fVPC; p++;
+				gph->vertexVec[p] = (gph->vertexVec[p] + offsetInVoxels.z)*fVPC;
+				
+				p -= 2;
+				
 		}
 		
 	}
@@ -51825,6 +52086,13 @@ void GamePageHolder::reset ()
 GamePageHolder::GamePageHolder ()
                          {
 		
+		int i;
+		
+		for (i = 0; i < NUM_MIP_LEVELS_WITH_FIRST; i++) {
+			begMip[i] = 0;
+			endMip[i] = 0;
+		}
+		
 		// boxShape = NULL;
 		// trimeshShape = NULL;
 		// meshInterface = NULL;
@@ -51858,7 +52126,7 @@ GamePageHolder::GamePageHolder ()
 		
 		wasGenerated = false;
 	}
-void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ)
+void GamePageHolder::init (Singleton * _singleton, int _blockId, int _chunkId, int _holderId, int trueX, int trueY, int trueZ)
           {
 
 		curPD = -1;
@@ -51884,6 +52152,7 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		
 
 		blockId = _blockId;
+		chunkId = _chunkId;
 		holderId = _holderId;
 
 		singleton = _singleton;
@@ -52733,6 +53002,7 @@ void GamePageHolder::sortConNodes (GamePageHolder * endHolder, int endInd)
 		for (i = 0; i < bestConnectingNodes.size(); i++) {
 			curHolder = singleton->gameLogic->getHolderById(
 				bestConnectingNodes[i].blockIdTo,
+				bestConnectingNodes[i].chunkIdTo,
 				bestConnectingNodes[i].holderIdTo
 			);
 			
@@ -52897,6 +53167,7 @@ void GamePageHolder::linkRegions ()
 						
 						if (
 							(targetHolder->holderId == holderId) &&
+							(targetHolder->chunkId == chunkId) &&
 							(targetHolder->blockId == blockId)
 						) {
 							// same holder, do nothing
@@ -52920,6 +53191,7 @@ void GamePageHolder::linkRegions ()
 									
 									if (
 										(cNode->blockIdTo == targetHolder->blockId) &&
+										(cNode->chunkIdTo == targetHolder->chunkId) &&
 										(cNode->holderIdTo == targetHolder->holderId) &&
 										(cNode->groupIdFrom == curGroupId) &&
 										(cNode->groupIdTo == targetGroupId)
@@ -52973,7 +53245,9 @@ void GamePageHolder::linkRegions ()
 									
 									cNode->blockIdFrom = blockId;
 									cNode->holderIdFrom = holderId;
+									cNode->chunkIdFrom = chunkId;
 									cNode->blockIdTo = targetHolder->blockId;
+									cNode->chunkIdTo = targetHolder->chunkId;
 									cNode->holderIdTo = targetHolder->holderId;
 									cNode->groupIdFrom = curGroupId;
 									cNode->groupIdTo = targetGroupId;
@@ -53323,7 +53597,8 @@ void GamePageHolder::bindPD (int pd)
 		singleton->pdPool[curPD].isFree = false;
 		
 		singleton->pdPool[curPD].boundToHolder.v0 = blockId;
-		singleton->pdPool[curPD].boundToHolder.v1 = holderId;
+		singleton->pdPool[curPD].boundToHolder.v1 = chunkId;
+		singleton->pdPool[curPD].boundToHolder.v2 = holderId;
 	}
 void GamePageHolder::unbindPD ()
                         {
@@ -53338,7 +53613,7 @@ void GamePageHolder::applyFill ()
 		bool res;
 		
 		if (hasCache) {
-			res = singleton->loadCacheEntry(blockId,holderId);
+			res = singleton->loadCacheEntry(blockId,chunkId,holderId);
 			listEmpty = (vertexVec.size() == 0); //vboWrapper.
 			
 			// if (res) {
@@ -53362,7 +53637,7 @@ void GamePageHolder::applyFill ()
 					
 				}
 				else {
-					res = singleton->saveCacheEntry(blockId,holderId);
+					res = singleton->saveCacheEntry(blockId,chunkId,holderId);
 					
 					// if (res) {
 					// 	//cout << "saved cache\n";
@@ -53823,7 +54098,7 @@ void GamePageHolder::wrapPolys ()
 	}
 bool GamePageHolder::checkCache ()
                           {
-		hasCache = singleton->checkCacheEntry(blockId,holderId);
+		hasCache = singleton->checkCacheEntry(blockId,chunkId,holderId);
 		return hasCache;
 	}
 void GamePageHolder::generateList ()
@@ -53878,31 +54153,60 @@ void GamePageHolder::generateList ()
 	}
 #undef LZZ_INLINE
  
-// f00352_gameblock.h
+// f00352_gamechunk.h
 //
 
-#include "f00352_gameblock.e"
+#include "f00352_gamechunk.e"
 #define LZZ_INLINE inline
-GameBlock::GameBlock ()
+GameChunk::GameChunk ()
                     {
 		lastPointCount = 0;
 		changeFlag = false;
 		changeTick = 1;
-		//changeCount = 0;
 		
 		readyToRender = false;
 		listEmpty = true;
-		terData = NULL;
-		buildingData = NULL;
+		
+		mipLev = 0;
+		
 	}
-void GameBlock::drawLoadingHolders ()
+void GameChunk::init (Singleton * _singleton, int _blockId, int _chunkId, int trueX, int trueY, int trueZ)
+          {
+		singleton = _singleton;
+		
+		blockId = _blockId;
+		chunkId = _chunkId;
+		
+		int i;
+		
+		float cellsPerChunk = singleton->cellsPerChunk;
+		
+		for (i = 0; i < NUM_MIP_LEVELS_WITH_FIRST; i++) {
+			vboWrapper[i].setVI(&(singleton->chunkVI[i]),true);
+		}
+		
+		holdersPerChunk = singleton->holdersPerChunk;
+		
+		offsetInChunks.setIXYZ(trueX,trueY,trueZ);
+		chunkCenInCells.copyFrom(&offsetInChunks);
+		chunkCenInCells.addXYZ(0.5f);
+		chunkCenInCells.multXYZ(cellsPerChunk);
+		
+		iHolderSize = holdersPerChunk * holdersPerChunk * holdersPerChunk;
+		holderData = new GamePageHolder*[iHolderSize];
+		for (i = 0; i < iHolderSize; i++) {
+			holderData[i] = NULL;
+		}
+		
+	}
+VBOWrapper * GameChunk::getCurVBO ()
+                                {
+		return &(vboWrapper[mipLev]);
+	}
+void GameChunk::drawLoadingHolders ()
                                   {
 		int i;
 		GamePageHolder* curHolder;
-		
-		// if (readyToRender) {
-		// 	return;
-		// }
 		
 		for (i = 0; i < iHolderSize; i++) {
 			curHolder = holderData[i];
@@ -53918,113 +54222,84 @@ void GameBlock::drawLoadingHolders ()
 		}
 		
 	}
-void GameBlock::checkHolders ()
+void GameChunk::checkHolders ()
                             {
-		// if (readyToRender) {
-		// 	return;
-		// }
-		
 		int i;
 		
-		int ii;
-		int jj;
-		int kk;
+		FIVector4 testPos;
 		
-		int holderX;
-		int holderY;
-		int holderZ;
+		float cellsPerChunk = singleton->cellsPerChunk;
 		
-		GamePageHolder* curHolder;
-		int readyCount;
+		int testMip = -1;
+		testPos.copyFrom(&offsetInChunks);
+		testPos.addXYZ(0.5f);
+		testPos.multXYZ(cellsPerChunk);
 		
+		float testDis = testPos.distance(singleton->cameraGetPosNoShake());
 		
-		// readyCount = 0;
-		// for (i = 0; i < iHolderSize; i++) {
-		// 	if (
-		// 		singleton->checkCacheEntry(blockId,i)	
-		// 	) {
-		// 		readyCount++;
-		// 	}
-		// }
-		// if (readyCount == iHolderSize) {
-		// 	singleton->stopAllThreads();
-			
-		// 	cout << "filling from cache\n";
-			
-		// 	for (i = 0; i < iHolderSize; i++) {
-		// 		curHolder = holderData[i];
-				
-				
-				
-		// 		if (curHolder == NULL) {
-					
-		// 			kk = i/(holdersPerBlock*holdersPerBlock);
-		// 			jj = (i-kk*holdersPerBlock*holdersPerBlock)/holdersPerBlock;
-		// 			ii = i-(kk*holdersPerBlock*holdersPerBlock + jj*holdersPerBlock);
-					
-		// 			holderX = holdersPerBlock * (offsetInBlocks.getIX()) + ii;
-		// 			holderY = holdersPerBlock * (offsetInBlocks.getIY()) + jj;
-		// 			holderZ = holdersPerBlock * (offsetInBlocks.getIZ()) + kk;
-					
-		// 			singleton->gw->getHolderAtCoords(holderX,holderY,holderZ,true);
-		// 			curHolder = holderData[i];
-		// 		}
-				
-		// 		if (curHolder->appliedFill) {
-					
-		// 		}
-		// 		else {
-		// 			curHolder->applyFill();
-		// 		}
-				
-		// 	}
-			
-		// }
+		testDis /= cellsPerChunk;
 		
-		
-		// readyCount = 0;
-		// for (i = 0; i < iHolderSize; i++) {
-		// 	curHolder = holderData[i];
-						
-		// 	if (curHolder == NULL) {
-				
-		// 	}
-		// 	else {
-		// 		if (curHolder->lockWrite) {
-					
-		// 		}
-		// 		else {
-					
-		// 		}
-		// 	}
-		// }
-		
-		// if (readyCount == iHolderSize) {
-		// 	fillVBO();
-		// }
-		
-		changeTick++;
-		
-		int maxTicks = singleton->iGetConst(E_CONST_MAX_BLOCK_TICKS);
-		
-		if (
-			//(changeCount > 0) &&
-			(changeFlag) &&
-			((changeTick%maxTicks) == 0)	
-		) {
-			changeFlag = false;
-			fillVBO();
+		for (i = 0; i < NUM_MIP_LEVELS_WITH_FIRST; i++) {
+			if (
+				(testDis >= singleton->mipDis[i]) &&
+				(testDis < singleton->mipDis[i+1])
+			) {
+				testMip = i;
+				break;
+			}
 		}
 		
+		if (testMip == -1) {
+			testMip = NUM_MIP_LEVELS;
+		}
+		if (testMip > NUM_MIP_LEVELS) {
+			testMip = NUM_MIP_LEVELS;
+		}
+		
+		
+		mipLev = testMip;
+		
+		int maxTicks = singleton->iGetConst(E_CONST_MAX_CHUNK_TICKS);
+		
+		
+		if (singleton->updateHolders) {
+			if (
+				changeFlag
+				// || (abs(testMip-mipLev) > 2) ||
+				// (
+				// 	(testMip == 0) &&
+				// 	(mipLev != 0)	
+				// ) ||
+				// (
+				// 	(testMip == NUM_MIP_LEVELS) &&
+				// 	(mipLev != NUM_MIP_LEVELS)	
+				// )
+			) {
+				changeTick++;
+				
+				if (((changeTick%maxTicks) == 0)) {
+					changeFlag = false;
+					fillVBO();
+				}	
+			}
+		}
+		
+		
 	}
-void GameBlock::reset ()
+void GameChunk::reset ()
                      {
+		int i;
 		changeTick = 1;
 		//changeCount = 0;
-		vboWrapper.deallocVBO();
+		for (i = 0; i < NUM_MIP_LEVELS_WITH_FIRST; i++) {
+			vboWrapper[i].deallocVBO();
+		}
 	}
-void GameBlock::fillVBO ()
+void GameChunk::fillVBO ()
                        {
+		
+		//cout << "fillVBO a\n";
+		
 		readyToRender = false;
 		
 		int totFloats = 0;
@@ -54034,20 +54309,24 @@ void GameBlock::fillVBO ()
 		
 		GamePageHolder* curHolder;
 		
-		vboWrapper.beginFill();
-		if (vboWrapper.hasInit) {
+		
+		for (j = 0; j < NUM_MIP_LEVELS_WITH_FIRST; j++) {
 			
-		}
-		else {
-			vboWrapper.init(
-				2,
-				GL_STATIC_DRAW
-			);
-		}
-		
-		int totInd = 0;
-		
-		for (j = 0; j < 2; j++) {
+			
+			vboWrapper[j].beginFill();
+			
+			
+			if (vboWrapper[j].hasInit) {
+				
+			}
+			else {
+				vboWrapper[j].init(
+					2,
+					GL_STATIC_DRAW
+				);
+			}
+			
+			
 			for (i = 0; i < iHolderSize; i++) {
 				curHolder = holderData[i];
 
@@ -54061,64 +54340,61 @@ void GameBlock::fillVBO ()
 					else {
 						if (curHolder->listGenerated) {
 							
-							if (j == 0) {
-								totFloats += curHolder->vertexVec.size();
+							for (k = curHolder->begMip[j]; k < curHolder->endMip[j]; k++) {
+								vboWrapper[j].vi->vertexVec.push_back(curHolder->vertexVec[k]);
 							}
-							else {
-								
-								for (k = 0; k < curHolder->vertexVec.size(); k++) {
-									vboWrapper.vertexVec[totInd] = curHolder->vertexVec[k];
-									totInd++;
-								}
-								
-								// curHolder->vertexVec.clear();
-								// curHolder->vertexVec.shrink_to_fit();
-								
-							}
+							
+							// curHolder->vertexVec.clear();
+							// curHolder->vertexVec.shrink_to_fit();
 							
 						}
 					}
 				}
+			}
 
-				
-				
-				
-				
-				
-			}
-			
 			if (j == 0) {
-				
-				if (totFloats == 0) {
-					listEmpty = true;
-					j = 3;
-				}
-				else {
-					listEmpty = false;
-					vboWrapper.vertexVec.resize(totFloats);
-				}
-				
-				
-			}
+				listEmpty = (vboWrapper[j].vi->vertexVec.size() == 0);
+				TOT_POINT_COUNT -= lastPointCount;
+				TOT_POINT_COUNT += vboWrapper[j].getNumVerts();
+				lastPointCount = vboWrapper[j].getNumVerts();
+			}		
+			
+			
+			vboWrapper[j].endFill();
+			
+			glFlush();
+			glFinish();
+			
+			
+			vboWrapper[j].clearVecs(false);
+			
+			
 		}
 		
-		TOT_POINT_COUNT -= lastPointCount;
-		TOT_POINT_COUNT += vboWrapper.getNumVerts();
-		lastPointCount = vboWrapper.getNumVerts();
 		
-		vboWrapper.endFill();
-		
-		glFlush();
-		glFinish();
-		
-		
-		vboWrapper.clearVecs();
 		
 		
 		changeTick = 1;
 		//changeCount = 0;
 		
 		readyToRender = true;
+		
+		//cout << "fillVBO b\n";
+		
+	}
+#undef LZZ_INLINE
+ 
+// f00353_gameblock.h
+//
+
+#include "f00353_gameblock.e"
+#define LZZ_INLINE inline
+GameBlock::GameBlock ()
+                    {
+		
+		terData = NULL;
+		buildingData = NULL;
+		
 	}
 void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int _z, int _xw, int _yw, int _zw)
           {
@@ -54163,7 +54439,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 		origin.setFXYZ(0.0f, 0.0f, 0.0f);
 
-
+		
 
 
 		int i;
@@ -54406,10 +54682,10 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 		
 		int iNodeDivsPerHolder = singleton->iNodeDivsPerHolder;
 
-		iHolderSize = holdersPerBlock * holdersPerBlock * holdersPerBlock;
-		holderData = new GamePageHolder*[iHolderSize];
-		for (i = 0; i < iHolderSize; i++) {
-			holderData[i] = NULL;
+		iChunkSize = singleton->chunksPerBlock * singleton->chunksPerBlock * singleton->chunksPerBlock;
+		chunkData = new GameChunk*[iChunkSize];
+		for (i = 0; i < iChunkSize; i++) {
+			chunkData[i] = NULL;
 		}
 
 
@@ -58213,7 +58489,8 @@ void ThreadPoolWrapper::funcTP (int threadId)
 		
 		curHolder = singleton->gw->getHolderAtId(
 			threadPool[threadId].threadDataInt[1],
-			threadPool[threadId].threadDataInt[2]
+			threadPool[threadId].threadDataInt[2],
+			threadPool[threadId].threadDataInt[3]
 		);
 		
 		switch(threadPool[threadId].threadDataInt[0]) {
@@ -58250,7 +58527,7 @@ bool ThreadPoolWrapper::stopTP (int threadId)
                                   {
 		
 		GamePageHolder* curHolder;
-		GameBlock* curBlock;
+		GameChunk* curChunk;
 		
 		bool didStop = false;
 		if (threadPool[threadId].threadRunning) {
@@ -58264,7 +58541,8 @@ bool ThreadPoolWrapper::stopTP (int threadId)
 			
 			curHolder = singleton->gw->getHolderAtId(
 				threadPool[threadId].threadDataInt[1],
-				threadPool[threadId].threadDataInt[2]
+				threadPool[threadId].threadDataInt[2],
+				threadPool[threadId].threadDataInt[3]
 			);
 			
 			switch(threadPool[threadId].threadDataInt[0]) {
@@ -58277,13 +58555,13 @@ bool ThreadPoolWrapper::stopTP (int threadId)
 					//cout << "unlocking pdPool " << curHolder->curPD << "\n";
 					
 					curHolder->listGenerated = true;
-					curBlock = singleton->gw->getBlockAtId(curHolder->blockId);
+					curChunk = singleton->gw->getChunkAtId(curHolder->blockId,curHolder->chunkId);
 					
 					if (curHolder->listEmpty) {
 						
 					}
 					else {
-						curBlock->changeFlag = true;
+						curChunk->changeFlag = true;
 					}
 					
 					
@@ -58328,7 +58606,8 @@ bool ThreadPoolWrapper::startThread ()
 		
 		GamePageHolder* curHolder = singleton->gw->getHolderAtId(
 			threadPool[curId].threadDataInt[1],
-			threadPool[curId].threadDataInt[2]
+			threadPool[curId].threadDataInt[2],
+			threadPool[curId].threadDataInt[3]
 		);
 		
 		curHolder->lockWrite = true;
@@ -58868,18 +59147,28 @@ void GameLogic::applyBehavior ()
 		}
 		
 	}
-GamePageHolder * GameLogic::getHolderById (int blockId, int holderId)
-                                                                 {
+GamePageHolder * GameLogic::getHolderById (int blockId, int chunkId, int holderId)
+                                                                              {
 		
-		if ((blockId < 0) || (holderId < 0)) {
+		if ((blockId < 0) || (holderId < 0) || (chunkId < 0)) {
 			return NULL;
 		}
 		
 		GameBlock* curBlock = singleton->gw->blockData[blockId];
 		GamePageHolder* curHolder;
+		GameChunk* curChunk;
 		if (curBlock != NULL) {
-			curHolder = curBlock->holderData[holderId];
-			return curHolder;
+			curChunk = curBlock->chunkData[chunkId];
+			
+			if (curChunk != NULL) {
+				curHolder = curChunk->holderData[holderId];
+				return curHolder;
+			}
+			else {
+				return NULL;
+			}
+			
+			
 		}
 		else {
 			return NULL;
@@ -58887,18 +59176,20 @@ GamePageHolder * GameLogic::getHolderById (int blockId, int holderId)
 	}
 GamePageHolder * GameLogic::getHolderByPR (PathResult * pr)
                                                       {
-		int blockId = pr->blockId;
-		int holderId = pr->holderId;
+		// int blockId = pr->blockId;
+		// int holderId = pr->holderId;
 		
-		GamePageHolder* curHolder;
-		GameBlock* curBlock = singleton->gw->blockData[blockId];
-		if (curBlock != NULL) {
-			curHolder = curBlock->holderData[holderId];
-			return curHolder;
-		}
-		else {
-			return NULL;
-		}
+		return singleton->gw->getHolderAtId(pr->blockId,pr->chunkId,pr->holderId);
+		
+		// GamePageHolder* curHolder;
+		// GameBlock* curBlock = singleton->gw->blockData[blockId];
+		// if (curBlock != NULL) {
+		// 	curHolder = curBlock->holderData[holderId];
+		// 	return curHolder;
+		// }
+		// else {
+		// 	return NULL;
+		// }
 	}
 bool GameLogic::holdersEqual (GamePageHolder * h0, GamePageHolder * h1)
                                                                   {
@@ -59014,12 +59305,14 @@ bool GameLogic::addGroupToStack (ConnectingNodeStruct * testConNode, GamePageHol
 		
 		if (lastHolder == NULL) {
 			lastRes->lastBlockId = -1;
+			lastRes->lastChunkId = -1;
 			lastRes->lastHolderId = -1;
 			lastRes->lastGroupId = -1;
 			lastRes->lastIndex = -1;
 		}
 		else {
 			lastRes->lastBlockId = lastHolder->blockId;
+			lastRes->lastChunkId = lastHolder->chunkId;
 			lastRes->lastHolderId = lastHolder->holderId;
 			lastRes->lastGroupId = groupId;
 			lastRes->lastIndex = lastIndex;
@@ -59146,7 +59439,11 @@ void GameLogic::fillAllGroups (GamePageHolder * begHolder, GamePageHolder * endH
 				
 				if (testConNode->groupIdFrom == curGroupId) {
 					
-					testHolder = getHolderById(testConNode->blockIdTo,testConNode->holderIdTo);
+					testHolder = getHolderById(
+						testConNode->blockIdTo,
+						testConNode->chunkIdTo,
+						testConNode->holderIdTo
+					);
 					groupIdTo = testConNode->groupIdTo;
 					
 					if (testHolder != NULL) {
@@ -59482,7 +59779,11 @@ void GameLogic::getPath (PathInfo * pathInfo)
 					for (i = 0; i < pathFinalStack.size(); i++) {
 						curPR = &(pathFinalStack[i]);
 						
-						tempHolder = getHolderById(curPR->blockId,curPR->holderId);
+						tempHolder = getHolderById(
+							curPR->blockId,
+							curPR->chunkId,
+							curPR->holderId
+						);
 						if ((tempHolder != NULL)) {
 							tempInd = tempHolder->groupInfoStack[curPR->groupId].centerInd;
 							// if (tempInd > -1) {
@@ -59490,8 +59791,16 @@ void GameLogic::getPath (PathInfo * pathInfo)
 							// }
 						}
 						
-						conHolder1 = getHolderById(curPR->conNode.blockIdFrom, curPR->conNode.holderIdFrom);
-						conHolder2 = getHolderById(curPR->conNode.blockIdTo, curPR->conNode.holderIdTo); 
+						conHolder1 = getHolderById(
+							curPR->conNode.blockIdFrom,
+							curPR->conNode.chunkIdFrom,
+							curPR->conNode.holderIdFrom
+						);
+						conHolder2 = getHolderById(
+							curPR->conNode.blockIdTo,
+							curPR->conNode.chunkIdTo,
+							curPR->conNode.holderIdTo
+						); 
 						
 						if (conHolder1 != NULL) {
 							getPointsForPath(conHolder1, curPR->conNode.cellIndFrom, pathInfo, false);
@@ -59974,7 +60283,11 @@ void GameLogic::drawRegions (int offX, int offY, int offZ)
 			curInd = testConNode->cellIndFrom;
 			
 			
-			curHolderTo = getHolderById(testConNode->blockIdTo,testConNode->holderIdTo);
+			curHolderTo = getHolderById(
+				testConNode->blockIdTo,
+				testConNode->chunkIdTo,
+				testConNode->holderIdTo
+			);
 			
 			if (curHolderTo != NULL) {
 				drawLineAtIndices(
@@ -60058,7 +60371,9 @@ void GameLogic::freePD ()
 			else {
 				curHolder = getHolderById(
 					singleton->pdPool[q].boundToHolder.v0,
-					singleton->pdPool[q].boundToHolder.v1
+					singleton->pdPool[q].boundToHolder.v1,
+					singleton->pdPool[q].boundToHolder.v2
+					
 				);
 				if (curHolder != NULL) {
 					if (curHolder->lockWrite) {
@@ -60091,7 +60406,7 @@ void GameLogic::loadNearestHolders (int rad, bool doUpdate)
 		int q;
 		int r;
 		
-		int holdersPerBlock = singleton->holdersPerBlock;
+		//int holdersPerBlock = singleton->holdersPerBlock;
 		
 		int i, j, k;
 		int ii, jj, kk;
@@ -60112,7 +60427,7 @@ void GameLogic::loadNearestHolders (int rad, bool doUpdate)
 		int curPD;
 		intPair curId;
 		
-		float maxStackDis = 32.0f;
+		float maxStackDis = 8.0f;
 		
 		FIVector4 tempFIV;
 		
@@ -60245,7 +60560,8 @@ void GameLogic::loadNearestHolders (int rad, bool doUpdate)
 											
 											threadPoolPath->intData[0] = E_TT_GENPATHS;
 											threadPoolPath->intData[1] = curHolder->blockId;
-											threadPoolPath->intData[2] = curHolder->holderId;
+											threadPoolPath->intData[2] = curHolder->chunkId;
+											threadPoolPath->intData[3] = curHolder->holderId;
 											
 											if (threadPoolPath->startThread()) {
 												genCount++;
@@ -60277,7 +60593,8 @@ void GameLogic::loadNearestHolders (int rad, bool doUpdate)
 											
 											threadPoolList->intData[0] = E_TT_GENLIST;
 											threadPoolList->intData[1] = curHolder->blockId;
-											threadPoolList->intData[2] = curHolder->holderId;
+											threadPoolList->intData[2] = curHolder->chunkId;
+											threadPoolList->intData[3] = curHolder->holderId;
 											
 											if (threadPoolList->startThread()) {
 												genCount++;
@@ -63505,6 +63822,9 @@ void GameWorld::init (Singleton * _singleton)
 
 		singleton = _singleton;
 		
+		chunksPerBlock = singleton->chunksPerBlock;
+		chunksPerWorld = singleton->chunksPerWorld;
+		holdersPerChunk = singleton->holdersPerChunk;
 
 		int i;
 		int j;
@@ -63702,7 +64022,7 @@ void GameWorld::clearAllHolders ()
 		int i;
 		
 		for (i = 0; i < gamePageHolderList.size(); i++) {
-			gph = getHolderAtId(gamePageHolderList[i].v0, gamePageHolderList[i].v1);
+			gph = getHolderAtId(gamePageHolderList[i].v0, gamePageHolderList[i].v1, gamePageHolderList[i].v2);
 			if (gph != NULL) {
 				gph->reset();
 			}
@@ -63714,28 +64034,27 @@ void GameWorld::clearAllHolders ()
 		glFinish();
 		
 	}
-GamePageHolder * GameWorld::getHolderAtCoords (int x, int y, int z, bool createOnNull)
+GameChunk * GameWorld::getChunkAtCoords (int x, int y, int z, bool createOnNull)
         {
 
-		GamePageHolder **holderData;
+		GameChunk **chunkData;
 
-		intPair ip;
 
-		int newX = wrapCoord(x, holdersPerWorld);
-		int newY = wrapCoord(y, holdersPerWorld);
+		int newX = wrapCoord(x, chunksPerWorld);
+		int newY = wrapCoord(y, chunksPerWorld);
 		int newZ = z;
 
-		int holderX = newX - intDiv(newX, holdersPerBlock) * holdersPerBlock;
-		int holderY = newY - intDiv(newY, holdersPerBlock) * holdersPerBlock;
-		int holderZ = newZ - intDiv(newZ, holdersPerBlock) * holdersPerBlock;
+		int chunkX = newX - intDiv(newX, chunksPerBlock) * chunksPerBlock;
+		int chunkY = newY - intDiv(newY, chunksPerBlock) * chunksPerBlock;
+		int chunkZ = newZ - intDiv(newZ, chunksPerBlock) * chunksPerBlock;
 
-		int holderId = holderZ * holdersPerBlock * holdersPerBlock + holderY * holdersPerBlock + holderX;
+		int chunkId = chunkZ * chunksPerBlock * chunksPerBlock + chunkY * chunksPerBlock + chunkX;
 
 
 		GameBlock *curBlock = getBlockAtCoords(
-			intDiv(x, holdersPerBlock),
-			intDiv(y, holdersPerBlock),
-			intDiv(z, holdersPerBlock),
+			intDiv(x, chunksPerBlock),
+			intDiv(y, chunksPerBlock),
+			intDiv(z, chunksPerBlock),
 			createOnNull
 		);
 
@@ -63745,22 +64064,19 @@ GamePageHolder * GameWorld::getHolderAtCoords (int x, int y, int z, bool createO
 		}
 		else
 		{
-			holderData = curBlock->holderData;
+			chunkData = curBlock->chunkData;
 
 
-			if (holderData[holderId] == NULL)
+			if (chunkData[chunkId] == NULL)
 			{
 				if (createOnNull)
 				{
-					holderData[holderId] = new GamePageHolder();
-					ip.v0 = curBlock->blockId;
-					ip.v1 = holderId;
-					gamePageHolderList.push_back(ip);
-					holderData[holderId]->init(singleton, curBlock->blockId, holderId, x, y, z); //, x, y, z
+					chunkData[chunkId] = new GameChunk();
+					chunkData[chunkId]->init(singleton, curBlock->blockId, chunkId, x, y, z); //, x, y, z
 				}
 			}
 
-			return holderData[holderId];
+			return chunkData[chunkId];
 
 
 		}
@@ -63768,7 +64084,86 @@ GamePageHolder * GameWorld::getHolderAtCoords (int x, int y, int z, bool createO
 
 
 	}
-GamePageHolder * GameWorld::getHolderAtId (int blockId, int holderId)
+GamePageHolder * GameWorld::getHolderAtCoords (int x, int y, int z, bool createOnNull)
+        {
+
+		GamePageHolder **holderData;
+
+		intTrip ip;
+
+		int newX = wrapCoord(x, holdersPerWorld);
+		int newY = wrapCoord(y, holdersPerWorld);
+		int newZ = z;
+
+		int holderX = newX - intDiv(newX, holdersPerChunk) * holdersPerChunk;
+		int holderY = newY - intDiv(newY, holdersPerChunk) * holdersPerChunk;
+		int holderZ = newZ - intDiv(newZ, holdersPerChunk) * holdersPerChunk;
+
+		int holderId = holderZ * holdersPerChunk * holdersPerChunk + holderY * holdersPerChunk + holderX;
+
+
+		GameBlock *curBlock = getBlockAtCoords(
+			intDiv(x, holdersPerBlock),
+			intDiv(y, holdersPerBlock),
+			intDiv(z, holdersPerBlock),
+			createOnNull
+		);
+		
+		GameChunk* curChunk;
+
+		if (curBlock == NULL)
+		{
+			return NULL;
+		}
+		else
+		{
+			
+			curChunk = getChunkAtCoords(
+				intDiv(x, holdersPerChunk),
+				intDiv(y, holdersPerChunk),
+				intDiv(z, holdersPerChunk),
+				createOnNull
+			);
+			
+			
+			if (curChunk == NULL) {
+				return NULL;
+			}
+			else {
+				holderData = curChunk->holderData;
+
+
+				if (holderData[holderId] == NULL)
+				{
+					if (createOnNull)
+					{
+						holderData[holderId] = new GamePageHolder();
+						ip.v0 = curBlock->blockId;
+						ip.v1 = curChunk->chunkId;
+						ip.v2 = holderId;
+						gamePageHolderList.push_back(ip);
+						holderData[holderId]->init(
+							singleton,
+							curBlock->blockId,
+							curChunk->chunkId,
+							holderId,
+							x, y, z
+						); //, x, y, z
+					}
+				}
+
+				return holderData[holderId];
+			}
+			
+			
+
+
+		}
+
+
+
+	}
+GameChunk * GameWorld::getChunkAtId (int blockId, int chunkId)
         {
 
 		if (blockData[blockId] == NULL)
@@ -63777,7 +64172,24 @@ GamePageHolder * GameWorld::getHolderAtId (int blockId, int holderId)
 		}
 		else
 		{
-			return blockData[blockId]->holderData[holderId];
+			return blockData[blockId]->chunkData[chunkId];
+		}
+	}
+GamePageHolder * GameWorld::getHolderAtId (int blockId, int chunkId, int holderId)
+        {
+
+		if (blockData[blockId] == NULL)
+		{
+			return NULL;
+		}
+		else
+		{
+			if (blockData[blockId]->chunkData[chunkId] == NULL) {
+				return NULL;
+			}
+			else {
+				return blockData[blockId]->chunkData[chunkId]->holderData[holderId];
+			}
 		}
 	}
 GameBlock * GameWorld::getBlockAtId (int id)
@@ -64108,7 +64520,8 @@ void GameWorld::preUpdate ()
 		activeFBO = 0;
 
 		
-		
+		camChunkPos.copyFrom( singleton->cameraGetPosNoShake() );
+		camChunkPos.intDivXYZ(singleton->cellsPerChunk);
 		
 		camBlockPos.copyFrom( singleton->cameraGetPosNoShake() );
 		camBlockPos.intDivXYZ(singleton->cellsPerBlock);
@@ -64392,178 +64805,6 @@ void GameWorld::ensureBlocks ()
 			}
 		}
 		
-	}
-void GameWorld::findNearestEnt (EntSelection * entSelection, int entType, int maxLoadRad, int radStep, FIVector4 * testPoint, bool onlyInteractive, bool ignoreDistance)
-          {
-		
-		GameEnt* myEnt;
-		
-		int curInd = 0;
-		float bestDis;
-		float curDis;
-		
-		bool doProc = false;
-		
-		entSelection->selEntList.clear();
-		entSelection->selEntMap.clear();
-		entSelection->selEntListInd = 0;
-
-		bestDis = 99999.0f;
-		
-		
-		
-		
-		//////////////////////
-		
-		
-		
-		int i, j, k;
-		int ii, jj, kk;
-		int incVal;
-		
-		int tot = 0;
-
-
-		int mink;
-		int maxk;
-		int minj;
-		int maxj;
-		int mini;
-		int maxi;
-		int curLoadRadius;
-		intPair curId;
-		
-		tempVec.copyFrom(testPoint);
-		tempVec.intDivXYZ(singleton->cellsPerHolder);
-
-
-		GamePageHolder* curHolder;
-		GameBlock *curBlock;
-
-
-		ensureBlocks();
-		
-		
-		
-
-		for (curLoadRadius = 0; curLoadRadius < maxLoadRad; curLoadRadius++) {
-			
-			mink = max(tempVec.getIZ() - curLoadRadius,0);
-			maxk = min(tempVec.getIZ() + curLoadRadius,holdersPerWorld-1);
-			minj = tempVec.getIY() - curLoadRadius;
-			maxj = tempVec.getIY() + curLoadRadius;
-			mini = tempVec.getIX() - curLoadRadius;
-			maxi = tempVec.getIX() + curLoadRadius;
-			
-			for (jj = minj; jj <= maxj; jj += radStep) {
-				
-				if (curLoadRadius <= 2) {
-					incVal = 1;
-				}
-				else {
-					if ( (jj == minj) || (jj == maxj) ) {
-						incVal = radStep;
-					}
-					else {
-						incVal = maxi - mini;
-					}
-				}
-				
-				for (ii = maxi; ii >= mini; ii -= incVal) {
-					
-					
-					for (kk = mink; kk <= maxk; kk += radStep) {
-						
-						
-						
-						curHolder = getHolderAtCoords(ii, jj, kk, true);
-						curBlock = getBlockAtId(curHolder->blockId);
-						
-						if (curBlock == NULL) {
-							cout << "NULL BLOCK\n";
-						}
-						else {
-							
-							for (k = 0; k < curHolder->containsEntIds[entType].data.size(); k++) { //curBlock->gameEnts[entType].data.size()
-								
-								curId = curHolder->containsEntIds[entType].data[k];
-								myEnt = &(blockData[curId.v0]->gameEnts[entType].data[curId.v1]);
-								
-								
-								
-								if (
-									ignoreDistance||
-									testPoint->inBoundsXYZSlack(
-										myEnt->getVisMinInPixelsT(),
-										myEnt->getVisMaxInPixelsT(),
-										0.0625
-									)
-								)
-								{
-									
-									if (entSelection->selEntMap.count(curId) == 0 ) {
-										
-										entSelection->selEntList.push_back(myEnt);
-										entSelection->selEntMap[curId] = 1;
-										
-										
-										
-										curDis = 
-										abs(myEnt->getVisMaxInPixelsT()->getFX()-testPoint->getFX()) +
-										abs(myEnt->getVisMaxInPixelsT()->getFY()-testPoint->getFY()) +
-										abs(myEnt->getVisMaxInPixelsT()->getFZ()-testPoint->getFZ());
-										
-										//myEnt->getVisMinInPixelsT()->distance(testPoint) +
-										//myEnt->getVisMaxInPixelsT()->distance(testPoint);
-
-										if (myEnt->visible) {
-											
-										}
-										else {
-											curDis *= 16.0f;
-										}
-
-										if (onlyInteractive) {
-											doProc = singleton->isInteractiveEnt[myEnt->buildingType];
-										}
-										else {
-											doProc = true;
-										}
-
-										if ((curDis < bestDis)&&doProc) {
-											bestDis = curDis;
-											entSelection->selEntListInd = curInd;
-										}
-										
-										
-										curInd++;
-										
-									}
-									
-									
-
-								}
-							}
-							
-							
-						}
-						
-						
-						
-					}
-					
-				}
-			}
-			
-		}
-		
-		
-		
-		
-		//////////////////////
-		
-		
-		//return resEnt;
 	}
 void GameWorld::drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * maxc, bool copyToTex, bool forceFinish, bool getVoro, bool getBlockHolders)
           {
@@ -65378,7 +65619,7 @@ void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel)
 		singleton->unbindFBO();
 		singleton->unbindShader();
 	}
-void GameWorld::rastHolder (int rad, uint flags)
+void GameWorld::rastChunk (int rad, uint flags)
                   {
 			
 			
@@ -65390,17 +65631,14 @@ void GameWorld::rastHolder (int rad, uint flags)
 			bool doProc = false;
 			
 			//GamePageHolder* curHolder;
-			GameBlock* curBlock;
+			GameChunk* curChunk;
 			
 			
-			minv.copyFrom(&camBlockPos);
-			maxv.copyFrom(&camBlockPos);
+			minv.copyFrom(&camChunkPos);
+			maxv.copyFrom(&camChunkPos);
 			
 			FIVector4 tempFIV;
-			FIVector4 blockCenInCells;
 			
-			FIVector4 blockMinInCells;
-			FIVector4 blockMaxInCells;
 			
 			int minK = minv.getIZ() - rad;
 			int maxK = maxv.getIZ() + rad;
@@ -65409,7 +65647,7 @@ void GameWorld::rastHolder (int rad, uint flags)
 			int minI = minv.getIX() - rad;
 			int maxI = maxv.getIX() + rad;
 			
-			float disClip = singleton->cellsPerBlock*1;
+			float disClip = singleton->cellsPerChunk*2;
 			
 			// if (getBounds) {
 			// 	minShadowBounds.setFXYZ(16777216.0f,16777216.0f,16777216.0f);
@@ -65421,30 +65659,18 @@ void GameWorld::rastHolder (int rad, uint flags)
 				for (jj = minJ; jj < maxJ; jj++) {
 					for (ii = minI; ii < maxI; ii++) {
 						//curHolder = getHolderAtCoords(ii,jj,kk,true);
-						curBlock = getBlockAtCoords(ii,jj,kk,false);
+						curChunk = getChunkAtCoords(ii,jj,kk,false);
 						
-						if (curBlock == NULL) {
+						if (curChunk == NULL) {
 							
 						}
 						else {
 							
 							if ((flags&RH_FLAG_DRAWLOADING) > 0) {
 								
-								curBlock->drawLoadingHolders();
+								curChunk->drawLoadingHolders();
 								
-								// singleton->setShaderVec3("matVal", 0, 255, 0);
-								// if (curBlock->readyToRender) {
-									
-								// 	blockMinInCells.copyFrom(&(curBlock->offsetInBlocks));
-								// 	blockMinInCells.addXYZ(0.0f);
-								// 	blockMinInCells.multXYZ(singleton->cellsPerBlock);
-									
-								// 	blockMaxInCells.copyFrom(&(curBlock->offsetInBlocks));
-								// 	blockMaxInCells.addXYZ(1.0f);
-								// 	blockMaxInCells.multXYZ(singleton->cellsPerBlock);
-									
-								// 	singleton->drawBox(&(blockMinInCells),&(blockMaxInCells));
-								// }
+
 								
 							}
 							else {
@@ -65453,29 +65679,26 @@ void GameWorld::rastHolder (int rad, uint flags)
 									
 									
 									
-									curBlock->checkHolders();
+									curChunk->checkHolders();
 								}
 								
 								
 								if (
-									(curBlock->readyToRender) &&
-									(!(curBlock->listEmpty))
+									(curChunk->readyToRender) &&
+									(!(curChunk->listEmpty))
 								) {
 									
 									
 									doProc = false;
 									if ((flags&RH_FLAG_CLIPTOVIEW) > 0) {
-										blockCenInCells.copyFrom(&(curBlock->offsetInBlocks));
-										blockCenInCells.addXYZ(0.5f);
-										blockCenInCells.multXYZ(singleton->cellsPerBlock);
 										
-										tempFIV.copyFrom(&blockCenInCells);
+										tempFIV.copyFrom(&(curChunk->chunkCenInCells));
 										tempFIV.addXYZRef(singleton->cameraGetPosNoShake(),-1.0f);
 										tempFIV.normalize();
 										
 										if (
 											(tempFIV.dot(&(singleton->lookAtVec)) > singleton->conVals[E_CONST_DOT_CLIP])
-											|| (blockCenInCells.distance(singleton->cameraGetPosNoShake()) < disClip)
+											|| (curChunk->chunkCenInCells.distance(singleton->cameraGetPosNoShake()) < disClip)
 										) {
 											doProc = true;
 										}
@@ -65487,10 +65710,10 @@ void GameWorld::rastHolder (int rad, uint flags)
 									
 									if (doProc) {
 										if (DO_POINTS) {
-											curBlock->vboWrapper.drawPoints();
+											curChunk->getCurVBO()->drawPoints();
 										}
 										else {
-											curBlock->vboWrapper.draw();
+											curChunk->getCurVBO()->draw();
 										}
 									}
 									
@@ -67943,71 +68166,6 @@ void GameWorld::doBlur (string fboName, int _baseFBO)
 		singleton->unbindShader();
 		
 	}
-void GameWorld::updateLights ()
-        {
-		
-		
-		int i;
-		int j;
-		int k;
-		bool flag = true;
-		GameEnt *tempLight;
-		GameEnt *curLight;
-		
-		
-		lightCount = singleton->numDynLights;
-
-		if (singleton->targetTimeOfDay <= 0.5)
-		{
-			
-			
-			findNearestEnt(&(singleton->nearestLights),E_ET_LIGHT,4,2,singleton->cameraGetPosNoShake(),false,true);
-			
-			
-			for (i = 0; i < singleton->nearestLights.selEntList.size(); i++) {
-				
-				
-				curLight = singleton->nearestLights.selEntList[i];//&(curBlock->gameEnts[E_ET_LIGHT].data[k]);
-				curLight->camDistance = singleton->cameraGetPosNoShake()->distance(&(curLight->geomParams[E_LP_POSITION]));
-
-				if (curLight->toggled) {
-					activeLights[lightCount] = singleton->nearestLights.selEntList[i];//&(curBlock->gameEnts[E_ET_LIGHT].data[k]);
-					lightCount++;
-				}
-
-				if (lightCount >= MAX_EVAL_LIGHTS)
-				{
-					goto UPDATE_LIGHTS_END;
-				}
-				
-				
-			}
-			
-			
-
-UPDATE_LIGHTS_END:
-
-			for (i = singleton->numDynLights + 1; (i <= lightCount) && flag; i++)
-			{
-				flag = false;
-				for (j = singleton->numDynLights; j < (lightCount - 1); j++)
-				{
-					if (activeLights[j + 1]->camDistance < activeLights[j]->camDistance) // ascending order simply changes to <
-					{
-						tempLight = activeLights[j];
-						activeLights[j] = activeLights[j + 1];
-						activeLights[j + 1] = tempLight;
-						flag = true;
-					}
-				}
-			}
-
-			lightCount = min(lightCount, MAX_LIGHTS);
-		}
-
-
-
-	}
 void GameWorld::rasterHolders (bool doShadow)
                                           {
 		
@@ -68053,7 +68211,7 @@ void GameWorld::rasterHolders (bool doShadow)
 			// singleton->setShaderfVec3("maxBounds",&(maxShadowBounds));
 			// singleton->setShaderfVec3("lightVec",&(singleton->lightVec));
 
-			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), 0);
+			rastChunk(singleton->iGetConst(E_CONST_RASTER_CHUNK_RAD), 0);
 
 			singleton->unbindFBO();
 			singleton->unbindShader();
@@ -68076,7 +68234,7 @@ void GameWorld::rasterHolders (bool doShadow)
 			//singleton->setShaderMatrix4x4("lightSpaceMatrix",singleton->lightSpaceMatrix.get(),1);
 			singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
 
-			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), RH_FLAG_CLIPTOVIEW);
+			rastChunk(singleton->iGetConst(E_CONST_RASTER_CHUNK_RAD), RH_FLAG_CLIPTOVIEW);
 
 			singleton->unbindFBO();
 			singleton->unbindShader();
@@ -68162,6 +68320,7 @@ void GameWorld::rasterHolders (bool doShadow)
 		singleton->setShaderTexture3D(4,singleton->volIdMat);
 		singleton->sampleFBO("shadowMapFBO",5);
 		
+		singleton->setShaderFloat("cellsPerChunk",singleton->cellsPerChunk);
 		singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
 		singleton->setShaderInt("testOn3", (int)(singleton->testOn3));
 		// singleton->setShaderfVec3("minBounds",&(minShadowBounds));
@@ -68172,6 +68331,10 @@ void GameWorld::rasterHolders (bool doShadow)
 		singleton->setShaderInt("cellsPerHolder",singleton->cellsPerHolder);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+		singleton->setShaderVec2("shadowBias", 
+				singleton->conVals[E_CONST_SHADOWBIASMIN],
+				singleton->conVals[E_CONST_SHADOWBIASMAX]
+			);
 		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
@@ -68402,7 +68565,7 @@ void GameWorld::renderDebug ()
 			singleton->setShaderFloat("isWire", 1.0);
 			singleton->setShaderVec3("matVal", 255, 0, 0);
 			
-			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), RH_FLAG_DRAWLOADING);
+			rastChunk(singleton->iGetConst(E_CONST_RASTER_CHUNK_RAD), RH_FLAG_DRAWLOADING);
 			
 			if (holderInFocus != NULL) {
 				singleton->setShaderVec3("matVal", 0, 0, 255);

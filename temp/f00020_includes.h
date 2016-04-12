@@ -81,7 +81,8 @@ const static bool SINGLE_THREADED = false;
 
 int TOT_POINT_COUNT = 0;
 
-const static int NUM_MIP_LEVELS = 3;
+const static int NUM_MIP_LEVELS = 4;
+const static int NUM_MIP_LEVELS_WITH_FIRST = NUM_MIP_LEVELS+1;
 const static bool DO_AO = false;
 const static bool DO_MIP = true;
 const static bool DO_POINTS = true;
@@ -92,9 +93,12 @@ const static int MAX_HOLDER_LOAD_COUNT = 512;
 //const static int RASTER_HOLDER_RAD = 8;
 
 const static int VOXELS_PER_CELL = 16;
-const static int CELLS_PER_HOLDER = 16;
+const static int CELLS_PER_HOLDER = 8;
+const static int HOLDER_MOD = 2; // HOLDER_MOD*CELLS_PER_HOLDER should == 16
+
+
 const static int PADDING_IN_CELLS = 1;
-const static float HM_MAX_IN_CELLS = CELLS_PER_HOLDER*256;//8192.0f;
+const static float HM_MAX_IN_CELLS = CELLS_PER_HOLDER*256*HOLDER_MOD;//8192.0f;
 
 const static int MAX_PDPOOL_SIZE = MAX_THREADS;
 // const static int MAX_TBOPOOL_SIZE = 8;

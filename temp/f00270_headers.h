@@ -90,6 +90,7 @@ public:
   CompareStruct compareStruct;
   typedef map <string, UICStruct>::iterator itUICStruct;
   typedef map <string, JSONStruct>::iterator itJSStruct;
+  float (mipDis) [8];
   bool (keysPressed) [MAX_KEYS];
   double (keyDownTimes) [MAX_KEYS];
   unsigned char (keyMap) [KEYMAP_LENGTH];
@@ -285,6 +286,10 @@ public:
   int voxelsPerHolderPad;
   int cellsPerBlock;
   int holdersPerBlock;
+  int holdersPerChunk;
+  int chunksPerBlock;
+  int chunksPerWorld;
+  int cellsPerChunk;
   int cellsPerWorld;
   int holdersPerWorld;
   int blocksPerWorld;
@@ -484,6 +489,7 @@ public:
   GameLogic * gameLogic;
   GameNetwork * gameNetwork;
   GameAI * gameAI;
+  VIStruct (chunkVI) [NUM_MIP_LEVELS_WITH_FIRST];
   float (lightArr) [MAX_LIGHTS * 16];
   int numLights;
   bool multiLights;
@@ -677,9 +683,9 @@ public:
   void loadGUI ();
   string loadFileString (string fnString);
   std::ifstream::pos_type filesize (char const * filename);
-  bool checkCacheEntry (int blockId, int holderId);
-  bool loadCacheEntry (int blockId, int holderId);
-  bool saveCacheEntry (int blockId, int holderId);
+  bool checkCacheEntry (int blockId, int chunkId, int holderId);
+  bool loadCacheEntry (int blockId, int chunkId, int holderId);
+  bool saveCacheEntry (int blockId, int chunkId, int holderId);
   bool loadCacheMetaData ();
   bool saveCacheMetaData ();
   void clearCache ();
@@ -1703,11 +1709,14 @@ public:
   bool wasStacked;
   bool lockWrite;
   bool lockRead;
+  int (begMip) [NUM_MIP_LEVELS_WITH_FIRST];
+  int (endMip) [NUM_MIP_LEVELS_WITH_FIRST];
   vector <float> vertexVec;
   VolumeWrapper * terVW;
   GameVoxelWrap * voxelWrap;
   int curPD;
   int blockId;
+  int chunkId;
   int holderId;
   int pathSize;
   int totIdealNodes;
@@ -1731,11 +1740,10 @@ public:
   FIVector4 gphCenInCells;
   FIVector4 origOffset;
   Singleton * singleton;
-  intPairVec (containsEntIds) [E_ET_LENGTH];
   bool wasGenerated;
   void reset ();
   GamePageHolder ();
-  void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ);
+  void init (Singleton * _singleton, int _blockId, int _chunkId, int _holderId, int trueX, int trueY, int trueZ);
   int getCellAtCoordsLocal (int xx, int yy, int zz);
   int getCellAtInd (int ind);
   void getArrAtInd (int ind, int * tempCellData, int * tempCellData2);
@@ -1784,17 +1792,50 @@ LZZ_INLINE PaddedDataEntry * GamePageHolder::getPadData (int ii, int jj, int kk)
 	}
 #undef LZZ_INLINE
 #endif
-// f00352_gameblock.e
+// f00352_gamechunk.e
 //
 
-#ifndef LZZ_f00352_gameblock_e
-#define LZZ_f00352_gameblock_e
+#ifndef LZZ_f00352_gamechunk_e
+#define LZZ_f00352_gamechunk_e
+#define LZZ_INLINE inline
+class GameChunk
+{
+public:
+  Singleton * singleton;
+  VBOWrapper (vboWrapper) [NUM_MIP_LEVELS_WITH_FIRST];
+  int lastPointCount;
+  int mipLev;
+  int changeTick;
+  bool readyToRender;
+  bool listEmpty;
+  bool changeFlag;
+  int iHolderSize;
+  int holdersPerChunk;
+  GamePageHolder * * holderData;
+  FIVector4 offsetInChunks;
+  FIVector4 chunkCenInCells;
+  int chunkId;
+  int blockId;
+  GameChunk ();
+  void init (Singleton * _singleton, int _blockId, int _chunkId, int trueX, int trueY, int trueZ);
+  VBOWrapper * getCurVBO ();
+  void drawLoadingHolders ();
+  void checkHolders ();
+  void reset ();
+  void fillVBO ();
+};
+#undef LZZ_INLINE
+#endif
+// f00353_gameblock.e
+//
+
+#ifndef LZZ_f00353_gameblock_e
+#define LZZ_f00353_gameblock_e
 #define LZZ_INLINE inline
 class GameBlock
 {
 public:
   Singleton * singleton;
-  int lastPointCount;
   int blockId;
   int holdersPerBlock;
   int terDataBufAmount;
@@ -1813,7 +1854,6 @@ public:
   int terDataVisSize;
   int terDataBufSize;
   int cellsPerBlock;
-  int iHolderSize;
   int maxFloors;
   float fCellsPerBlock;
   int (dirModX) [6];
@@ -1860,21 +1900,13 @@ public:
   GameEnt baseEnt;
   EntVec (gameEnts) [E_ET_LENGTH];
   GameWorld * gw;
-  GamePageHolder * * holderData;
+  int iChunkSize;
+  GameChunk * * chunkData;
   BuildingNode * buildingData;
   MapNode * mapData;
   uint * terData;
   BuildingCon * curCon;
-  VBOWrapper vboWrapper;
-  bool readyToRender;
-  bool listEmpty;
-  bool changeFlag;
-  int changeTick;
   GameBlock ();
-  void drawLoadingHolders ();
-  void checkHolders ();
-  void reset ();
-  void fillVBO ();
   void init (Singleton * _singleton, int _blockId, int _x, int _y, int _z, int _xw, int _yw, int _zw);
   int getNodeIndexClamped (int _x, int _y, int _z);
   int getNodeIndex (int x, int y, int z, int bufAmount);
@@ -1986,7 +2018,7 @@ public:
   void init (Singleton * _singleton);
   void applyTBBehavior ();
   void applyBehavior ();
-  GamePageHolder * getHolderById (int blockId, int holderId);
+  GamePageHolder * getHolderById (int blockId, int chunkId, int holderId);
   GamePageHolder * getHolderByPR (PathResult * pr);
   bool holdersEqual (GamePageHolder * h0, GamePageHolder * h1);
   void addHolderToStack (GamePageHolder * curHolder);
@@ -2139,6 +2171,9 @@ public:
   int mapSwapFlag;
   int holdersPerBlock;
   int shiftCounter;
+  int holdersPerChunk;
+  int chunksPerWorld;
+  int chunksPerBlock;
   int renderCount;
   float invalidCount;
   float invalidCountMax;
@@ -2184,7 +2219,7 @@ public:
   int visFlagO;
   int activeFBO;
   bool noiseGenerated;
-  std::vector <intPair> gamePageHolderList;
+  std::vector <intTrip> gamePageHolderList;
   std::vector <coordAndIndex> roadCoords;
   std::vector <int> ocThreads;
   btVector3 (offsetVal) [4];
@@ -2201,6 +2236,7 @@ public:
   FIVector4 entMax;
   FIVector4 camHolderPos;
   FIVector4 camBlockPos;
+  FIVector4 camChunkPos;
   FIVector4 iPixelWorldCoords;
   FIVector4 pagePos;
   FIVector4 unitPos;
@@ -2243,8 +2279,10 @@ public:
   void init (Singleton * _singleton);
   GameBlock * getBlockAtCoords (int xInBlocks, int yInBlocks, int zInBlocks, bool createOnNull = false);
   void clearAllHolders ();
+  GameChunk * getChunkAtCoords (int x, int y, int z, bool createOnNull = false);
   GamePageHolder * getHolderAtCoords (int x, int y, int z, bool createOnNull = false);
-  GamePageHolder * getHolderAtId (int blockId, int holderId);
+  GameChunk * getChunkAtId (int blockId, int chunkId);
+  GamePageHolder * getHolderAtId (int blockId, int chunkId, int holderId);
   GameBlock * getBlockAtId (int id);
   int getCellInd (btVector3 cParam, GamePageHolder * & curHolder);
   int getCellInd (GamePageHolder * & curHolder, int xv, int yv, int zv);
@@ -2259,7 +2297,6 @@ public:
   void update ();
   void toggleVis (GameEnt * se);
   void ensureBlocks ();
-  void findNearestEnt (EntSelection * entSelection, int entType, int maxLoadRad, int radStep, FIVector4 * testPoint, bool onlyInteractive = false, bool ignoreDistance = false);
   void drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * maxc, bool copyToTex, bool forceFinish, bool getVoro = false, bool getBlockHolders = false);
   void updateLimbTBOData (bool showLimbs);
   void drawPrim (bool doSphereMap, bool doTer, bool doPoly);
@@ -2267,7 +2304,7 @@ public:
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void polyCombine ();
   void drawPolys (string fboName, int minPeel, int maxPeel);
-  void rastHolder (int rad, uint flags);
+  void rastChunk (int rad, uint flags);
   void renderGeom ();
   void updateMouseCoords (FIVector4 * fPixelWorldCoordsBase);
   float weighPath (float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean);
@@ -2275,7 +2312,6 @@ public:
   void initMap ();
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
-  void updateLights ();
   void rasterHolders (bool doShadow);
   void rasterGrid (VBOGrid * vboGrid, bool showResults);
   void renderDebug ();

@@ -37,7 +37,8 @@ void ThreadPoolWrapper::funcTP (int threadId)
 		
 		curHolder = singleton->gw->getHolderAtId(
 			threadPool[threadId].threadDataInt[1],
-			threadPool[threadId].threadDataInt[2]
+			threadPool[threadId].threadDataInt[2],
+			threadPool[threadId].threadDataInt[3]
 		);
 		
 		switch(threadPool[threadId].threadDataInt[0]) {
@@ -74,7 +75,7 @@ bool ThreadPoolWrapper::stopTP (int threadId)
                                   {
 		
 		GamePageHolder* curHolder;
-		GameBlock* curBlock;
+		GameChunk* curChunk;
 		
 		bool didStop = false;
 		if (threadPool[threadId].threadRunning) {
@@ -88,7 +89,8 @@ bool ThreadPoolWrapper::stopTP (int threadId)
 			
 			curHolder = singleton->gw->getHolderAtId(
 				threadPool[threadId].threadDataInt[1],
-				threadPool[threadId].threadDataInt[2]
+				threadPool[threadId].threadDataInt[2],
+				threadPool[threadId].threadDataInt[3]
 			);
 			
 			switch(threadPool[threadId].threadDataInt[0]) {
@@ -101,13 +103,13 @@ bool ThreadPoolWrapper::stopTP (int threadId)
 					//cout << "unlocking pdPool " << curHolder->curPD << "\n";
 					
 					curHolder->listGenerated = true;
-					curBlock = singleton->gw->getBlockAtId(curHolder->blockId);
+					curChunk = singleton->gw->getChunkAtId(curHolder->blockId,curHolder->chunkId);
 					
 					if (curHolder->listEmpty) {
 						
 					}
 					else {
-						curBlock->changeFlag = true;
+						curChunk->changeFlag = true;
 					}
 					
 					
@@ -152,7 +154,8 @@ bool ThreadPoolWrapper::startThread ()
 		
 		GamePageHolder* curHolder = singleton->gw->getHolderAtId(
 			threadPool[curId].threadDataInt[1],
-			threadPool[curId].threadDataInt[2]
+			threadPool[curId].threadDataInt[2],
+			threadPool[curId].threadDataInt[3]
 		);
 		
 		curHolder->lockWrite = true;

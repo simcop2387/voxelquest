@@ -19,6 +19,8 @@ uniform vec3 lightPos;
 uniform bool testOn3;
 // uniform vec3 minBounds;
 // uniform vec3 maxBounds;
+uniform float cellsPerChunk;
+uniform vec2 shadowBias;
 uniform vec3 lookAtVec;
 uniform int iNumSteps;
 uniform float voxelsPerCell;
@@ -64,12 +66,12 @@ float offV[2] = float[](
 );
 
 float minRad[2] = float[](
-  2.0,
-  4.0
+  1.0,
+  16.0
 );
 float maxRad[2] = float[](
-  16.0,
-  32.0
+  32.0,
+  128.0
 );
 
 
@@ -244,6 +246,23 @@ float calcAO(vec2 texc, vec3 worldPosition, vec3 normVec) {
 
 //bool globBool;
 
+
+float getGrid(vec3 worldPosition) {
+  float cellSize = cellsPerChunk;
+  vec3 grid0 = 
+      //floor(worldPosition.xyz/cellSize);
+      abs(mod(worldPosition.xyz, cellSize) - cellSize / 2.0) * 2.0;
+  
+  float unitBuf = (cellSize - cellSize/32.0);
+  
+  float gridVal0 = float(
+      (grid0.x >= unitBuf) ||
+      (grid0.y >= unitBuf)
+  );
+  
+  return gridVal0;
+}
+
 float calcShadow(vec4 worldPos, vec4 worldPosInLightSpace, vec3 normVec)
 {
     // perform perspective divide
@@ -259,8 +278,8 @@ float calcShadow(vec4 worldPos, vec4 worldPosInLightSpace, vec3 normVec)
     //projCoords.z *= 0.5;
     float currentDepth = distance(lightPos.xyz,worldPos.xyz);//projCoords.z;
     // Calculate bias (based on depth map resolution and slope)
-    float bias = max(0.3 * (1.0 - dot(normVec, lightVec)), 0.05)*4.0;
-    currentDepth += bias;
+    float bias = clamp((dot(normVec, lightVec)+1.0)*0.5,0.0,1.0);
+    currentDepth += mix(shadowBias.x, shadowBias.y, 1.0-bias);
     
     
     // Check whether current frag pos is in shadow
@@ -347,13 +366,13 @@ void main() {
     lightVal *= shadowVal;
     
     lightRes = 
-      mix(
+      clamp(mix(
         (aoVal)*0.25 + lightVal*0.1,lightVal,lightVal  
-      ) 
+      ),0.0,1.0) 
     ;
     
     matVals = vec4(0.0,0.0,pack16(curMat));
-    finalCol = unpackColor(matVals.ba,lightRes) + getModCol(lightRes, tex1.xyz)*0.25;//(lightVal*0.25+0.25);
+    finalCol = unpackColor(matVals.ba*vec2(aoVal,1.0),lightRes) + getModCol(lightRes, tex1.xyz)*0.25;//(lightVal*0.25+0.25);
     
     
     // screenPos = worldToScreen(vec4(tex0.xyz,1.0));
@@ -371,7 +390,7 @@ void main() {
     
     
     finalCol = mix(
-      finalCol,//mix(finalCol*0.25,finalCol,shadowVal),
+      finalCol,//+getGrid(tex0.xyz)*vec3(1.0,0.0,1.0),//mix(finalCol*0.25,finalCol,shadowVal),
       fogCol,
       fogDis
     );

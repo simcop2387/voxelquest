@@ -93,19 +93,20 @@ void main() {
     vec2 tc;
     
     float voxelWidth = 0.5/voxelsPerCell;
+    float resWidth = 0.0;
     float camDis = 0.0;
     
     
-    vec3 voxelMod1 = vec3(voxelWidth);
-    vec3 voxelMod2 = vec3(voxelWidth);
-    vec3 vm = vec3(voxelMod1);
-    voxelMod2.z *= 8.0;
+    // vec3 voxelMod1 = vec3(voxelWidth);
+    // vec3 voxelMod2 = vec3(voxelWidth);
+    // vec3 vm = vec3(voxelMod1);
+    //voxelMod2.z *= 8.0;
     
     
     // int radh = int(hvRad.x);
     // int radv = int(hvRad.y);
     
-    
+    float mipLevel;
     float bestDis = 99999.0;
     float testDis = 0.0;
     
@@ -142,7 +143,10 @@ void main() {
             //     vm = voxelMod1;
             // }
             
-            boxVal = aabbIntersect(ro,rd,samp.xyz-voxelWidth,samp.xyz+vm);
+            mipLevel = 
+            resWidth = pow(2.0,samp.w)*voxelWidth;
+            
+            boxVal = aabbIntersect(ro,rd,samp.xyz-resWidth,samp.xyz+resWidth);
             
             if (boxVal.x <= boxVal.y) {
                 camDis = distance(cameraPos.xyz,samp.xyz);

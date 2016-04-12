@@ -9,13 +9,23 @@
 
 
 #define E_CONST(DDD) \
-DDD(E_CONST_MAX_BLOCK_TICKS) \
+DDD(E_CONST_MIPDIS0) \
+DDD(E_CONST_MIPDIS1) \
+DDD(E_CONST_MIPDIS2) \
+DDD(E_CONST_MIPDIS3) \
+DDD(E_CONST_MIPDIS4) \
+DDD(E_CONST_MIPDIS5) \
+DDD(E_CONST_MIPDIS6) \
+DDD(E_CONST_MIPDIS7) \
+DDD(E_CONST_SHADOWBIASMIN) \
+DDD(E_CONST_SHADOWBIASMAX) \
+DDD(E_CONST_MAX_CHUNK_TICKS) \
 DDD(E_CONST_MAX_HOLDER_GEN) \
 DDD(E_CONST_MAX_CLIPDIST) \
 DDD(E_CONST_LIGHTTHRESH) \
 DDD(E_CONST_LIGHTORTHOSIZE) \
 DDD(E_CONST_LIGHTDIS) \
-DDD(E_CONST_RASTER_HOLDER_RAD) \
+DDD(E_CONST_RASTER_CHUNK_RAD) \
 DDD(E_CONST_VOXEL_NORM_RAD) \
 DDD(E_CONST_CELL_AO_RAD) \
 DDD(E_CONST_GROWPOINTSTEPS) \
@@ -120,6 +130,24 @@ enum E_PERFORMANCE_PROFILE {
 };
 
 enum E_CACHE_METADATA {
+	E_CMD_MIPMIN_0,
+	E_CMD_MIPMAX_0,
+	
+	E_CMD_MIPMIN_1,
+	E_CMD_MIPMAX_1,
+	
+	E_CMD_MIPMIN_2,
+	E_CMD_MIPMAX_2,
+	
+	E_CMD_MIPMIN_3,
+	E_CMD_MIPMAX_3,
+	
+	E_CMD_MIPMIN_4,
+	E_CMD_MIPMAX_4,
+	
+	E_CMD_MIPMIN_5,
+	E_CMD_MIPMAX_5,
+	
 	E_CMD_VERSION,
 	E_CMD_SIZEINFLOATS,
 	E_CMD_LENGTH
@@ -178,6 +206,12 @@ enum E_VOCAB_TYPE {
 	E_VCT_VARIABLE,
 	E_VCT_PREDICATE,
 	E_VCT_LENGTH
+};
+
+
+struct VIStruct {
+	std::vector<float> vertexVec; //btScalar
+	std::vector<uint> indexVec; //unsigned short
 };
 
 struct FluidPlane {
@@ -1375,9 +1409,11 @@ struct ConnectingNodeStruct {
 	float dist;
 	
 	int blockIdFrom;
+	int chunkIdFrom;
 	int holderIdFrom;
 	
 	int blockIdTo;
+	int chunkIdTo;
 	int holderIdTo;
 	
 	int groupIdFrom;
@@ -1427,11 +1463,17 @@ struct PathResult {
 	ConnectingNodeStruct conNode;
 	
 	int blockId;
+	int chunkId;
 	int holderId;
-	int groupId;
 	
 	int lastBlockId;
+	int lastChunkId;
 	int lastHolderId;
+	
+	int groupId;
+	
+	
+	
 	int lastGroupId;
 	
 	int lastIndex;
@@ -1820,6 +1862,14 @@ struct intPair {
 	int v1;
 };
 
+struct intTrip {
+	int v0; // blockId
+	int v1; // chunkId
+	int v2; // holderId
+};
+
+
+
 bool operator==(const intPair& lhs, const intPair& rhs)
 {
     return (lhs.v0 == rhs.v0)&&(lhs.v1==rhs.v1);
@@ -1854,9 +1904,49 @@ bool operator<(const intPair& lhs, const intPair& rhs)
 	return (lhs2) < (rhs2);
 }
 
-struct intPairVec {
-	std::vector<intPair> data;	
-};
+
+
+
+
+bool operator==(const intTrip& lhs, const intTrip& rhs)
+{
+    return (lhs.v0 == rhs.v0)&&(lhs.v1==rhs.v1)&&(lhs.v2 == rhs.v2);
+}
+
+bool operator>(const intTrip& lhs, const intTrip& rhs)
+{
+
+	if (lhs.v0 == rhs.v0) {
+		if (lhs.v1 == rhs.v1) {
+			return lhs.v2 > rhs.v2;
+		}
+		else {
+			return lhs.v1 > rhs.v1;
+		}
+	}
+	else {
+		return lhs.v0 > rhs.v0;
+	}
+	
+}
+
+bool operator<(const intTrip& lhs, const intTrip& rhs)
+{
+  
+  if (lhs.v0 == rhs.v0) {
+  	if (lhs.v1 == rhs.v1) {
+  		return lhs.v2 < rhs.v2;
+  	}
+  	else {
+  		return lhs.v1 < rhs.v1;
+  	}
+  }
+  else {
+  	return lhs.v0 < rhs.v0;
+  }
+}
+
+
 struct intVec {
 	std::vector<int> data;	
 };
