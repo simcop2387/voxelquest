@@ -14,7 +14,8 @@ uniform sampler3D Texture4;
 // shadowMapFBO
 uniform sampler2D Texture5;
 
-
+uniform vec3 brushCol;
+uniform vec4 brushPos;
 uniform vec3 lightPos;
 uniform bool testOn3;
 // uniform vec3 minBounds;
@@ -35,6 +36,9 @@ uniform mat4 modelviewInverse;
 uniform mat4 lightSpaceMatrix;
 
 ^INCLUDE:MATERIALS^
+
+^INCLUDE:RayFuncs^
+
 
 
 
@@ -315,8 +319,16 @@ void main() {
   //globBool = false;
 
   vec4 oneVec = vec4(1.0);
+  
+  
 
   vec2 TexCoord0 = gl_FragCoord.xy/(bufferDim.xy);
+  vec3 ro = vec3(0.0);
+  vec3 rd = vec3(0.0);
+  getRay(TexCoord0,ro,rd);
+  
+  float camDis = clipDist.y;
+  
   vec4 tex0 = texture(Texture0,TexCoord0.xy);
   vec4 tex1 = texture(Texture1,TexCoord0.xy);
   
@@ -334,7 +346,7 @@ void main() {
     return;
   }
   
-
+  vec3 oldCol = vec3(0.0);
   
   vec4 shadowSamp = vec4(0.0);
   vec4 screenPos = vec4(0.0);
@@ -372,7 +384,22 @@ void main() {
     ;
     
     matVals = vec4(0.0,0.0,pack16(curMat));
-    finalCol = unpackColor(matVals.ba*vec2(aoVal,1.0),lightRes) + getModCol(lightRes, tex1.xyz)*0.25;//(lightVal*0.25+0.25);
+    finalCol = unpackColor(matVals.ba*vec2(aoVal,1.0),lightRes);
+    
+    oldCol = finalCol;
+    
+    finalCol = mix(finalCol*0.5,finalCol,aoVal);
+    
+    finalCol = sqrt(finalCol);
+    
+    finalCol = mix(finalCol*finalCol*finalCol,finalCol,finalCol);
+    
+    finalCol += getModCol(lightRes, tex1.xyz)*0.5;//(lightVal*0.25+0.25);
+    
+    // if (distance(matVals.a,TEX_GRASS) < 0.5/255.0) {
+    //   finalCol *= aoVal;
+    // }
+    
     
     
     // screenPos = worldToScreen(vec4(tex0.xyz,1.0));
@@ -388,6 +415,7 @@ void main() {
     
     //finalCol.r += shadowVal;
     
+    camDis = distance(cameraPos.xyz,tex0.xyz);
     
     finalCol = mix(
       finalCol,//+getGrid(tex0.xyz)*vec3(1.0,0.0,1.0),//mix(finalCol*0.25,finalCol,shadowVal),
@@ -409,6 +437,24 @@ void main() {
     }
   }
   
+  vec2 boxVal;
+  vec3 boxPos;
+  float camDisBox;
+  
+  if (brushPos.w == 0.0) {
+    
+  }
+  else {
+    boxVal = aabbIntersect(ro,rd,brushPos.xyz-brushPos.w,brushPos.xyz+brushPos.w);
+    if (boxVal.x <= boxVal.y) {
+      boxPos = ro + rd*boxVal.x;
+      camDisBox = distance(cameraPos.xyz,boxPos.xyz);
+      
+      if (camDisBox < camDis) {
+        finalCol = mix(finalCol,brushCol,0.5);
+      }
+    }
+  }
   
 
   //mod(tex.xyz+0.01,1.0);

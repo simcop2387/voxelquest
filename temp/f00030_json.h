@@ -44,6 +44,8 @@ class JSONValue
 		
 		bool HasChild(string name) const;
 		JSONValue *Child(string name);
+		
+		void RemoveChild(string name);
 
 		std::string Stringify(int curLev) const;
 
@@ -655,6 +657,8 @@ bool JSONValue::HasChild(int index) const
 	}
 }
 
+
+
 /**
  * Retrieves the child of this JSONValue at the given index.
  * Use IsArray() before using this method.
@@ -736,6 +740,36 @@ bool JSONValue::HasChild(string name) const
 		return false;
 	}
 }
+
+void JSONValue::RemoveChild(string name)
+{
+	// JSONObject::const_iterator it = object_value.find(name);
+	// if (it != object_value.end()) {
+	// 	object_value.erase(it);
+	// 	return true;
+	// }
+	// else {
+	// 	return false;
+	// }
+	
+	if (object_value.find(name.c_str()) != object_value.end()) {
+		object_value.erase(name);
+	}
+	
+	
+	
+	// if (type == JSONType_Object)
+	// {
+	// 	if ( object_value.find(name.c_str()) != object_value.end() ) {
+	// 		object_value.erase(name.c_str());
+	// 	}
+	// }
+	// else
+	// {
+	// 	return false;
+	// }
+}
+
 
 /**
  * Retrieves the child of this JSONValue at the given key.

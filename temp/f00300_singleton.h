@@ -9,6 +9,8 @@ bool Singleton::CompareStruct::operator () (string const & first, string const &
 	    }
 Singleton::Singleton ()
         {
+
+		
 		gamePhysics = NULL;
 		allInit = false;
 		
@@ -47,6 +49,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		RUN_COUNT = 0;
 		TEMP_DEBUG = false;
 		
+		
 		initNetMasks();
 		
 		
@@ -57,6 +60,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		updateCurCacheLoc();
 		loadCacheMetaData();
 
+		
+
+		threadPoolSpeech = new ThreadPoolWrapper();
+		threadPoolSpeech->init(this, MAX_THREADS, false||SINGLE_THREADED);
 		
 		if (DO_RANDOMIZE) {
 			// todo: get rid of this for random seeds, causes desync
@@ -165,14 +172,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		sphereMapOn = false;
 		waitingOnDestruction = false;
 		
-		physicsOn = true;
+		
 		isPressingMove = false;
-		fxaaOn = false;
 		doPathReport = false;
 		refreshPaths = false;
 		placingTemplate = true;
 		smoothMove = true;
-		waterBulletOn = false;
 		ignoreFrameLimit = false;
 		autoMove = false;
 		inputOn = false;
@@ -301,8 +306,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		bShift = false;
 		emptyVDNotReady = true;
 		firstRun = true;
-		waterOn = (MAX_LAYERS == 2);
-		treesOn = true;
 		rotOn = false;
 		markerFound = false;
 		doPageRender = true;
@@ -371,14 +374,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		tempCounter = 0;
 		actorCount = 0;
 		polyCount = 0;
-		fpsCountMax = 1000;
+		fpsCountMax = 500;
 		
 		fpsTest = false;
-		pathfindingOn = false;
-		pathfindingGen = false;
-		pathfindingTestOn = false;
-		updateHolders = true;
-		updateFluid = false;
 		
 		maxHolderDis = 32;
 		heightOfNearPlane = 1.0f;
@@ -607,28 +605,60 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
-		radiosityOn = true;
-		testOn = false;
-		testOn2 = false;
-		testOn3 = false;
+
+		settings[E_BS_DEBUG_VIEW] = false;
+		settings[E_BS_VSYNC] = true;
+		settings[E_BS_RENDER_OCT_BOUNDS] = false;
+		settings[E_BS_RENDER_VOXELS] = false;
+		settings[E_BS_SHOW_GRID] = false;
+		settings[E_BS_FOG] = true;
+		settings[E_BS_PHSYICS] = true;
+		settings[E_BS_FXAA] = false;
+		settings[E_BS_WATER_BULLET] = false;
+		settings[E_BS_PATH_FINDING] = false;
+		settings[E_BS_PATH_FINDING_GEN] = false;
+		settings[E_BS_PATH_FINDING_TEST] = false;
+		settings[E_BS_TEST_1] = false;
+		settings[E_BS_TEST_2] = false;
+		settings[E_BS_TEST_3] = false;
+		settings[E_BS_WATER] = true;
+		settings[E_BS_TREES] = true;
+		settings[E_BS_UPDATE_HOLDERS] = true;
+		settings[E_BS_PLACING_PATTERN] = false;
+		settings[E_BS_DRAW_TARG_PATHS] = false;
+		settings[E_BS_UPDATE_FLUID] = false;
+		settings[E_BS_RADIOSITY] = true;
+		settings[E_BS_DESTROY_TERRAIN] = false;
+		settings[E_BS_TURN_BASED] = false;
+		settings[E_BS_MIRROR_POSE] = true;
+		settings[E_BS_COMBAT] = false;
+		settings[E_BS_EDIT_POSE] = false;
+		settings[E_BS_SHOW_HEALTH] = false;
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		commandOn = false;
+		
 		updateLock = false;
 		traceOn = false;
 		frameMouseMove = false;
 		depthInvalidMove = true;
 		lastDepthInvalidMove = true;
 		depthInvalidRotate = true;
-		drawTargPaths = false;
-		renderingOct = false;
-		renderingOctBounds = false;
-		commandOn = false;
-		vsyncOn = true;
+		
+		
+		forceShadowUpdate = 0;
 		updateShadows = false;
-		debugViewOn = false;
 		lightChanged = false;
 		updateHolderLookat = true;
-		placingPattern = false;
-		gridOn = false;
-		fogOn = 1.0f;
 		cameraZoom = 1.0f;
 		targetZoom = cameraZoom;
 		
@@ -1394,6 +1424,25 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 
+	}
+bool Singleton::speak (string speechString)
+                                        {
+			
+		bool v1 = threadPoolSpeech->anyRunning();
+		
+		threadPoolSpeech->intData[0] = E_TT_SPEECH;
+		threadPoolSpeech->stringData[0] = speechString;
+		
+		if (threadPoolSpeech->startThread()) {
+			
+		}
+		else {
+			return false;
+		}
+		
+		return true;
+		
+		
 	}
 void Singleton::applyPat (int patInd, int patShape, int rot, int x, int y, int val, int rad)
           {
@@ -2396,11 +2445,11 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 				//pathfindingOn = curValue != 0.0f;
 			}
 			else if (comp->uid.compare("$charEdit.editPose") == 0) {
-				gem->editPose = curValue != 0.0f;
-				EDIT_POSE = gem->editPose;
+				settings[E_BS_EDIT_POSE] = curValue != 0.0f;
+				EDIT_POSE = settings[E_BS_EDIT_POSE];
 			}
 			else if (comp->uid.compare("$charEdit.mirrorOn") == 0) {
-				gem->mirrorOn = curValue != 0.0f;
+				settings[E_BS_MIRROR_POSE] = curValue != 0.0f;
 			}
 			else if (comp->uid.compare("$charEdit.applyToChildren") == 0) {
 				applyToChildren = curValue != 0.0f;
@@ -2764,6 +2813,7 @@ Singleton::~ Singleton ()
 		// stopAllThreads();
 		
 		cout << "End Program\n";
+		
 		
 		if (gw)
 		{
@@ -4040,7 +4090,7 @@ void Singleton::moveObject (float dx, float dy)
 		if (
 			(gem->orgOn) && 
 			(gem->activeNode != NULL) &&
-			gem->editPose
+			settings[E_BS_EDIT_POSE] 
 		) {
 			gem->applyNodeChanges(gem->activeNode, dx, dy);
 		}
@@ -4096,7 +4146,7 @@ void Singleton::moveObject (float dx, float dy)
 					
 					if (
 						rbDown
-						//&&( (gem->getCurActor()==NULL) || (gem->editPose)	)
+						//&&( (gem->getCurActor()==NULL) || settings[E_BS_EDIT_POSE] 	)
 					) {
 						
 						camRotation[0] -= dx*0.01f;
@@ -4316,6 +4366,33 @@ void Singleton::holderReport ()
 			
 		}
 	}
+void Singleton::speakSetting (int settingName)
+                                           {
+		string speakString = makePretty(E_BOOL_SETTING_STRINGS[settingName],"E_BS_");
+		
+		if (settings[settingName]) {
+			speakString += " on  ";
+		}
+		else {
+			speakString += " off  ";
+		}
+		
+		speak(speakString);
+	}
+void Singleton::toggleSetting (int settingName, bool withVoice)
+                                                                   {
+		settings[settingName] = !(settings[settingName]);
+		if (withVoice) {
+			speakSetting(settingName);
+		}
+	}
+void Singleton::setSetting (int settingName, bool value, bool withVoice)
+                                                                            {
+		settings[settingName] = value;
+		if (withVoice) {
+			speakSetting(settingName);
+		}
+	}
 void Singleton::resetGeom ()
                          {
 		int i;
@@ -4383,8 +4460,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				switch (key) {
 					
 					case 'd':
-						debugViewOn = !debugViewOn;
-						cout << "debugViewOn " << debugViewOn << "\n";
+						toggleSetting(E_BS_DEBUG_VIEW);
 					break;
 					case 's':
 						stopAllThreads();
@@ -4412,16 +4488,19 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						gw->clearAllHolders();
 					break;
 					case 'v':
-						vsyncOn = !vsyncOn;
-						cout << "vsyncOn " << vsyncOn << "\n";
-						myDynBuffer->setVsync(vsyncOn);
+						toggleSetting(E_BS_VSYNC);
+						myDynBuffer->setVsync(settings[E_BS_VSYNC]);
 					break;
 					case 'f':
-						cout << "start FPS timer\n";
+						speak("start FPS timer");
+						
 						myDynBuffer->setVsync(false);
 						fpsTest = true;
 						fpsCount = 0;
 						fpsTimer.start();
+					break;
+					default:
+						speak("cancel command");
 					break;
 				}
 				
@@ -4476,7 +4555,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 							break;
 						}
 					
-						if (updateHolders) {
+						if (settings[E_BS_UPDATE_HOLDERS]) {
 							getMarkerPos(x, y);
 							gem->placeNewEnt(gameNetwork->isConnected,tempType,&lastCellPos);
 							
@@ -4502,7 +4581,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 					
 					case '9':
-						renderingOctBounds = !renderingOctBounds;
+						toggleSetting(E_BS_RENDER_OCT_BOUNDS);
 					break;
 					case '/':
 						//gameOct->captureBuffer(true);
@@ -4510,7 +4589,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						//gameOct->updateVBO();
 					break;
 					case '*':
-						//renderingOct = !renderingOct;
+						
 					break;
 					case '-':
 						//gameOct->modRenderLevel(-1);
@@ -4569,28 +4648,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 
 					case 'u':
-						
-						// if (updateHolders) {
-						// 	if (pathfindingOn) {
-						// 		updateHolders = false;
-						// 		pathfindingOn = false;
-						// 	}
-						// 	else {
-						// 		pathfindingOn = true;
-						// 	}
-						// }
-						// else {
-						// 	updateHolders = true;
-						// }
-					
-						updateHolders = !updateHolders;
-						//pathfindingGen = updateHolders;
-						
-						
-						cout << "\n";
-						cout << "updateHolders " << updateHolders << "\n";
-						
-						
+						toggleSetting(E_BS_UPDATE_HOLDERS);
 						
 					break;
 					
@@ -4643,7 +4701,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						
 						
 					
-						//radiosityOn = !radiosityOn;
+						//toggleSetting(E_BS_RADIOSITY);
 						break;
 
 
@@ -4683,8 +4741,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 					case 'j':
 					
-						pathfindingTestOn = !pathfindingTestOn;
-						cout << "pathfindingTestOn: " << pathfindingTestOn << "\n";
+						toggleSetting(E_BS_PATH_FINDING_TEST);
 					
 						//gem->resetActiveNode();
 					
@@ -4704,10 +4761,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 					case 'G':
 					
-						
-					
-						gridOn = !gridOn;
-						cout << "Grid On: " << gridOn << "\n";
+						toggleSetting(E_BS_SHOW_GRID);
 
 						break;
 
@@ -4744,8 +4798,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 					
 					case 'k':
-						gem->destroyTerrain = !(gem->destroyTerrain);
-						cout << "destroyTerrain: " << gem->destroyTerrain << "\n";
+						toggleSetting(E_BS_DESTROY_TERRAIN);
 						//gameAI->getKB();
 					break;
 					
@@ -4760,8 +4813,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						break;
 
 					case ';':
-						physicsOn = !physicsOn;
-						cout << "physicsOn: " << physicsOn << "\n";
+						toggleSetting(E_BS_PHSYICS);
 					break;
 					case 'p':
 					
@@ -4774,8 +4826,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 					case 'P':
 					
-						placingPattern = !placingPattern;
-						cout << "placingPattern: " << placingPattern << "\n";
+						toggleSetting(E_BS_PLACING_PATTERN);
 					
 						//toggleFullScreen();
 					break;
@@ -4800,7 +4851,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						//gameFluid[E_FID_SML]->updateTBOData(false,true);
 						//gameFluid[E_FID_BIG]->updateTBOData(false,true);
 						
-						gem->showHealth = !(gem->showHealth);
+						toggleSetting(E_BS_SHOW_HEALTH);
 						
 						break;
 						
@@ -4808,28 +4859,13 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						// throw
 					break;
 					case 'T':
-						//testOn = !testOn;
-						testOn3 = !testOn3;
-						cout << "testOn3 " << testOn3 << "\n";
+						toggleSetting(E_BS_TEST_3);
 					break;
 					case 't':
 					
 						
-
-						//testOn2 = !testOn2;
-						//testOn3 = !testOn3;
-						renderingOct = !renderingOct;
-						if (renderingOct) {
-						//	gw->updateTBOPool(5);
-						}
+						toggleSetting(E_BS_RENDER_VOXELS);
 						
-						// if (renderingOct) {
-						// 	gameLogic->threadPoolList->stopAll();
-						// 	gameLogic->threadPoolPath->stopAll();
-						// }
-						
-						
-						//pathfindingTestOn = !pathfindingTestOn;
 						
 					break;
 					// case 'o':
@@ -4893,20 +4929,14 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 					case 'c':
 					
-						cout << "command:\n";	
-						
-						// gem->setTurnBased(!(gem->turnBased));
-						// gem->combatOn = (gem->turnBased);
-						// gridOn = gem->combatOn;
+						speak("command");
+						//toggleSettings(E_BS_TURN_BASED);
 						
 						commandOn = true;
 						
 						
 						
-						//gem->combatOn = !(gem->combatOn);
-						//cout << "gem->combatOn " << gem->combatOn << "\n";
-						
-						
+						//toggleSetting(E_BS_COMBAT);
 						//setCameraToElevation();
 					
 						//doShaderRefresh(bakeParamsOn);
@@ -4914,11 +4944,11 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						break;
 						
 					case 'v':
+						
 						gem->togglePoseEdit();
 						
 						
-						//waterBulletOn = !waterBulletOn;
-						//gw->toggleVis(selectedEnts.getSelectedEnt());
+						//toggleSettings(E_BS_WATER_BULLET);
 						break;
 						
 					case 'V':
@@ -4927,23 +4957,19 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 
 					case 'X':
-						//fogOn = 1.0 - fogOn;
-						//cout << "fog on " << fogOn << "\n";
+						//toggleSetting(E_BS_FOG);
 						gem->changePose(-1);
 						break;
 						
 					case 'x':
 						gem->changePose(1);
 						
-						//fxaaOn = !fxaaOn;
-						//cout << "fxaaOn " << fxaaOn << "\n";
+						//toggleSetting(E_BS_FXAA);
 						break;
 
 					case 'm':
 
-
-						gem->mirrorOn = !gem->mirrorOn;
-						cout << "gem->mirrorOn " << gem->mirrorOn << "\n";
+						toggleSetting(E_BS_MIRROR_POSE);
 						
 						// doPathReport = true;
 
@@ -4998,7 +5024,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				}
 				
 				
-				if (gem->turnBased&&(gem->getCurActor() != NULL)) {
+				if (settings[E_BS_TURN_BASED]&&(gem->getCurActor() != NULL)) {
 					switch(key) {
 						case 'a':
 							
@@ -5047,7 +5073,14 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj)
         {
 
-		
+		if (
+			(_xv <= 0) ||
+			(_xv >= origWinW) ||
+			(_yv <= 0) ||
+			(_yv >= origWinH)
+		) {
+			return;
+		}
 
 		if (fpsTest) {
 			return;
@@ -5070,6 +5103,7 @@ void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUp
 		else {
 			fbow = getFBOWrapper("solidTargFBO", 0);
 		}
+		
 		
 		float srcW = fbow->width;
 		float srcH = fbow->height;
@@ -5479,7 +5513,7 @@ void Singleton::mouseMove (int _x, int _y)
 		{
 			
 			// if (
-			// 	(gem->getCurActor() != NULL) && (!gem->editPose)	
+			// 	(gem->getCurActor() != NULL) && (!(settings[E_BS_EDIT_POSE]))	
 			// ) {
 			// 	camRotation[0] -= dx*0.02f;
 			// 	camRotation[1] += dy*0.02f;
@@ -5488,7 +5522,7 @@ void Singleton::mouseMove (int _x, int _y)
 			
 			
 
-			if ( placingPattern||placingGeom||RT_TRANSFORM||gem->editPose||pathfindingTestOn||(mouseState != E_MOUSE_STATE_MOVE)) {
+			if ( settings[E_BS_PLACING_PATTERN]||placingGeom||RT_TRANSFORM||settings[E_BS_EDIT_POSE]||settings[E_BS_PATH_FINDING_TEST]||(mouseState != E_MOUSE_STATE_MOVE)) {
 			//if (true) {
 				getPixData(&mouseMovePD, x, y, false, false);
 				getPixData(&mouseMoveOPD, x, y, true, true);
@@ -5497,7 +5531,7 @@ void Singleton::mouseMove (int _x, int _y)
 
 			gw->updateMouseCoords(&mouseMovePD);
 			
-			if (pathfindingTestOn) {
+			if (settings[E_BS_PATH_FINDING_TEST]) {
 				
 				if (gameLogic->getClosestPathRad(mouseMovePD.getBTV(), closestHolder) > -1) {
 					
@@ -5516,7 +5550,7 @@ void Singleton::mouseMove (int _x, int _y)
 
 			if (
 				gem->orgOn &&
-				gem->editPose
+				settings[E_BS_EDIT_POSE]
 				&& (!ddVis)
 			) {
 				gem->updateNearestOrgNode(false, &mouseMovePD);
@@ -5724,7 +5758,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 					bCtrl
 				);
 				gem->makeSwing(gem->getCurActor()->uid, RLBN_LEFT);
-				if (gem->turnBased) {gem->endHumanTurn();}
+				if (settings[E_BS_TURN_BASED]) {gem->endHumanTurn();}
 				return;
 			}
 			if (rbClicked) {
@@ -5736,7 +5770,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 					bCtrl
 				);
 				gem->makeSwing(gem->getCurActor()->uid, RLBN_RIGT);
-				if (gem->turnBased) {gem->endHumanTurn();}
+				if (settings[E_BS_TURN_BASED]) {gem->endHumanTurn();}
 				return;
 			}
 			
@@ -5854,7 +5888,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 							if (noTravel) {
 								
 								
-								if (pathfindingTestOn) {
+								if (settings[E_BS_PATH_FINDING_TEST]) {
 									
 									pathFindingStep++;
 									
@@ -6022,7 +6056,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 			
 			if (
 				gem->orgOn &&
-				gem->editPose
+				settings[E_BS_EDIT_POSE]
 				&& (!ddVis)
 				
 			) {
@@ -6064,6 +6098,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 						if (abClicked) {
 							//gameFluid[E_FID_SML]->pushModifyUnit(true, &mouseUpPD, buttonInt, earthMod, curBrushRad);
 							gameFluid[E_FID_BIG]->pushModifyUnit(true, &mouseUpPD, buttonInt, earthMod, curBrushRad);
+							gameFluid[E_FID_BIG]->flushStacks();
 							forceGetPD = true;
 						}
 						
@@ -6203,7 +6238,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 			return;
 		}
 		
-		if (gem->turnBased) {
+		if (settings[E_BS_TURN_BASED]) {
 			return;
 		}
 		
@@ -6288,7 +6323,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 						
 					);
 					
-					if (!gem->editPose) {
+					if (!settings[E_BS_EDIT_POSE]) {
 						gem->makeTurn(actorId, deltaAng*16.0f);
 					}
 				}
@@ -6598,7 +6633,7 @@ void Singleton::explodeBullet (BaseObj * ge)
 		newPos.setBTV(ge->getCenterPoint(E_BDG_CENTER));
 		newPos.addXYZ(0.0f,0.0f,-2.0f);
 		
-		if (waterBulletOn) {
+		if (settings[E_BS_WATER_BULLET]) {
 			playSoundEnt(
 				"bubble0",
 				ge,
@@ -6624,8 +6659,8 @@ void Singleton::explodeBullet (BaseObj * ge)
 		sphereStack.back().radAcc = -5.0f;
 		
 		
-		//gameFluid[E_FID_SML]->pushExplodeBullet(true,&newPos,boolToInt(waterBulletOn));
-		gameFluid[E_FID_BIG]->pushExplodeBullet(true,&newPos,boolToInt(waterBulletOn),explodeRad);
+		//gameFluid[E_FID_SML]->pushExplodeBullet(true,&newPos,boolToInt(settings[E_BS_WATER_BULLET]));
+		gameFluid[E_FID_BIG]->pushExplodeBullet(true,&newPos,boolToInt(settings[E_BS_WATER_BULLET]),explodeRad);
 		
 		explodeStack.push_back(ExplodeStruct());
 		
@@ -7696,8 +7731,16 @@ std::ifstream::pos_type Singleton::filesize (char const * filename)
 	    std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
 	    return in.tellg();
 	}
-bool Singleton::checkCacheEntry (int blockId, int chunkId, int holderId)
-                                                                     {
+bool Singleton::checkCacheEntry (int blockId, int chunkId, int holderId, bool doErase)
+                                                                                           {
+		
+		if (DO_CACHE) {
+			
+		}
+		else {
+			return false;
+		}
+		
 		string entryName = "b" + i__s(blockId) + "c" + i__s(chunkId) + "h" + i__s(holderId);
 		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,chunkId,holderId);
 		
@@ -7709,6 +7752,9 @@ bool Singleton::checkCacheEntry (int blockId, int chunkId, int holderId)
 		}
 		
 		if (cacheMetaJS->Child("pages")->HasChild(entryName)) {
+			if (doErase) {
+				cacheMetaJS->Child("pages")->RemoveChild(entryName);
+			}
 			return true;
 		}
 		
@@ -8129,22 +8175,19 @@ void Singleton::updateAmbientSounds ()
 void Singleton::checkFluid (GameFluid * gf)
                                        {
 		
-		//(getAvailPD() < MAX_PDPOOL_SIZE)
 		
-		if (updateHolders) {
-			
-		}
 		
+		
+		gameLogic->loadNearestHolders(settings[E_BS_UPDATE_HOLDERS]);
 		gw->rastChunk(iGetConst(E_CONST_RASTER_CHUNK_RAD), RH_FLAG_DOCHECK);
 		
-		gameLogic->loadNearestHolders(2, updateHolders);		
 		return;
 		
 		
 		
 		
 		
-		if ((!draggingMap)&&(!fpsTest)&&updateHolders) {
+		if ((!draggingMap)&&(!fpsTest)&&settings[E_BS_UPDATE_HOLDERS]) {
 			gf->updateAll();
 			
 			if (gf->fluidReading) {
@@ -8183,7 +8226,7 @@ void Singleton::checkFluid (GameFluid * gf)
 			
 			if (gf->cycleTerminated) {
 				
-				gameLogic->loadNearestHolders(2, updateHolders);
+				gameLogic->loadNearestHolders(settings[E_BS_UPDATE_HOLDERS]);
 				holderLoadCount++;
 				
 				if (holderLoadCount == MAX_HOLDER_LOAD_COUNT) {
@@ -8427,7 +8470,7 @@ void Singleton::frameUpdate (bool doFrameRender)
 						
 						
 						// if (true) { //doFrameRender
-						// 	if (renderingOct) {
+						// 	if (settings[E_BS_RENDER_VOXELS]) {
 						// 		//gw->renderOct(gameOct);
 						// 		//gw->rasterOct(gameOct,true);
 								
@@ -8459,7 +8502,7 @@ void Singleton::frameUpdate (bool doFrameRender)
 						// 	gw->generateBlockHolder();
 						// }
 						
-						if (gem->turnBased) {
+						if (settings[E_BS_TURN_BASED]) {
 							if (
 								((tbTicks%iGetConst(E_CONST_TURNBASED_TICKS)) == 0)
 								// || (gem->getCurActor() != NULL)
@@ -8659,7 +8702,7 @@ void Singleton::display (bool doFrameRender)
 				
 				gameLogic->applyBehavior();
 				
-				if (gem->turnBased) {
+				if (settings[E_BS_TURN_BASED]) {
 					
 				}
 				else {
@@ -8672,7 +8715,7 @@ void Singleton::display (bool doFrameRender)
 				handleMovement();
 				
 				
-				if (physicsOn) {
+				if (settings[E_BS_PHSYICS]) {
 					gamePhysics->updateAll();
 				}
 				
@@ -8721,7 +8764,7 @@ void Singleton::display (bool doFrameRender)
 				gem->isDraggingObject && 
 				(gem->draggingFromType != E_DT_NOTHING) &&
 				((curTime-mdTime) > 300) &&
-				(!gem->editPose)
+				(!settings[E_BS_EDIT_POSE])
 			) {
 				glutSetCursor(GLUT_CURSOR_CROSSHAIR);
 			
@@ -8781,6 +8824,7 @@ void Singleton::display (bool doFrameRender)
 				if (fpsCount == fpsCountMax) {
 					
 					fpsTest = false;
+					speak("end FPS timer");
 					cout << "\nNumber of voxels (in millions): " << milVox << "\n";
 					cout << "Available pdPool: " << getAvailPD() << "\n";
 					cout << "FPS: " << 1.0/(fpsTimer.getElapsedTimeInSec()/((double)(fpsCountMax))) << "\n";

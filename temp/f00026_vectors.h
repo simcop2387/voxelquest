@@ -338,6 +338,14 @@ public:
 	btVector3 getBTV() {
 		return btVector3(fv4.x,fv4.y,fv4.z);
 	}
+	
+	vec3 getVec3() {
+		return vec3(fv4.x,fv4.y,fv4.z);
+	}
+	ivec3 getIVec3() {
+		return ivec3(iv4.x,iv4.y,iv4.z);
+	}
+	
 	void setBTV(btVector3 myBTV) {
 		setFXYZ(myBTV.getX(), myBTV.getY(), myBTV.getZ());
 	}
@@ -3976,6 +3984,7 @@ public:
 	bool threadRunning; // thread is running (not exclusive)
 	
 	int threadDataInt[THREAD_DATA_COUNT];
+	string threadDataString[THREAD_DATA_COUNT];
 	
 	ThreadWrapper() {
 		
@@ -4375,10 +4384,30 @@ struct VoxelBuffer {
 	
 };
 
+enum E_OBJECT_STRUCT_DATA {
+	E_OSD_CENTER,
+	E_OSD_RADIUS,
+	E_OSD_VISMIN,
+	E_OSD_VISMAX,
+	E_OSD_CORNERDIS,
+	E_OSD_MATPARAMS,
+	E_OSD_LENGTH
+};
+
+
+
+struct ObjectStruct {
+	int64_t globalId;
+	vec3 data[E_OSD_LENGTH];
+	
+};
+
 struct PaddedData {
 	PaddedDataEntry* data;
 	vector<VectorI3> fillStack;
 	VoxelBuffer voxelBuffer;
+	
+	
 	
 	intTrip boundToHolder;
 	bool isFree;
@@ -4459,6 +4488,8 @@ struct TBOEntry {
 vec3 VORO_OFFSETS[27];
 
 vec3 BASE_NORMALS[64];
+
+
 
 // const static int VORO_PITCH = 16;
 // const static float VORO_VARIANCE = 0.25f;

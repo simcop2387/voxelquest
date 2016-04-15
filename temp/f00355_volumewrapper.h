@@ -14,6 +14,10 @@ void VolumeWrapper::init (int z, GLenum clampMethod, bool _isFloat, int filterTy
 		int ty = 0;
 		
 		switch (z) {
+			case 4:
+				tx = 8;
+				ty = 8;
+			break;
 			case 8:
 				tx = 32;
 				ty = 16;

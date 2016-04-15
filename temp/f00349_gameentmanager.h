@@ -30,15 +30,10 @@ void GameEntManager::init (Singleton * _singleton)
 		
 		takingTurn = true;
 		curActorNeedsRefresh = false;
-		destroyTerrain = false;
-		editPose = false;
-		EDIT_POSE = editPose;
-		combatOn = false;
-		mirrorOn = true;
+		EDIT_POSE = singleton->settings[E_BS_EDIT_POSE];
 		orgOn = false;
 		isDraggingObject = false;
 		firstPerson = false;
-		showHealth = false;
 		
 		lastSubjectDistance = 0.0f;
 		
@@ -178,7 +173,7 @@ void GameEntManager::refreshTurnList ()
 	}
 void GameEntManager::setTurnBased (bool newVal)
                                        {
-		turnBased = newVal;
+		singleton->setSetting(E_BS_TURN_BASED,newVal);
 		
 		int i;
 		int testInd;
@@ -200,11 +195,10 @@ void GameEntManager::setTurnBased (bool newVal)
 		
 		refreshTurnList();
 		
-		cout << "turnBased " << turnBased << "\n";
 	}
 void GameEntManager::checkActorRefresh ()
                                  {
-		if (curActorNeedsRefresh&&editPose) {
+		if (curActorNeedsRefresh&&singleton->settings[E_BS_EDIT_POSE]) {
 			refreshActor(getCurActorUID());
 			curActorNeedsRefresh = false;
 		}
@@ -254,12 +248,10 @@ bool GameEntManager::anyContainerOpen ()
 	}
 void GameEntManager::togglePoseEdit ()
                               {
-		editPose = !editPose;
-		EDIT_POSE = editPose;
+		singleton->toggleSetting(E_BS_EDIT_POSE);
+		EDIT_POSE = singleton->settings[E_BS_EDIT_POSE];
 		
-		cout << "editPose " << editPose << "\n";
-		
-		if (editPose) {
+		if (singleton->settings[E_BS_EDIT_POSE]) {
 			loadCurrentPose();
 		}
 	}
@@ -476,7 +468,7 @@ bool GameEntManager::handleGUI (UIComponent * comp, bool mouseUpEvent, bool mous
 							
 						}
 					}
-					else if (mouseDownEvent&&(!editPose)) {
+					else if (mouseDownEvent&&(!singleton->settings[E_BS_EDIT_POSE])) {
 						
 						isDraggingObject = true;
 						draggingFromType = E_DT_INV_OBJECT;
@@ -584,7 +576,7 @@ void GameEntManager::updateDragInfo (int bestInd, bool lbDown, bool wasDoubleCli
 			
 			
 			
-			if ((bestInd >= E_OBJ_LENGTH)&&(!editPose)) {
+			if ((bestInd >= E_OBJ_LENGTH)&&(!singleton->settings[E_BS_EDIT_POSE])) {
 				
 				isDraggingObject = true;
 				//singleton->markerFound = true;
@@ -766,7 +758,7 @@ BaseObjType GameEntManager::placeNewEnt (bool isReq, int et, FIVector4 * cellPos
 			case E_ENTTYPE_BULLET:
 			case E_ENTTYPE_TRACE:
 				
-				if (singleton->waterBulletOn) {
+				if (singleton->settings[E_BS_WATER_BULLET]) {
 					newType = 1103;
 				}
 				else {
@@ -1324,7 +1316,7 @@ BaseObj * GameEntManager::getActorRef (int uid)
 	}
 bool GameEntManager::combatMode ()
                           {
-		return (getCurActor() != NULL)&&combatOn&&(!editPose);
+		return (getCurActor() != NULL)&&singleton->settings[E_BS_COMBAT]&&(!singleton->settings[E_BS_EDIT_POSE]);
 	}
 bool GameEntManager::isSwingingWeapon (int actorId, int handNum)
                                                         {
@@ -1797,7 +1789,7 @@ void GameEntManager::makeSwing (int actorId, int handNum)
 		
 		int totCost;
 		
-		if (editPose) {
+		if (singleton->settings[E_BS_EDIT_POSE]) {
 			return;
 		}
 		
@@ -1861,7 +1853,7 @@ void GameEntManager::makeSwing (int actorId, int handNum)
 				// }
 				
 				
-				if (turnBased) {
+				if (singleton->settings[E_BS_TURN_BASED]) {
 					
 					if (ca->hasAtLeast(E_STATUS_STAMINA,5)) {
 						swingPos = getOffsetTB(ca->tbPos,ca->tbDir,1.0f);
@@ -2237,10 +2229,10 @@ void GameEntManager::makeHit (bool tb, int attackerId, int victimId, int weaponI
 		
 		int lastHealth;
 		
-		// if (turnBased&&(!tb)) {
+		// if (singleton->settings[E_BS_TURN_BASED]&&(!tb)) {
 		// 	return;
 		// }
-		// if ((!turnBased)&&tb) {
+		// if ((!singleton->settings[E_BS_TURN_BASED])&&tb) {
 		// 	return;
 		// }
 		
@@ -2296,7 +2288,7 @@ void GameEntManager::makeHit (bool tb, int attackerId, int victimId, int weaponI
 							if (geWeapon != NULL) {
 								singleton->playSoundEnt("metalhit5",geAttacker,0.2,0.5f);
 								
-								if (destroyTerrain) {
+								if (singleton->settings[E_BS_DESTROY_TERRAIN]) {
 									tempVec1.setBTV(geWeapon->getCenterPoint(E_BDG_CENTER));
 									singleton->gameFluid[E_FID_BIG]->pushExplodeBullet(true,&tempVec1,0,4.0f);
 								}
@@ -2380,7 +2372,7 @@ GameOrgNode * GameEntManager::getMirroredNode (GameOrgNode * curNode)
 		}
 		GameOrg* testOrg = getCurOrg();
 		
-		if (mirrorOn) {
+		if (singleton->settings[E_BS_MIRROR_POSE]) {
 			
 			
 			if (curNode->nodeName < E_BONE_C_BEG) {
@@ -2489,7 +2481,7 @@ void GameEntManager::applyNodeChanges (GameOrgNode * _curNode, float dx, float d
 					(curNode->nodeName <= E_BONE_WEAPON_BLADEL)	
 				)
 			) &&
-			(mirrorOn)
+			(singleton->settings[E_BS_MIRROR_POSE])
 		) {
 			j = 2;
 		}
@@ -2576,7 +2568,7 @@ void GameEntManager::transformOrg (GameOrg * curOrg, GameOrgNode * tempParent)
 	}
 void GameEntManager::resetActiveNode ()
                                {
-		if (editPose) {
+		if (singleton->settings[E_BS_EDIT_POSE]) {
 			
 			
 			
@@ -2665,7 +2657,7 @@ bool GameEntManager::updateNearestOrgNode (bool setActive, FIVector4 * mousePosW
 				if (boneId > -1) {
 					bestNode = testOrg->allNodes[boneId];
 					
-					// if (mirrorOn) {
+					// if (singleton->settings[E_BS_MIRROR_POSE]) {
 					// 	mirNode = getMirroredNode(bestNode);
 						
 					// 	if (mirNode == NULL) {
@@ -3063,7 +3055,7 @@ void GameEntManager::changePose (int amount)
 					
 			testOrg->setTPG(curPose[curPoseType].group, curPose[curPoseType].RLBN);
 			
-			if (editPose) {
+			if (singleton->settings[E_BS_EDIT_POSE]) {
 				loadCurrentPose();
 			}
 			
@@ -3078,7 +3070,7 @@ void GameEntManager::saveCurrentPose ()
                                {
 		GameOrg* testOrg = getCurOrg();
 		
-		if (editPose) {
+		if (singleton->settings[E_BS_EDIT_POSE]) {
 			
 			if (testOrg != NULL) {
 				testOrg->saveOrgToFile(getCurrentPoseString());
@@ -3138,7 +3130,7 @@ void GameEntManager::loadNonPoseData (int npdPose, int npdSide, int npdStep)
 		
 		float* curData;/// = gamePoseInfo[targetPose].data;
 		
-		if (editPose) {
+		if (singleton->settings[E_BS_EDIT_POSE]) {
 			if (testOrg != NULL) {
 				
 				for (i = 0; i < gamePoses.size(); i++) {
@@ -3172,7 +3164,7 @@ void GameEntManager::loadCurrentPose ()
                                {
 		GameOrg* testOrg = getCurOrg();
 		
-		if (editPose) {
+		if (singleton->settings[E_BS_EDIT_POSE]) {
 			if (testOrg != NULL) {
 				
 				getCurrentPose()->loadOrgFromFile(getCurrentPoseString(), false);

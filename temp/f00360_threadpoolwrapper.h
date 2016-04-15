@@ -26,20 +26,53 @@ void ThreadPoolWrapper::init (Singleton * _singleton, int _maxThreads, bool _sin
 		
 		for (i = 0; i < THREAD_DATA_COUNT; i++) {
 			intData[i] = 0;
+			stringData[i] = "";
 		}
+	}
+void ThreadPoolWrapper::doSpeak (string speechString)
+                                          {
+		
+		HRESULT hrVoice;
+		ISpVoice * pVoice;
+
+		wstring speechStringW = s2ws(speechString);
+
+		if (FAILED(::CoInitialize(NULL))) {
+			return;
+		}
+
+		hrVoice = CoCreateInstance(CLSID_SpVoice, NULL, CLSCTX_ALL, IID_ISpVoice, (void **)&pVoice);
+		if( SUCCEEDED( hrVoice ) )
+		{
+		    
+		    hrVoice = pVoice->Speak(speechStringW.c_str(), 0, NULL);
+
+		    // Change pitch
+		    //hrVoice = pVoice->Speak(L"This sounds normal <pitch middle = '-10'/> but the pitch drops half way through", SPF_IS_XML, NULL );
+		    
+		    pVoice->Release();
+		    pVoice = NULL;
+		    
+		}
+		::CoUninitialize();
 	}
 void ThreadPoolWrapper::funcTP (int threadId)
                                   {
 		
-		GamePageHolder* curHolder;
+		GamePageHolder* curHolder = NULL;
 		
 		threadPool[threadId].setRunningLocked(true);
 		
-		curHolder = singleton->gw->getHolderAtId(
-			threadPool[threadId].threadDataInt[1],
-			threadPool[threadId].threadDataInt[2],
-			threadPool[threadId].threadDataInt[3]
-		);
+		switch(threadPool[threadId].threadDataInt[0]) {
+			case E_TT_GENPATHS:
+			case E_TT_GENLIST:
+				curHolder = singleton->gw->getHolderAtId(
+					threadPool[threadId].threadDataInt[1],
+					threadPool[threadId].threadDataInt[2],
+					threadPool[threadId].threadDataInt[3]
+				);
+			break;	
+		}
 		
 		switch(threadPool[threadId].threadDataInt[0]) {
 			case E_TT_GENPATHS:
@@ -47,6 +80,9 @@ void ThreadPoolWrapper::funcTP (int threadId)
 			break;
 			case E_TT_GENLIST:
 				curHolder->generateList();
+			break;
+			case E_TT_SPEECH:
+				doSpeak(threadPool[threadId].threadDataString[0]);
 			break;
 		}
 		
@@ -74,7 +110,7 @@ void ThreadPoolWrapper::startTP (int threadId)
 bool ThreadPoolWrapper::stopTP (int threadId)
                                   {
 		
-		GamePageHolder* curHolder;
+		GamePageHolder* curHolder = NULL;
 		GameChunk* curChunk;
 		
 		bool didStop = false;
@@ -87,11 +123,19 @@ bool ThreadPoolWrapper::stopTP (int threadId)
 				threadPool[threadId].threadMain.join();
 			}
 			
-			curHolder = singleton->gw->getHolderAtId(
-				threadPool[threadId].threadDataInt[1],
-				threadPool[threadId].threadDataInt[2],
-				threadPool[threadId].threadDataInt[3]
-			);
+			
+			
+			switch(threadPool[threadId].threadDataInt[0]) {
+				case E_TT_GENPATHS:
+				case E_TT_GENLIST:
+					curHolder = singleton->gw->getHolderAtId(
+						threadPool[threadId].threadDataInt[1],
+						threadPool[threadId].threadDataInt[2],
+						threadPool[threadId].threadDataInt[3]
+					);
+				break;	
+			}
+			
 			
 			switch(threadPool[threadId].threadDataInt[0]) {
 				case E_TT_GENPATHS:
@@ -114,9 +158,19 @@ bool ThreadPoolWrapper::stopTP (int threadId)
 					
 					
 				break;
+				case E_TT_SPEECH:
+					
+				break;
 			}
 			
-			curHolder->lockWrite = false;
+			switch(threadPool[threadId].threadDataInt[0]) {
+				case E_TT_GENPATHS:
+				case E_TT_GENLIST:
+					curHolder->lockWrite = false;
+				break;	
+			}
+			
+			
 			threadPool[threadId].threadRunning = false;
 			didStop = true;
 			
@@ -131,12 +185,8 @@ bool ThreadPoolWrapper::stopTP (int threadId)
 		
 		return didStop;
 	}
-bool ThreadPoolWrapper::startThread ()
-                           {
-		int i;
-		int q;
-		
-		
+bool ThreadPoolWrapper::anyThreadAvail ()
+                              {
 		if (availIds.size() == 0) {
 			anyRunning();
 		}
@@ -145,20 +195,46 @@ bool ThreadPoolWrapper::startThread ()
 			return false;
 		}
 		
+		return true;
+	}
+bool ThreadPoolWrapper::startThread (bool checkAvail)
+                                                 {
+		int i;
+		int q;
+		
+		if (checkAvail) {
+			if (anyThreadAvail()) {
+				
+			}
+			else {
+				return false;
+			}
+		}
+		
+		
 		int curId = availIds.back();
 		availIds.pop_back();
 		
 		for (i = 0; i < THREAD_DATA_COUNT; i++) {
 			threadPool[curId].threadDataInt[i] = intData[i];
+			threadPool[curId].threadDataString[i] = stringData[i];
 		}
 		
-		GamePageHolder* curHolder = singleton->gw->getHolderAtId(
-			threadPool[curId].threadDataInt[1],
-			threadPool[curId].threadDataInt[2],
-			threadPool[curId].threadDataInt[3]
-		);
+		GamePageHolder* curHolder = NULL;
 		
-		curHolder->lockWrite = true;
+		
+		switch(threadPool[curId].threadDataInt[0]) {
+			case E_TT_GENPATHS:
+			case E_TT_GENLIST:
+				curHolder = singleton->gw->getHolderAtId(
+					threadPool[curId].threadDataInt[1],
+					threadPool[curId].threadDataInt[2],
+					threadPool[curId].threadDataInt[3]
+				);
+				curHolder->lockWrite = true;
+			break;	
+		}
+		
 		
 		startTP(curId);
 		

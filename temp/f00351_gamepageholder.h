@@ -3,15 +3,30 @@
 
 #include "f00351_gamepageholder.e"
 #define LZZ_INLINE inline
-void GamePageHolder::reset ()
-                     {
+void GamePageHolder::reset (bool destroyCache)
+                                      {
 		vertexVec.clear();
 		vertexVec.shrink_to_fit();
-		//vboWrapper.deallocVBO();
 		unbindPD();
+		//isDirty = false;
 		wasStacked = false;
+		hasCache = false;
+		hasData = true;
+		hasPath = true;
+		holderFlags = E_CD_UNKNOWN;
+		listEmpty = true;
 		listGenerated = false;
 		readyToRender = false;
+		pathsInvalid = true;
+		idealPathsInvalid = true;
+		pathsReady = false;
+		idealPathsReady = false;
+		wasGenerated = false;
+		lockWrite = false;
+		
+		if (destroyCache) {
+			singleton->checkCacheEntry(blockId,chunkId,holderId,true);
+		}
 	}
 GamePageHolder::GamePageHolder ()
                          {
@@ -23,52 +38,29 @@ GamePageHolder::GamePageHolder ()
 			endMip[i] = 0;
 		}
 		
-		// boxShape = NULL;
-		// trimeshShape = NULL;
-		// meshInterface = NULL;
-		// body = NULL;
 		
-		//appliedFill = false;
-		wasStacked = false;
-		hasCache = false;
-		hasData = true;
-		hasPath = true;
+		
+		isDirty = false;
+		
+		
+		
 		
 		terVW = NULL;
-		
-		holderFlags = E_CD_UNKNOWN;
-		
-		listEmpty = true;
-		preGenList = false;
-		listGenerated = false;
-		readyToRender = false;
-		pathsInvalid = true;
-		idealPathsInvalid = true;
-		
-		pathsReady = false;
-		idealPathsReady = false;
+		curPD = -1;
 		
 		//cubeData = NULL;
 		cellData = NULL;
 		extrData = NULL;
 		pathData = NULL;
 		
+		reset(false);
 		
-		wasGenerated = false;
 	}
 void GamePageHolder::init (Singleton * _singleton, int _blockId, int _chunkId, int _holderId, int trueX, int trueY, int trueZ)
           {
 
 		curPD = -1;
 
-		//isBlockHolder = _isBlockHolder;
-
-		//cout << "gph init\n";
-
-		lockRead = false;
-		lockWrite = false;
-
-		//entityGeomCounter = 0;
 		totIdealNodes = 0;
 		totGroupIds = 0;
 
@@ -131,6 +123,95 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _chunkId, i
 		voxelWrap = new GameVoxelWrap();
 		voxelWrap->init(singleton);
 
+		
+	}
+void GamePageHolder::makeDirty ()
+                         {
+		reset(true);
+		//cout << "makeDirty\n";
+		isDirty = true;
+	}
+void GamePageHolder::gatherObjects ()
+                             {
+		
+		//PaddedData* pd = &(singleton->pdPool[curPD]);
+		
+		tempObjects.clear();
+		objectOrder.clear();
+		
+		int chunkRad = singleton->iGetConst(E_CONST_CHUNK_GATHER_RAD);
+		GameChunk* parentChunk = singleton->gw->getChunkAtId(blockId,chunkId);
+		GameChunk* curChunk;
+		
+		int i;
+		int j;
+		int k;
+		
+		int q;
+		
+		intPair ip;
+		
+		FIVector4 tempVec;
+		
+		tempVec.averageNegXYZ(&gphMaxInCells,&gphMinInCells);
+		
+		vec3 gphCen = gphCenInCells.getVec3();
+		vec3 gphRad = tempVec.getVec3();
+		vec3 cenDif;
+		vec3 radAdd;
+		
+		float fPadding = singleton->paddingInCells;
+		
+		ObjectStruct* curObj;
+		
+		gphRad += fPadding;
+		
+		if (parentChunk != NULL) {
+			for (k = -chunkRad; k <= chunkRad; k++) {
+				for (j = -chunkRad; j <= chunkRad; j++) {
+					for (i = -chunkRad; i <= chunkRad; i++) {
+						curChunk = singleton->gw->getChunkAtCoords(
+							parentChunk->offsetInChunks.getIX()+i,
+							parentChunk->offsetInChunks.getIY()+j,
+							parentChunk->offsetInChunks.getIZ()+k,
+							false
+						);
+						
+						if (curChunk != NULL) {
+							
+							for (q = 0; q < curChunk->localObjects.size(); q++) {
+								curObj = &(curChunk->localObjects[q]);
+								cenDif = gphCen-curObj->data[E_OSD_CENTER];
+								cenDif.doAbs();
+								radAdd = curObj->data[E_OSD_RADIUS] + gphRad;
+								
+								if (
+									(cenDif.x <= radAdd.x) &&
+									(cenDif.y <= radAdd.y) &&
+									(cenDif.z <= radAdd.z)
+								) {
+									tempObjects.push_back(*curObj);
+								
+									ip.v0 = tempObjects.size()-1;
+									ip.v1 = tempObjects.back().globalId;
+								
+									objectOrder.push_back(ip);
+								}
+								
+							}
+							
+						}
+					}
+				}
+			}
+		}
+		
+		if (tempObjects.size() > 0) {
+			
+			
+			sort(objectOrder.begin(),objectOrder.end(),sortByV1);
+		}
+		
 		
 	}
 int GamePageHolder::getCellAtCoordsLocal (int xx, int yy, int zz)
@@ -1349,6 +1430,7 @@ void GamePageHolder::genCellData ()
 		
 		int p;
 		int q;
+		int r;
 		
 		int ind;
 		
@@ -1407,7 +1489,7 @@ void GamePageHolder::genCellData ()
 		FBOWrapper* fbow = curVW->fboSet.getFBOWrapper(0);
 		
 		// if (isBlockHolder) {
-		// 	wasGenerated = true;
+		// 	
 		// 	return;
 		// }
 		
@@ -1425,6 +1507,14 @@ void GamePageHolder::genCellData ()
 		float watHeight = singleton->getSeaHeightScaled();
 		
 		int cdo4 = cellDataSize/4;
+		int curInd;
+		ObjectStruct* curObj;
+		
+		gatherObjects();
+		
+		
+		
+		
 		
 		for (p = 0; p < cdo4; p++) {
 			
@@ -1478,7 +1568,68 @@ void GamePageHolder::genCellData ()
 			cellData[ind+E_PTT_TER] = iTer;
 			cellData[ind+E_PTT_WAT] = iWat;
 			cellData[ind+E_PTT_LST] = iWat;
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
 		}
+		
+		
+		
+		
+		
+		
+		vec3 gphMin = gphMinInCells.getVec3();
+		vec3 fWorldPosCell;
+		int curMP;
+		
+		for (p = 0; p < cdo4; p++) {
+			
+			kk = p/(cellsPerHolder*cellsPerHolder);
+			jj = (p-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+			ii = p-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+			
+			ind = p*4;
+			
+			fWorldPosCell = gphMin + vec3(ii,jj,kk);
+			
+			for (r = 0; r < objectOrder.size(); r++) {
+				curInd = objectOrder[r].v0;
+				curObj = &(tempObjects[curInd]);
+				
+				
+				if (fWorldPosCell.distance(curObj->data[E_OSD_CENTER]) <= curObj->data[E_OSD_RADIUS].x) {
+					curMP = curObj->data[E_OSD_MATPARAMS].z;
+					
+					switch (curMP) {
+						case E_BRUSH_MOVE:
+							
+						break;
+						case E_BRUSH_ADD:
+							cellData[ind+E_PTT_TER] = FLUID_UNIT_MAX;
+						break;
+						case E_BRUSH_SUB:
+							cellData[ind+E_PTT_TER] = FLUID_UNIT_MIN;
+						break;
+					}
+					
+				}
+				
+				
+			}
+			
+			
+		}
+		
+		
+		
+		
 		
 		int cph2 = cellsPerHolder/2;
 		int readInd;
@@ -1514,6 +1665,14 @@ void GamePageHolder::genCellData ()
 				}
 			}
 		}
+		
+		
+		
+		
+		
+		
+		
+		
 		
 		
 		wasGenerated = true;
@@ -1567,7 +1726,11 @@ void GamePageHolder::applyFill ()
 					
 				}
 				else {
-					res = singleton->saveCacheEntry(blockId,chunkId,holderId);
+					
+					if (DO_CACHE) {
+						res = singleton->saveCacheEntry(blockId,chunkId,holderId);
+					}
+					
 					
 					// if (res) {
 					// 	//cout << "saved cache\n";
@@ -1589,7 +1752,6 @@ void GamePageHolder::applyFill ()
 			
 		}
 		
-		//appliedFill = true;
 		
 	}
 void GamePageHolder::fillVBO ()
@@ -1633,6 +1795,9 @@ void GamePageHolder::fillVBO ()
 			extrData = NULL;
 			
 			hasData = false;
+		}
+		else {
+			//hasData = true;
 		}
 		
 		
@@ -1789,6 +1954,71 @@ int GamePageHolder::gatherData ()
 		}
 		
 		return tempHF;
+	}
+bool GamePageHolder::checkCache ()
+                          {
+		if (DO_CACHE) {
+			hasCache = singleton->checkCacheEntry(blockId,chunkId,holderId);
+		}
+		else {
+			hasCache = false;
+		}
+		
+		return hasCache;
+	}
+void GamePageHolder::generateList ()
+                            {
+		//PaddedData* pd = &(singleton->pdPool[curPD]);
+		
+		if (singleton->gamePhysics == NULL) {
+			return;
+		}
+		
+		
+		uint tempHF = gatherData();		
+		
+		
+		
+		if (
+			(
+				(tempHF == E_CD_SOLID) ||
+				(tempHF == E_CD_EMPTY) ||
+				(tempHF == E_CD_WATER)	
+			) &&
+			(
+				(tempObjects.size() == 0)
+			)
+		) {
+			
+		}
+		else {
+			
+			if (DO_VOXEL_WRAP) {
+				if (hasCache) {
+					
+				}
+				else {
+					voxelWrap->process(this);
+				}
+				
+			}
+			
+			if (POLYS_FOR_CELLS) {
+				wrapPolys();
+			}
+			
+		}
+		
+		
+		listEmpty = (vertexVec.size() == 0); //vboWrapper.
+		
+		// if (DO_VOXEL_WRAP) {
+		// 	listEmpty = (cubeWraps.size() <= 0);
+		// }
+		
+		holderFlags = tempHF;
+		
+		
 	}
 void GamePageHolder::wrapPolys ()
                          {
@@ -2024,61 +2254,6 @@ void GamePageHolder::wrapPolys ()
 		}
 		
 		
-		
-	}
-bool GamePageHolder::checkCache ()
-                          {
-		hasCache = singleton->checkCacheEntry(blockId,chunkId,holderId);
-		return hasCache;
-	}
-void GamePageHolder::generateList ()
-                            { //int fboNum
-		
-		if (singleton->gamePhysics == NULL) {
-			return;
-		}
-		
-		preGenList = false;
-		
-		uint tempHF = gatherData();		
-		
-		
-		
-		if (
-			(tempHF == E_CD_SOLID) ||
-			(tempHF == E_CD_EMPTY) ||
-			(tempHF == E_CD_WATER)
-		) {
-			
-		}
-		else {
-			
-			if (DO_VOXEL_WRAP) {
-				if (hasCache) {
-					
-				}
-				else {
-					voxelWrap->process(this);
-				}
-				
-			}
-			
-			if (POLYS_FOR_CELLS) {
-				wrapPolys();
-			}
-			
-		}
-		
-		
-		listEmpty = (vertexVec.size() == 0); //vboWrapper.
-		
-		// if (DO_VOXEL_WRAP) {
-		// 	listEmpty = (cubeWraps.size() <= 0);
-		// }
-		
-		holderFlags = tempHF;
-		
-		preGenList = true;
 		
 	}
 #undef LZZ_INLINE

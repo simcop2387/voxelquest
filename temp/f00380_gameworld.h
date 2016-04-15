@@ -223,7 +223,7 @@ void GameWorld::clearAllHolders ()
 		for (i = 0; i < gamePageHolderList.size(); i++) {
 			gph = getHolderAtId(gamePageHolderList[i].v0, gamePageHolderList[i].v1, gamePageHolderList[i].v2);
 			if (gph != NULL) {
-				gph->reset();
+				gph->reset(true);
 			}
 		}
 		
@@ -503,9 +503,9 @@ int GameWorld::getCellAtCoords (int xv, int yv, int zv)
 			return E_CD_EMPTY;
 		}
 		
-		if (curHolder->lockRead) {
-			return E_CD_EMPTY;
-		}
+		// if (curHolder->lockRead) {
+		// 	return E_CD_EMPTY;
+		// }
 		
 		if (curHolder->wasGenerated) {
 			
@@ -621,13 +621,9 @@ void GameWorld::setArrAtCoords (int xv, int yv, int zv, int * tempCellData, int 
 		
 		int ind = (zr*cellsPerHolder*cellsPerHolder + yr*cellsPerHolder + xr)*4;
 		
-		if (singleton->refreshPaths) {
-			curHolder->pathsInvalid = true;
-			curHolder->idealPathsInvalid = true;
-			curHolder->pathsReady = false;
-			curHolder->idealPathsReady = false;			
-			curHolder->reset();
-		}
+		// if (singleton->refreshPaths) {	
+		// 	curHolder->reset(); // todo: look at this?
+		// }
 		
 		curHolder->setArrAtInd(ind,tempCellData,tempCellData2);
 	}
@@ -829,8 +825,8 @@ void GameWorld::update ()
 			glEnable(GL_DEPTH_TEST);
 			singleton->perspectiveOn = true;
 			
-			if (singleton->debugViewOn) {
-				renderGeom();
+			if (singleton->settings[E_BS_DEBUG_VIEW]) { //||(singleton->mouseState == E_MOUSE_STATE_BRUSH)
+				//renderGeom();
 				renderDebug();
 			}
 			else {
@@ -847,20 +843,25 @@ void GameWorld::update ()
 		}
 		
 		
+		singleton->forceShadowUpdate--;
+		if (singleton->forceShadowUpdate < 0) {
+			singleton->forceShadowUpdate = 0;
+		}
 		
-		
-		if (singleton->renderingOct) {
+		if (singleton->settings[E_BS_RENDER_VOXELS]) {
 			
 			if (
 				singleton->lightChanged ||
+				(singleton->forceShadowUpdate == 1) ||
 				(
 					(singleton->lastLightPos.distance(singleton->cameraGetPosNoShake())) >
 					singleton->conVals[E_CONST_LIGHTTHRESH]
 				)
 			) {
-				if (!singleton->lightChanged) {
-					cout << "updateShadows\n";
-				}
+				// if (!singleton->lightChanged) {
+				// 	cout << "updateShadows\n";
+				// }
+				
 				
 				rasterHolders(true);
 				singleton->lastLightPos.copyFrom(singleton->cameraGetPosNoShake());
@@ -1492,7 +1493,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 			// (int)(doSphereMap)
 			(int)(singleton->sphereMapOn)
 		);
-		singleton->setShaderInt("testOn", (int)(singleton->testOn));
+		singleton->setShaderInt("testOn", (int)(singleton->settings[E_BS_TEST_1]));
 		singleton->setShaderInt("skipPrim", (int)(skipPrim));
 		singleton->setShaderInt("placingGeom", (int)(singleton->placingGeom));
 		
@@ -1562,7 +1563,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		
 		
-		if (singleton->waterBulletOn) {
+		if (singleton->settings[E_BS_WATER_BULLET]) {
 			singleton->setShaderInt("numExplodes", 0);
 		}
 		else {
@@ -2272,7 +2273,7 @@ void GameWorld::renderGeom ()
 
 		// }
 		
-		// if (singleton->pathfindingOn) {
+		// if (singleton->settings[E_BS_PATH_FINDING]) {
 		// 	singleton->gameLogic->update();
 		// }
 		
@@ -2604,7 +2605,7 @@ void GameWorld::updateMouseCoords (FIVector4 * fPixelWorldCoordsBase)
 
 		lastUnitPos.copyFrom(&fPixelWorldCoords);
 		lastUnitPos.setFW(1.0);
-		
+		lastUnitPos.floorXYZ();
 
 	}
 float GameWorld::weighPath (float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean)
@@ -4509,7 +4510,7 @@ void GameWorld::rasterHolders (bool doShadow)
 			
 		}
 		
-		
+		singleton->copyFBO("rasterFBO"+i__s(activeRaster), "solidTargFBO");
 		
 		
 		singleton->bindShader("LightShader");
@@ -4519,9 +4520,47 @@ void GameWorld::rasterHolders (bool doShadow)
 		singleton->setShaderTexture3D(4,singleton->volIdMat);
 		singleton->sampleFBO("shadowMapFBO",5);
 		
+		
+		if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {
+			lastUnitPos.setFW(((int)singleton->curBrushRad));
+			singleton->setShaderfVec4("brushPos", &(lastUnitPos));
+			if (singleton->earthMod == E_PTT_TER) {
+				singleton->setShaderVec3("brushCol", 1.0f,0.0f,0.0f);
+			}
+			else {
+				singleton->setShaderVec3("brushCol", 0.0f,0.0f,1.0f);
+			}
+			
+		}
+		else {
+			singleton->setShaderVec4("brushPos", 0.0f,0.0f,0.0f,0.0f);
+		}
+		
+		/*
+		if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {
+			if (singleton->earthMod == E_PTT_TER) {
+				singleton->setShaderVec3("matVal", 255, 0, 0);
+			}
+			else {
+				singleton->setShaderVec3("matVal", 0, 0, 255);
+			}
+			
+			
+			singleton->setShaderFloat("isWire", 1.0);
+			singleton->drawCubeCentered(
+				&lastUnitPos,
+				((int)singleton->curBrushRad)
+			);
+			
+		}
+		
+		*/
+		
+		
+		
 		singleton->setShaderFloat("cellsPerChunk",singleton->cellsPerChunk);
 		singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
-		singleton->setShaderInt("testOn3", (int)(singleton->testOn3));
+		singleton->setShaderInt("testOn3", (int)(singleton->settings[E_BS_TEST_3]));
 		// singleton->setShaderfVec3("minBounds",&(minShadowBounds));
 		// singleton->setShaderfVec3("maxBounds",&(maxShadowBounds));
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
@@ -4699,7 +4738,7 @@ void GameWorld::renderDebug ()
 		
 		float healthMeterScale = 0.5f;
 		
-		if (singleton->gem->showHealth) {
+		if (singleton->settings[E_BS_SHOW_HEALTH]) {
 			for (i = 0; i < singleton->gem->visObjects.size(); i++) {
 				ge = &(singleton->gem->gameObjects[singleton->gem->visObjects[i]]);
 				if (ge->entType == E_ENTTYPE_NPC) {
@@ -4729,7 +4768,7 @@ void GameWorld::renderDebug ()
 						singleton->drawBoxRad(boxCenter,boxRadius);
 					}
 					
-					if (singleton->gem->turnBased) {
+					if (singleton->settings[E_BS_TURN_BASED]) {
 						boxCenter = (ge->tbPos + btVector3(0.5f,0.5f,0.5f));
 						singleton->setShaderVec4(
 							"rotationZ",
@@ -4756,11 +4795,11 @@ void GameWorld::renderDebug ()
 		singleton->setShaderMatrix4x4("objmat",identMat,1);
 		
 		
-		if (singleton->pathfindingOn) {
+		if (singleton->settings[E_BS_PATH_FINDING]) {
 			singleton->gameLogic->update();
 		}
 		
-		if (singleton->renderingOct) {
+		if (singleton->settings[E_BS_RENDER_VOXELS]) {
 			singleton->setShaderFloat("isWire", 1.0);
 			singleton->setShaderVec3("matVal", 255, 0, 0);
 			
@@ -4776,7 +4815,35 @@ void GameWorld::renderDebug ()
 			
 		}
 		
-		// if (singleton->renderingOctBounds) {
+		
+		
+		// if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {
+		// 	if (singleton->earthMod == E_PTT_TER) {
+		// 		singleton->setShaderVec3("matVal", 255, 0, 0);
+		// 	}
+		// 	else {
+		// 		singleton->setShaderVec3("matVal", 0, 0, 255);
+		// 	}
+			
+			
+		// 	singleton->setShaderFloat("isWire", 1.0);
+		// 	singleton->drawCubeCentered(
+		// 		&lastUnitPos,
+		// 		((int)singleton->curBrushRad)
+		// 	);
+			
+		// }
+			
+			
+			
+			
+			
+
+		
+		
+		
+		
+		// if (singleton->settings[E_BS_RENDER_OCT_BOUNDS]) {
 		// 	singleton->setShaderFloat("isWire", 1.0);
 		// 	singleton->setShaderVec3("matVal", 255, 0, 0);
 		// 	singleton->gameOct->startRender();
@@ -4865,7 +4932,7 @@ void GameWorld::renderDebug ()
 	}
 void GameWorld::finalStep (bool postToScreen)
                                           {
-		if (singleton->testOn) {			
+		if (singleton->settings[E_BS_TEST_1]) {			
 			
 			
 			
@@ -4911,7 +4978,7 @@ void GameWorld::finalStep (bool postToScreen)
 			// }
 			
 			
-			if (singleton->fxaaOn) {
+			if (singleton->settings[E_BS_FXAA]) {
 				singleton->bindShader("FXAAShader");
 				singleton->bindFBO("resultFBO",activeFBO);
 				singleton->sampleFBO("resultFBO", 0, activeFBO);
@@ -5037,7 +5104,7 @@ void GameWorld::postProcess (bool postToScreen)
 
 		//renderWaveHeight();
 
-		if (singleton->waterOn)	{
+		if (singleton->settings[E_BS_WATER])	{
 
 
 			
@@ -5096,7 +5163,7 @@ void GameWorld::postProcess (bool postToScreen)
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-		singleton->setShaderInt("testOn", (int)(singleton->testOn));
+		singleton->setShaderInt("testOn", (int)(singleton->settings[E_BS_TEST_1]));
 		singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
 		singleton->setShaderArrayfVec4("lightArr", singleton->lightArr, (FLOATS_PER_LIGHT * lightCount) / 4);
 		singleton->setShaderInt("vecsPerLight", FLOATS_PER_LIGHT / 4);
@@ -5140,8 +5207,8 @@ void GameWorld::postProcess (bool postToScreen)
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-		singleton->setShaderInt("testOn", (int)(singleton->testOn));
-		singleton->setShaderInt("testOn2", (int)(singleton->testOn2));
+		singleton->setShaderInt("testOn", (int)(singleton->settings[E_BS_TEST_1]));
+		singleton->setShaderInt("testOn2", (int)(singleton->settings[E_BS_TEST_2]));
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("cellsPerBlock", singleton->cellsPerBlock);
 		singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
@@ -5160,7 +5227,7 @@ void GameWorld::postProcess (bool postToScreen)
 		
 		
 
-		if (singleton->waterOn)
+		if (singleton->settings[E_BS_WATER])
 		{
 			singleton->copyFBO("resultFBO1", "swapFBOLinHalf0");
 			doBlur("swapFBOLinHalf");
@@ -5209,7 +5276,7 @@ void GameWorld::postProcess (bool postToScreen)
 		}
 
 
-		if (singleton->radiosityOn || singleton->fogOn)
+		if (singleton->settings[E_BS_RADIOSITY] || singleton->settings[E_BS_FOG])
 		{
 
 			if (activeFBO == 0)
@@ -5227,7 +5294,7 @@ void GameWorld::postProcess (bool postToScreen)
 
 
 
-		if (singleton->radiosityOn)
+		if (singleton->settings[E_BS_RADIOSITY])
 		{
 
 			singleton->bindShader("RadiosityShader");
@@ -5256,7 +5323,7 @@ void GameWorld::postProcess (bool postToScreen)
 			singleton->sampleFBO("swapFBOLinHalf0", 1);
 			singleton->sampleFBO("combineWithWaterTargFBO",2);
 			//singleton->sampleFBO("geomTargFBO", 4);
-			singleton->setShaderInt("testOn", (int)(singleton->testOn));
+			singleton->setShaderInt("testOn", (int)(singleton->settings[E_BS_TEST_1]));
 			singleton->drawFSQuad();
 			//singleton->unsampleFBO("geomTargFBO", 4);
 			singleton->unsampleFBO("combineWithWaterTargFBO",2);
@@ -5270,7 +5337,7 @@ void GameWorld::postProcess (bool postToScreen)
 
 		}
 
-		if (singleton->fogOn == 1.0f)
+		if (singleton->settings[E_BS_FOG])
 		{
 
 			
@@ -5302,7 +5369,7 @@ void GameWorld::postProcess (bool postToScreen)
 				singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 			}
 			
-			if (singleton->placingPattern) {
+			if (singleton->settings[E_BS_PLACING_PATTERN]) {
 				singleton->setShaderArray(
 					"patternCells",
 					singleton->patterns[
@@ -5313,12 +5380,12 @@ void GameWorld::postProcess (bool postToScreen)
 				singleton->setShaderfVec3("patternTarg", &(singleton->mouseMovePD));
 				
 			}
-			singleton->setShaderInt("placingPattern", singleton->placingPattern);
+			singleton->setShaderInt("placingPattern", singleton->settings[E_BS_PLACING_PATTERN]);
 			
 			
-			singleton->setShaderInt("testOn2", (int)(singleton->testOn2));
+			singleton->setShaderInt("testOn2", (int)(singleton->settings[E_BS_TEST_2]));
 			
-			singleton->setShaderInt("gridOn", singleton->gridOn);
+			singleton->setShaderInt("gridOn", singleton->settings[E_BS_SHOW_GRID]);
 			
 			if (singleton->gem->getCurActor() == NULL) {
 				singleton->setShaderInt("isFalling",false);

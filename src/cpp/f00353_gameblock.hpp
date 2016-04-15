@@ -813,7 +813,7 @@ public:
 		
 		
 		
-		if (singleton->treesOn) {
+		if (singleton->settings[E_BS_TREES]) {
 			for (i = terDataBufAmount*2; i < terDataBufPitchXY-terDataBufAmount*2; i++) {
 				for (j = terDataBufAmount*2; j < terDataBufPitchXY-terDataBufAmount*2; j++) {
 					if ( (touchesWithinRadMap(i,j,E_CT_TREE, 3, 0) == 0) && (touches2Map(i,j,E_CT_NULL,0) == 16) ) {

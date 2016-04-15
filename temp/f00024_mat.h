@@ -76,6 +76,7 @@ struct Vector3
     Vector3(float x, float y, float z) : x(x), y(y), z(z) {};
 
     // utils functions
+    void        doAbs();
     void        doSin();
     void        doFract();
     void        set(float x, float y, float z);
@@ -92,6 +93,8 @@ struct Vector3
     Vector3     operator-(const Vector3& rhs) const;    // subtract rhs
     Vector3&    operator+=(const Vector3& rhs);         // add rhs and update this object
     Vector3&    operator-=(const Vector3& rhs);         // subtract rhs and update this object
+    Vector3&    operator+=(const float rhs);         // add rhs and update this object
+    Vector3&    operator-=(const float rhs);         // subtract rhs and update this object
     Vector3     operator*(const float scale) const;     // scale
     Vector3     operator*(const Vector3& rhs) const;    // multiplay each element
     Vector3&    operator*=(const float scale);          // scale and update this object
@@ -310,6 +313,14 @@ inline Vector3& Vector3::operator-=(const Vector3& rhs) {
     x -= rhs.x; y -= rhs.y; z -= rhs.z; return *this;
 }
 
+inline Vector3& Vector3::operator+=(const float rhs) {
+    x += rhs; y += rhs; z += rhs; return *this;
+}
+
+inline Vector3& Vector3::operator-=(const float rhs) {
+    x -= rhs; y -= rhs; z -= rhs; return *this;
+}
+
 inline Vector3 Vector3::operator*(const float a) const {
     return Vector3(x*a, y*a, z*a);
 }
@@ -363,6 +374,13 @@ inline float& Vector3::operator[](int index) {
 inline void Vector3::set(float x, float y, float z) {
     this->x = x; this->y = y; this->z = z;
 }
+
+inline void Vector3::doAbs() {
+    this->x = abs(this->x);
+    this->y = abs(this->y);
+    this->z = abs(this->z);
+}
+
 inline void Vector3::doSin() {
     this->x = sin(this->x);
     this->y = sin(this->y);

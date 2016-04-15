@@ -102,29 +102,25 @@ public:
 	TBOWrapper limbTBO;
 	float limbTBOData[MAX_LIMB_DATA_IN_BYTES];
 	
-	int destructCount;
+	
+	bool settings[E_BS_LENGTH];
+		
+	bool fpsTest;
+	bool commandOn;
+	
+	
 	bool sphereMapOn;
 	bool waitingOnDestruction;
-	
-	bool debugViewOn;
 	bool lightChanged;
 	bool updateShadows;
 	bool updateHolderLookat;
-	bool vsyncOn;
-	bool commandOn;
-	bool renderingOctBounds;
-	bool renderingOct;
-	bool placingPattern;
-	bool drawTargPaths;
-	bool gridOn;
-	bool physicsOn;
+	
+	
 	bool isPressingMove;
-	bool fxaaOn;
 	bool doPathReport;
 	bool refreshPaths;
 	bool placingTemplate;
 	bool smoothMove;
-	bool waterBulletOn;
 	bool ignoreFrameLimit;
 	bool autoMove;
 	bool allInit;
@@ -135,9 +131,6 @@ public:
 	bool lastPersp;
 	bool isInteractiveEnt[E_CT_LENGTH];
 	bool inputOn;
-	bool pathfindingOn;
-	bool pathfindingGen;
-	bool pathfindingTestOn;
 	bool placingGeom;
 	bool isMacro;
 	bool cavesOn;
@@ -152,11 +145,7 @@ public:
 	bool bCtrlOld;
 	bool bCtrl;
 	bool bShift;
-	bool testOn;
-	bool testOn2;
-	bool testOn3;
 	bool emptyVDNotReady;
-	bool radiosityOn;
 	bool updateLock;
 	bool isFullScreen;
 	bool mapInvalid;
@@ -174,25 +163,23 @@ public:
 	bool isBare;
 	bool showMap;
 	bool traceOn;
-	bool waterOn;
-	bool treesOn;
 	bool firstRun;
 	bool rotOn;
 	bool doPageRender;
 	bool markerFound;
 	
-	bool updateFluid;
-	bool updateHolders;
-	bool fpsTest;
+	
 	bool frameMouseMove;
 	bool depthInvalidRotate;
 	bool depthInvalidMove;
 	bool lastDepthInvalidMove;
 	bool drawOrient;
+	bool multiLights;
+	bool timeMod;
 	
 	
-	
-	
+	int forceShadowUpdate;
+	int destructCount;
 	int curPrimTemplate;
 	int geomStep;
 	int earthMod;
@@ -312,8 +299,7 @@ public:
 
 	GLfloat camRotation[2];
 	GLfloat curCamRotation[2];
-
-	bool timeMod;
+	
 	
 	uint naUintData[8];
 	int naIntData[8];
@@ -339,7 +325,6 @@ public:
 	float targetSubjectZoom;
 	float cameraZoom;
 	float targetZoom;
-	float fogOn;
 	//float mapSampScale;
 	float curBrushRad;
 	float timeOfDay;
@@ -469,6 +454,7 @@ public:
 	
 	
 	
+	ThreadPoolWrapper* threadPoolSpeech;
 	
 	
 	
@@ -606,7 +592,7 @@ public:
 	int numLights;
 
 
-	bool multiLights;
+	
 
 	int *rbStack;
 	int *rbHeightStack;
@@ -635,9 +621,15 @@ public:
 	
 	map<string, StyleSheet> styleSheetMap;
 	map<string, JSONStruct> externalJSON;
+	
+	
+	
+	
 
 	Singleton()
 	{
+
+		
 		gamePhysics = NULL;
 		allInit = false;
 		
@@ -686,6 +678,7 @@ public:
 		RUN_COUNT = 0;
 		TEMP_DEBUG = false;
 		
+		
 		initNetMasks();
 		
 		
@@ -696,6 +689,10 @@ public:
 		updateCurCacheLoc();
 		loadCacheMetaData();
 
+		
+
+		threadPoolSpeech = new ThreadPoolWrapper();
+		threadPoolSpeech->init(this, MAX_THREADS, false||SINGLE_THREADED);
 		
 		if (DO_RANDOMIZE) {
 			// todo: get rid of this for random seeds, causes desync
@@ -804,14 +801,12 @@ public:
 		sphereMapOn = false;
 		waitingOnDestruction = false;
 		
-		physicsOn = true;
+		
 		isPressingMove = false;
-		fxaaOn = false;
 		doPathReport = false;
 		refreshPaths = false;
 		placingTemplate = true;
 		smoothMove = true;
-		waterBulletOn = false;
 		ignoreFrameLimit = false;
 		autoMove = false;
 		inputOn = false;
@@ -940,8 +935,6 @@ public:
 		bShift = false;
 		emptyVDNotReady = true;
 		firstRun = true;
-		waterOn = (MAX_LAYERS == 2);
-		treesOn = true;
 		rotOn = false;
 		markerFound = false;
 		doPageRender = true;
@@ -1010,14 +1003,9 @@ public:
 		tempCounter = 0;
 		actorCount = 0;
 		polyCount = 0;
-		fpsCountMax = 1000;
+		fpsCountMax = 500;
 		
 		fpsTest = false;
-		pathfindingOn = false;
-		pathfindingGen = false;
-		pathfindingTestOn = false;
-		updateHolders = true;
-		updateFluid = false;
 		
 		maxHolderDis = 32;
 		heightOfNearPlane = 1.0f;
@@ -1246,28 +1234,60 @@ public:
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
-		radiosityOn = true;
-		testOn = false;
-		testOn2 = false;
-		testOn3 = false;
+
+		settings[E_BS_DEBUG_VIEW] = false;
+		settings[E_BS_VSYNC] = true;
+		settings[E_BS_RENDER_OCT_BOUNDS] = false;
+		settings[E_BS_RENDER_VOXELS] = false;
+		settings[E_BS_SHOW_GRID] = false;
+		settings[E_BS_FOG] = true;
+		settings[E_BS_PHSYICS] = true;
+		settings[E_BS_FXAA] = false;
+		settings[E_BS_WATER_BULLET] = false;
+		settings[E_BS_PATH_FINDING] = false;
+		settings[E_BS_PATH_FINDING_GEN] = false;
+		settings[E_BS_PATH_FINDING_TEST] = false;
+		settings[E_BS_TEST_1] = false;
+		settings[E_BS_TEST_2] = false;
+		settings[E_BS_TEST_3] = false;
+		settings[E_BS_WATER] = true;
+		settings[E_BS_TREES] = true;
+		settings[E_BS_UPDATE_HOLDERS] = true;
+		settings[E_BS_PLACING_PATTERN] = false;
+		settings[E_BS_DRAW_TARG_PATHS] = false;
+		settings[E_BS_UPDATE_FLUID] = false;
+		settings[E_BS_RADIOSITY] = true;
+		settings[E_BS_DESTROY_TERRAIN] = false;
+		settings[E_BS_TURN_BASED] = false;
+		settings[E_BS_MIRROR_POSE] = true;
+		settings[E_BS_COMBAT] = false;
+		settings[E_BS_EDIT_POSE] = false;
+		settings[E_BS_SHOW_HEALTH] = false;
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		commandOn = false;
+		
 		updateLock = false;
 		traceOn = false;
 		frameMouseMove = false;
 		depthInvalidMove = true;
 		lastDepthInvalidMove = true;
 		depthInvalidRotate = true;
-		drawTargPaths = false;
-		renderingOct = false;
-		renderingOctBounds = false;
-		commandOn = false;
-		vsyncOn = true;
+		
+		
+		forceShadowUpdate = 0;
 		updateShadows = false;
-		debugViewOn = false;
 		lightChanged = false;
 		updateHolderLookat = true;
-		placingPattern = false;
-		gridOn = false;
-		fogOn = 1.0f;
 		cameraZoom = 1.0f;
 		targetZoom = cameraZoom;
 		
@@ -2035,6 +2055,26 @@ public:
 
 	}
 	
+	
+	
+	bool speak(string speechString) {
+			
+		bool v1 = threadPoolSpeech->anyRunning();
+		
+		threadPoolSpeech->intData[0] = E_TT_SPEECH;
+		threadPoolSpeech->stringData[0] = speechString;
+		
+		if (threadPoolSpeech->startThread()) {
+			
+		}
+		else {
+			return false;
+		}
+		
+		return true;
+		
+		
+	}
 	
 	
 	void applyPat(
@@ -3116,11 +3156,11 @@ public:
 				//pathfindingOn = curValue != 0.0f;
 			}
 			else if (comp->uid.compare("$charEdit.editPose") == 0) {
-				gem->editPose = curValue != 0.0f;
-				EDIT_POSE = gem->editPose;
+				settings[E_BS_EDIT_POSE] = curValue != 0.0f;
+				EDIT_POSE = settings[E_BS_EDIT_POSE];
 			}
 			else if (comp->uid.compare("$charEdit.mirrorOn") == 0) {
-				gem->mirrorOn = curValue != 0.0f;
+				settings[E_BS_MIRROR_POSE] = curValue != 0.0f;
 			}
 			else if (comp->uid.compare("$charEdit.applyToChildren") == 0) {
 				applyToChildren = curValue != 0.0f;
@@ -3560,6 +3600,7 @@ DISPATCH_EVENT_END:
 		// stopAllThreads();
 		
 		cout << "End Program\n";
+		
 		
 		if (gw)
 		{
@@ -4976,7 +5017,7 @@ DISPATCH_EVENT_END:
 		if (
 			(gem->orgOn) && 
 			(gem->activeNode != NULL) &&
-			gem->editPose
+			settings[E_BS_EDIT_POSE] 
 		) {
 			gem->applyNodeChanges(gem->activeNode, dx, dy);
 		}
@@ -5032,7 +5073,7 @@ DISPATCH_EVENT_END:
 					
 					if (
 						rbDown
-						//&&( (gem->getCurActor()==NULL) || (gem->editPose)	)
+						//&&( (gem->getCurActor()==NULL) || settings[E_BS_EDIT_POSE] 	)
 					) {
 						
 						camRotation[0] -= dx*0.01f;
@@ -5342,6 +5383,34 @@ DISPATCH_EVENT_END:
 	}
 	
 	
+	void speakSetting(int settingName) {
+		string speakString = makePretty(E_BOOL_SETTING_STRINGS[settingName],"E_BS_");
+		
+		if (settings[settingName]) {
+			speakString += " on  ";
+		}
+		else {
+			speakString += " off  ";
+		}
+		
+		speak(speakString);
+	}
+	
+	void toggleSetting(int settingName, bool withVoice = true) {
+		settings[settingName] = !(settings[settingName]);
+		if (withVoice) {
+			speakSetting(settingName);
+		}
+	}
+	
+	void setSetting(int settingName, bool value, bool withVoice = true) {
+		settings[settingName] = value;
+		if (withVoice) {
+			speakSetting(settingName);
+		}
+	}
+	
+	
 	void resetGeom() {
 		int i;
 		geomStep = 0;
@@ -5408,8 +5477,7 @@ DISPATCH_EVENT_END:
 				switch (key) {
 					
 					case 'd':
-						debugViewOn = !debugViewOn;
-						cout << "debugViewOn " << debugViewOn << "\n";
+						toggleSetting(E_BS_DEBUG_VIEW);
 					break;
 					case 's':
 						stopAllThreads();
@@ -5437,16 +5505,19 @@ DISPATCH_EVENT_END:
 						gw->clearAllHolders();
 					break;
 					case 'v':
-						vsyncOn = !vsyncOn;
-						cout << "vsyncOn " << vsyncOn << "\n";
-						myDynBuffer->setVsync(vsyncOn);
+						toggleSetting(E_BS_VSYNC);
+						myDynBuffer->setVsync(settings[E_BS_VSYNC]);
 					break;
 					case 'f':
-						cout << "start FPS timer\n";
+						speak("start FPS timer");
+						
 						myDynBuffer->setVsync(false);
 						fpsTest = true;
 						fpsCount = 0;
 						fpsTimer.start();
+					break;
+					default:
+						speak("cancel command");
 					break;
 				}
 				
@@ -5501,7 +5572,7 @@ DISPATCH_EVENT_END:
 							break;
 						}
 					
-						if (updateHolders) {
+						if (settings[E_BS_UPDATE_HOLDERS]) {
 							getMarkerPos(x, y);
 							gem->placeNewEnt(gameNetwork->isConnected,tempType,&lastCellPos);
 							
@@ -5527,7 +5598,7 @@ DISPATCH_EVENT_END:
 					
 					
 					case '9':
-						renderingOctBounds = !renderingOctBounds;
+						toggleSetting(E_BS_RENDER_OCT_BOUNDS);
 					break;
 					case '/':
 						//gameOct->captureBuffer(true);
@@ -5535,7 +5606,7 @@ DISPATCH_EVENT_END:
 						//gameOct->updateVBO();
 					break;
 					case '*':
-						//renderingOct = !renderingOct;
+						
 					break;
 					case '-':
 						//gameOct->modRenderLevel(-1);
@@ -5594,28 +5665,7 @@ DISPATCH_EVENT_END:
 
 
 					case 'u':
-						
-						// if (updateHolders) {
-						// 	if (pathfindingOn) {
-						// 		updateHolders = false;
-						// 		pathfindingOn = false;
-						// 	}
-						// 	else {
-						// 		pathfindingOn = true;
-						// 	}
-						// }
-						// else {
-						// 	updateHolders = true;
-						// }
-					
-						updateHolders = !updateHolders;
-						//pathfindingGen = updateHolders;
-						
-						
-						cout << "\n";
-						cout << "updateHolders " << updateHolders << "\n";
-						
-						
+						toggleSetting(E_BS_UPDATE_HOLDERS);
 						
 					break;
 					
@@ -5668,7 +5718,7 @@ DISPATCH_EVENT_END:
 						
 						
 					
-						//radiosityOn = !radiosityOn;
+						//toggleSetting(E_BS_RADIOSITY);
 						break;
 
 
@@ -5708,8 +5758,7 @@ DISPATCH_EVENT_END:
 					
 					case 'j':
 					
-						pathfindingTestOn = !pathfindingTestOn;
-						cout << "pathfindingTestOn: " << pathfindingTestOn << "\n";
+						toggleSetting(E_BS_PATH_FINDING_TEST);
 					
 						//gem->resetActiveNode();
 					
@@ -5729,10 +5778,7 @@ DISPATCH_EVENT_END:
 
 					case 'G':
 					
-						
-					
-						gridOn = !gridOn;
-						cout << "Grid On: " << gridOn << "\n";
+						toggleSetting(E_BS_SHOW_GRID);
 
 						break;
 
@@ -5769,8 +5815,7 @@ DISPATCH_EVENT_END:
 					break;
 					
 					case 'k':
-						gem->destroyTerrain = !(gem->destroyTerrain);
-						cout << "destroyTerrain: " << gem->destroyTerrain << "\n";
+						toggleSetting(E_BS_DESTROY_TERRAIN);
 						//gameAI->getKB();
 					break;
 					
@@ -5785,8 +5830,7 @@ DISPATCH_EVENT_END:
 						break;
 
 					case ';':
-						physicsOn = !physicsOn;
-						cout << "physicsOn: " << physicsOn << "\n";
+						toggleSetting(E_BS_PHSYICS);
 					break;
 					case 'p':
 					
@@ -5799,8 +5843,7 @@ DISPATCH_EVENT_END:
 					break;
 					case 'P':
 					
-						placingPattern = !placingPattern;
-						cout << "placingPattern: " << placingPattern << "\n";
+						toggleSetting(E_BS_PLACING_PATTERN);
 					
 						//toggleFullScreen();
 					break;
@@ -5825,7 +5868,7 @@ DISPATCH_EVENT_END:
 						//gameFluid[E_FID_SML]->updateTBOData(false,true);
 						//gameFluid[E_FID_BIG]->updateTBOData(false,true);
 						
-						gem->showHealth = !(gem->showHealth);
+						toggleSetting(E_BS_SHOW_HEALTH);
 						
 						break;
 						
@@ -5833,28 +5876,13 @@ DISPATCH_EVENT_END:
 						// throw
 					break;
 					case 'T':
-						//testOn = !testOn;
-						testOn3 = !testOn3;
-						cout << "testOn3 " << testOn3 << "\n";
+						toggleSetting(E_BS_TEST_3);
 					break;
 					case 't':
 					
 						
-
-						//testOn2 = !testOn2;
-						//testOn3 = !testOn3;
-						renderingOct = !renderingOct;
-						if (renderingOct) {
-						//	gw->updateTBOPool(5);
-						}
+						toggleSetting(E_BS_RENDER_VOXELS);
 						
-						// if (renderingOct) {
-						// 	gameLogic->threadPoolList->stopAll();
-						// 	gameLogic->threadPoolPath->stopAll();
-						// }
-						
-						
-						//pathfindingTestOn = !pathfindingTestOn;
 						
 					break;
 					// case 'o':
@@ -5918,20 +5946,14 @@ DISPATCH_EVENT_END:
 					break;
 					case 'c':
 					
-						cout << "command:\n";	
-						
-						// gem->setTurnBased(!(gem->turnBased));
-						// gem->combatOn = (gem->turnBased);
-						// gridOn = gem->combatOn;
+						speak("command");
+						//toggleSettings(E_BS_TURN_BASED);
 						
 						commandOn = true;
 						
 						
 						
-						//gem->combatOn = !(gem->combatOn);
-						//cout << "gem->combatOn " << gem->combatOn << "\n";
-						
-						
+						//toggleSetting(E_BS_COMBAT);
 						//setCameraToElevation();
 					
 						//doShaderRefresh(bakeParamsOn);
@@ -5939,11 +5961,11 @@ DISPATCH_EVENT_END:
 						break;
 						
 					case 'v':
+						
 						gem->togglePoseEdit();
 						
 						
-						//waterBulletOn = !waterBulletOn;
-						//gw->toggleVis(selectedEnts.getSelectedEnt());
+						//toggleSettings(E_BS_WATER_BULLET);
 						break;
 						
 					case 'V':
@@ -5952,23 +5974,19 @@ DISPATCH_EVENT_END:
 					
 
 					case 'X':
-						//fogOn = 1.0 - fogOn;
-						//cout << "fog on " << fogOn << "\n";
+						//toggleSetting(E_BS_FOG);
 						gem->changePose(-1);
 						break;
 						
 					case 'x':
 						gem->changePose(1);
 						
-						//fxaaOn = !fxaaOn;
-						//cout << "fxaaOn " << fxaaOn << "\n";
+						//toggleSetting(E_BS_FXAA);
 						break;
 
 					case 'm':
 
-
-						gem->mirrorOn = !gem->mirrorOn;
-						cout << "gem->mirrorOn " << gem->mirrorOn << "\n";
+						toggleSetting(E_BS_MIRROR_POSE);
 						
 						// doPathReport = true;
 
@@ -6023,7 +6041,7 @@ DISPATCH_EVENT_END:
 				}
 				
 				
-				if (gem->turnBased&&(gem->getCurActor() != NULL)) {
+				if (settings[E_BS_TURN_BASED]&&(gem->getCurActor() != NULL)) {
 					switch(key) {
 						case 'a':
 							
@@ -6073,15 +6091,18 @@ DISPATCH_EVENT_END:
 	
 	
 	
-	
-	
-	
-	
 
 	void getPixData(FIVector4 *toVector, int _xv, int _yv, bool forceUpdate, bool isObj)
 	{
 
-		
+		if (
+			(_xv <= 0) ||
+			(_xv >= origWinW) ||
+			(_yv <= 0) ||
+			(_yv >= origWinH)
+		) {
+			return;
+		}
 
 		if (fpsTest) {
 			return;
@@ -6104,6 +6125,7 @@ DISPATCH_EVENT_END:
 		else {
 			fbow = getFBOWrapper("solidTargFBO", 0);
 		}
+		
 		
 		float srcW = fbow->width;
 		float srcH = fbow->height;
@@ -6526,7 +6548,7 @@ DISPATCH_EVENT_END:
 		{
 			
 			// if (
-			// 	(gem->getCurActor() != NULL) && (!gem->editPose)	
+			// 	(gem->getCurActor() != NULL) && (!(settings[E_BS_EDIT_POSE]))	
 			// ) {
 			// 	camRotation[0] -= dx*0.02f;
 			// 	camRotation[1] += dy*0.02f;
@@ -6535,7 +6557,7 @@ DISPATCH_EVENT_END:
 			
 			
 
-			if ( placingPattern||placingGeom||RT_TRANSFORM||gem->editPose||pathfindingTestOn||(mouseState != E_MOUSE_STATE_MOVE)) {
+			if ( settings[E_BS_PLACING_PATTERN]||placingGeom||RT_TRANSFORM||settings[E_BS_EDIT_POSE]||settings[E_BS_PATH_FINDING_TEST]||(mouseState != E_MOUSE_STATE_MOVE)) {
 			//if (true) {
 				getPixData(&mouseMovePD, x, y, false, false);
 				getPixData(&mouseMoveOPD, x, y, true, true);
@@ -6544,7 +6566,7 @@ DISPATCH_EVENT_END:
 
 			gw->updateMouseCoords(&mouseMovePD);
 			
-			if (pathfindingTestOn) {
+			if (settings[E_BS_PATH_FINDING_TEST]) {
 				
 				if (gameLogic->getClosestPathRad(mouseMovePD.getBTV(), closestHolder) > -1) {
 					
@@ -6563,7 +6585,7 @@ DISPATCH_EVENT_END:
 
 			if (
 				gem->orgOn &&
-				gem->editPose
+				settings[E_BS_EDIT_POSE]
 				&& (!ddVis)
 			) {
 				gem->updateNearestOrgNode(false, &mouseMovePD);
@@ -6774,7 +6796,7 @@ DISPATCH_EVENT_END:
 					bCtrl
 				);
 				gem->makeSwing(gem->getCurActor()->uid, RLBN_LEFT);
-				if (gem->turnBased) {gem->endHumanTurn();}
+				if (settings[E_BS_TURN_BASED]) {gem->endHumanTurn();}
 				return;
 			}
 			if (rbClicked) {
@@ -6786,7 +6808,7 @@ DISPATCH_EVENT_END:
 					bCtrl
 				);
 				gem->makeSwing(gem->getCurActor()->uid, RLBN_RIGT);
-				if (gem->turnBased) {gem->endHumanTurn();}
+				if (settings[E_BS_TURN_BASED]) {gem->endHumanTurn();}
 				return;
 			}
 			
@@ -6904,7 +6926,7 @@ DISPATCH_EVENT_END:
 							if (noTravel) {
 								
 								
-								if (pathfindingTestOn) {
+								if (settings[E_BS_PATH_FINDING_TEST]) {
 									
 									pathFindingStep++;
 									
@@ -7072,7 +7094,7 @@ DISPATCH_EVENT_END:
 			
 			if (
 				gem->orgOn &&
-				gem->editPose
+				settings[E_BS_EDIT_POSE]
 				&& (!ddVis)
 				
 			) {
@@ -7114,6 +7136,7 @@ DISPATCH_EVENT_END:
 						if (abClicked) {
 							//gameFluid[E_FID_SML]->pushModifyUnit(true, &mouseUpPD, buttonInt, earthMod, curBrushRad);
 							gameFluid[E_FID_BIG]->pushModifyUnit(true, &mouseUpPD, buttonInt, earthMod, curBrushRad);
+							gameFluid[E_FID_BIG]->flushStacks();
 							forceGetPD = true;
 						}
 						
@@ -7331,7 +7354,7 @@ DISPATCH_EVENT_END:
 			return;
 		}
 		
-		if (gem->turnBased) {
+		if (settings[E_BS_TURN_BASED]) {
 			return;
 		}
 		
@@ -7416,7 +7439,7 @@ DISPATCH_EVENT_END:
 						
 					);
 					
-					if (!gem->editPose) {
+					if (!settings[E_BS_EDIT_POSE]) {
 						gem->makeTurn(actorId, deltaAng*16.0f);
 					}
 				}
@@ -7732,7 +7755,7 @@ DISPATCH_EVENT_END:
 		newPos.setBTV(ge->getCenterPoint(E_BDG_CENTER));
 		newPos.addXYZ(0.0f,0.0f,-2.0f);
 		
-		if (waterBulletOn) {
+		if (settings[E_BS_WATER_BULLET]) {
 			playSoundEnt(
 				"bubble0",
 				ge,
@@ -7758,8 +7781,8 @@ DISPATCH_EVENT_END:
 		sphereStack.back().radAcc = -5.0f;
 		
 		
-		//gameFluid[E_FID_SML]->pushExplodeBullet(true,&newPos,boolToInt(waterBulletOn));
-		gameFluid[E_FID_BIG]->pushExplodeBullet(true,&newPos,boolToInt(waterBulletOn),explodeRad);
+		//gameFluid[E_FID_SML]->pushExplodeBullet(true,&newPos,boolToInt(settings[E_BS_WATER_BULLET]));
+		gameFluid[E_FID_BIG]->pushExplodeBullet(true,&newPos,boolToInt(settings[E_BS_WATER_BULLET]),explodeRad);
 		
 		explodeStack.push_back(ExplodeStruct());
 		
@@ -8965,7 +8988,15 @@ DISPATCH_EVENT_END:
 	// new folder for worldId / versionId
 	// blockId + "_" + holderId + ".bin"
 
-	bool checkCacheEntry(int blockId, int chunkId, int holderId) {
+	bool checkCacheEntry(int blockId, int chunkId, int holderId, bool doErase = false) {
+		
+		if (DO_CACHE) {
+			
+		}
+		else {
+			return false;
+		}
+		
 		string entryName = "b" + i__s(blockId) + "c" + i__s(chunkId) + "h" + i__s(holderId);
 		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,chunkId,holderId);
 		
@@ -8977,6 +9008,9 @@ DISPATCH_EVENT_END:
 		}
 		
 		if (cacheMetaJS->Child("pages")->HasChild(entryName)) {
+			if (doErase) {
+				cacheMetaJS->Child("pages")->RemoveChild(entryName);
+			}
 			return true;
 		}
 		
@@ -9406,22 +9440,19 @@ DISPATCH_EVENT_END:
 	
 	void checkFluid(GameFluid* gf) {
 		
-		//(getAvailPD() < MAX_PDPOOL_SIZE)
 		
-		if (updateHolders) {
-			
-		}
 		
+		
+		gameLogic->loadNearestHolders(settings[E_BS_UPDATE_HOLDERS]);
 		gw->rastChunk(iGetConst(E_CONST_RASTER_CHUNK_RAD), RH_FLAG_DOCHECK);
 		
-		gameLogic->loadNearestHolders(2, updateHolders);		
 		return;
 		
 		
 		
 		
 		
-		if ((!draggingMap)&&(!fpsTest)&&updateHolders) {
+		if ((!draggingMap)&&(!fpsTest)&&settings[E_BS_UPDATE_HOLDERS]) {
 			gf->updateAll();
 			
 			if (gf->fluidReading) {
@@ -9460,7 +9491,7 @@ DISPATCH_EVENT_END:
 			
 			if (gf->cycleTerminated) {
 				
-				gameLogic->loadNearestHolders(2, updateHolders);
+				gameLogic->loadNearestHolders(settings[E_BS_UPDATE_HOLDERS]);
 				holderLoadCount++;
 				
 				if (holderLoadCount == MAX_HOLDER_LOAD_COUNT) {
@@ -9705,7 +9736,7 @@ DISPATCH_EVENT_END:
 						
 						
 						// if (true) { //doFrameRender
-						// 	if (renderingOct) {
+						// 	if (settings[E_BS_RENDER_VOXELS]) {
 						// 		//gw->renderOct(gameOct);
 						// 		//gw->rasterOct(gameOct,true);
 								
@@ -9737,7 +9768,7 @@ DISPATCH_EVENT_END:
 						// 	gw->generateBlockHolder();
 						// }
 						
-						if (gem->turnBased) {
+						if (settings[E_BS_TURN_BASED]) {
 							if (
 								((tbTicks%iGetConst(E_CONST_TURNBASED_TICKS)) == 0)
 								// || (gem->getCurActor() != NULL)
@@ -9939,7 +9970,7 @@ DISPATCH_EVENT_END:
 				
 				gameLogic->applyBehavior();
 				
-				if (gem->turnBased) {
+				if (settings[E_BS_TURN_BASED]) {
 					
 				}
 				else {
@@ -9952,7 +9983,7 @@ DISPATCH_EVENT_END:
 				handleMovement();
 				
 				
-				if (physicsOn) {
+				if (settings[E_BS_PHSYICS]) {
 					gamePhysics->updateAll();
 				}
 				
@@ -10001,7 +10032,7 @@ DISPATCH_EVENT_END:
 				gem->isDraggingObject && 
 				(gem->draggingFromType != E_DT_NOTHING) &&
 				((curTime-mdTime) > 300) &&
-				(!gem->editPose)
+				(!settings[E_BS_EDIT_POSE])
 			) {
 				glutSetCursor(GLUT_CURSOR_CROSSHAIR);
 			
@@ -10061,6 +10092,7 @@ DISPATCH_EVENT_END:
 				if (fpsCount == fpsCountMax) {
 					
 					fpsTest = false;
+					speak("end FPS timer");
 					cout << "\nNumber of voxels (in millions): " << milVox << "\n";
 					cout << "Available pdPool: " << getAvailPD() << "\n";
 					cout << "FPS: " << 1.0/(fpsTimer.getElapsedTimeInSec()/((double)(fpsCountMax))) << "\n";

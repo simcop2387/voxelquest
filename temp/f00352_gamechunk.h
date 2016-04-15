@@ -8,6 +8,7 @@ GameChunk::GameChunk ()
 		lastPointCount = 0;
 		changeFlag = false;
 		changeTick = 1;
+		isDirty = false;
 		
 		readyToRender = false;
 		listEmpty = true;
@@ -43,6 +44,10 @@ void GameChunk::init (Singleton * _singleton, int _blockId, int _chunkId, int tr
 			holderData[i] = NULL;
 		}
 		
+	}
+void GameChunk::makeDirty ()
+                         {
+		isDirty = true;
 	}
 VBOWrapper * GameChunk::getCurVBO ()
                                 {
@@ -104,30 +109,75 @@ void GameChunk::checkHolders ()
 		
 		mipLev = testMip;
 		
+		bool foundDirty = false;
+		
 		int maxTicks = singleton->iGetConst(E_CONST_MAX_CHUNK_TICKS);
+		GamePageHolder* curHolder;
 		
-		
-		if (singleton->updateHolders) {
-			if (
-				changeFlag
-				// || (abs(testMip-mipLev) > 2) ||
-				// (
-				// 	(testMip == 0) &&
-				// 	(mipLev != 0)	
-				// ) ||
-				// (
-				// 	(testMip == NUM_MIP_LEVELS) &&
-				// 	(mipLev != NUM_MIP_LEVELS)	
-				// )
-			) {
-				changeTick++;
+		if (isDirty) {
+			// for (i = 0; i < iHolderSize; i++) {
+			// 	curHolder = holderData[i];
+
+			// 	if (curHolder == NULL) {
+					
+			// 	}
+			// 	else {
+			// 		if (curHolder->lockWrite) {
+			// 			foundDirty = true;
+			// 		}
+			// 		else {
+			// 			if (curHolder->isDirty) {
+			// 				foundDirty = true;
+			// 			}
+			// 		}
+			// 	}
+			// }
+			
+			// if (foundDirty) {
 				
-				if (((changeTick%maxTicks) == 0)) {
-					changeFlag = false;
-					fillVBO();
-				}	
+			// }
+			// else {
+			// 	fillVBO();
+			// }
+			
+			if (singleton->gameLogic->dirtyStack) {
+				
+			}
+			else {
+				fillVBO();
+			}
+			
+			
+			
+		}
+		else {
+			if (singleton->settings[E_BS_UPDATE_HOLDERS]) {
+				if (
+					changeFlag
+					// || (abs(testMip-mipLev) > 2) ||
+					// (
+					// 	(testMip == 0) &&
+					// 	(mipLev != 0)	
+					// ) ||
+					// (
+					// 	(testMip == NUM_MIP_LEVELS) &&
+					// 	(mipLev != NUM_MIP_LEVELS)	
+					// )
+				) {
+					changeTick++;
+					
+					if (((changeTick%maxTicks) == 0)) {
+						fillVBO();
+					}	
+				}
 			}
 		}
+		
+		
+		
+		
+		
+		
 		
 		
 	}
@@ -142,6 +192,9 @@ void GameChunk::reset ()
 	}
 void GameChunk::fillVBO ()
                        {
+		
+		isDirty = false;
+		changeFlag = false;
 		
 		//cout << "fillVBO a\n";
 		
@@ -223,6 +276,7 @@ void GameChunk::fillVBO ()
 		//changeCount = 0;
 		
 		readyToRender = true;
+		singleton->forceShadowUpdate = 5;
 		
 		//cout << "fillVBO b\n";
 		

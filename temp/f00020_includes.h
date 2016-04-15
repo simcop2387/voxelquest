@@ -76,17 +76,20 @@ const static float ORG_SCALE_BASE = 0.5f;
 const static int SHADOW_MAP_RES = 2048;
 
 const static int DEF_SCALE_FACTOR = 1;
-const static int RENDER_SCALE_FACTOR = 4;
+const static int RENDER_SCALE_FACTOR = 8;
 const static bool SINGLE_THREADED = false;
 
 int TOT_POINT_COUNT = 0;
 
-const static int NUM_MIP_LEVELS = 4;
+
+
+const static bool DO_CACHE = false;
+const static int NUM_MIP_LEVELS = 1;
 const static int NUM_MIP_LEVELS_WITH_FIRST = NUM_MIP_LEVELS+1;
 const static bool DO_AO = false;
 const static bool DO_MIP = true;
 const static bool DO_POINTS = true;
-const static int MAX_THREADS = 7;
+const static int MAX_THREADS = 6;
 // const static int NORM_RAD = 2;
 // const static int AO_RAD = 1;
 const static int MAX_HOLDER_LOAD_COUNT = 512;
@@ -133,7 +136,6 @@ const static int GROUP_ID_UNMARKED_IDEAL = -1;
 const static int FLUID_UNIT_MIN = -1;
 const static int FLUID_UNIT_MAX = 16384;
 
-const static int MAX_LAYERS = 2;
 const static int MAX_MIP_LEV = 1; // min of 1
 
 
@@ -431,6 +433,7 @@ int MAX_HOLDERS = 2048;
 
 
 
+
 float MAX_GPU_MEM = 4096.0f;
 float VERTEX_MEM_USAGE = 0.0f;
 float TOT_GPU_MEM_USAGE = 0.0f;
@@ -486,6 +489,8 @@ bool TRACE_ON = false;
 #include <assert.h>
 #include <io.h>
 #include <conio.h>
+
+
 
 #include <SFML/Audio/SoundBuffer.hpp>
 #include <SFML/Audio/Sound.hpp>
@@ -632,6 +637,8 @@ const T& HPClockMin(const T& a, const T& b)
 #include <sys/time.h>
 #endif //_WIN32
 
+#include <stdint.h>
+int64_t GLOBAL_OBJ_COUNT = 0LL;
 
 
 struct HPClockData
@@ -828,7 +835,8 @@ struct charArr {
 
 #ifdef WIN32
 //#include <windows.h>
-
+//#include <stdafx.h>
+#include <sapi.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 // Need to link with Ws2_32.lib, Mswsock.lib, and Advapi32.lib

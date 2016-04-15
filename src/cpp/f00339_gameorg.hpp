@@ -364,7 +364,7 @@ public:
 		
 		BaseObj* curOwner = getOwner();
 		
-		if (singleton->gem->editPose) {
+		if (singleton->settings[E_BS_EDIT_POSE]) {
 			
 		}
 		else {

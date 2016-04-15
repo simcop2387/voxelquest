@@ -61,7 +61,7 @@ public:
 	
 	void pickBody(FIVector4* mouseMoveOPD) {
 		
-		if (!(singleton->gem->editPose)) {
+		if (!(singleton->settings[E_BS_EDIT_POSE])) {
 			lastBodyPick = NULL;
 			lastBodyUID = -1;
 			return;
@@ -803,7 +803,7 @@ public:
 							break;
 							case E_JT_CONT:
 							
-								if (singleton->gem->turnBased) {
+								if (singleton->settings[E_BS_TURN_BASED]) {
 									segCount = 0;
 									
 									curBody->hasContact = true;
@@ -1579,7 +1579,7 @@ public:
 							
 					);
 					
-					if (singleton->gem->editPose) {
+					if (singleton->settings[E_BS_EDIT_POSE]) {
 						ge->skelOffset += btVector3(
 							0.0,
 							0.0,

@@ -9,6 +9,10 @@
 
 
 #define E_CONST(DDD) \
+DDD(E_CONST_DIV_VAL) \
+DDD(E_CONST_SAMP_SCALE) \
+DDD(E_CONST_VORO_STRENGTH) \
+DDD(E_CONST_CHUNK_GATHER_RAD) \
 DDD(E_CONST_MIPDIS0) \
 DDD(E_CONST_MIPDIS1) \
 DDD(E_CONST_MIPDIS2) \
@@ -174,6 +178,7 @@ enum E_PRIM_TYPE_EXT {
 enum E_THREAD_TYPE {
 	E_TT_GENPATHS,
 	E_TT_GENLIST,
+	E_TT_SPEECH,
 	E_TT_LENGTH
 };
 
@@ -601,6 +606,53 @@ enum EVENT_OPS {
 // 	E_ENTPOOL_TRACE,
 // 	E_ENTPOOL_LENGTH
 // };
+
+
+
+
+
+
+#define E_BOOL_SETTING(DDD) \
+DDD(E_BS_DEBUG_VIEW) \
+DDD(E_BS_VSYNC) \
+DDD(E_BS_RENDER_OCT_BOUNDS) \
+DDD(E_BS_RENDER_VOXELS) \
+DDD(E_BS_SHOW_GRID) \
+DDD(E_BS_FOG) \
+DDD(E_BS_PHSYICS) \
+DDD(E_BS_FXAA) \
+DDD(E_BS_WATER_BULLET) \
+DDD(E_BS_PATH_FINDING) \
+DDD(E_BS_PATH_FINDING_GEN) \
+DDD(E_BS_PATH_FINDING_TEST) \
+DDD(E_BS_TEST_1) \
+DDD(E_BS_TEST_2) \
+DDD(E_BS_TEST_3) \
+DDD(E_BS_WATER) \
+DDD(E_BS_TREES) \
+DDD(E_BS_UPDATE_HOLDERS) \
+DDD(E_BS_PLACING_PATTERN) \
+DDD(E_BS_DRAW_TARG_PATHS) \
+DDD(E_BS_UPDATE_FLUID) \
+DDD(E_BS_RADIOSITY) \
+DDD(E_BS_DESTROY_TERRAIN) \
+DDD(E_BS_TURN_BASED) \
+DDD(E_BS_MIRROR_POSE) \
+DDD(E_BS_COMBAT) \
+DDD(E_BS_EDIT_POSE) \
+DDD(E_BS_SHOW_HEALTH) \
+DDD(E_BS_LENGTH)
+
+string E_BOOL_SETTING_STRINGS[] = {
+	E_BOOL_SETTING(DO_DESCRIPTION)
+};
+
+enum E_BOOL_SETTING_VALS {
+	E_BOOL_SETTING(DO_ENUM)
+};
+
+
+
 
 
 
@@ -1430,6 +1482,8 @@ bool sortByDist(const ConnectingNodeStruct &lhs, const ConnectingNodeStruct &rhs
 }
 
 
+
+
 struct PathInfo {
 	btVector3 points[2];
 	bool searchedForPath;
@@ -1904,7 +1958,9 @@ bool operator<(const intPair& lhs, const intPair& rhs)
 	return (lhs2) < (rhs2);
 }
 
-
+bool sortByV1(const intPair &lhs, const intPair &rhs) {
+	return lhs.v1 < rhs.v1;
+}
 
 
 

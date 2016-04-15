@@ -5,6 +5,7 @@
 #define LZZ_INLINE inline
 GameLogic::GameLogic ()
                     {
+		dirtyStack = false;
 		allowThreadCreation = true;
 	}
 void GameLogic::setEntTargPath (int sourceUID, int destUID)
@@ -43,10 +44,10 @@ void GameLogic::init (Singleton * _singleton)
 		//pathCount = 0;
 		
 		threadPoolPath = new ThreadPoolWrapper();
-		threadPoolPath->init(singleton, 6, true||SINGLE_THREADED);
+		threadPoolPath->init(singleton, MAX_THREADS, true||SINGLE_THREADED);
 		
 		threadPoolList = new ThreadPoolWrapper();
-		threadPoolList->init(singleton, 6, false||SINGLE_THREADED);
+		threadPoolList->init(singleton, MAX_THREADS, false||SINGLE_THREADED);
 		
 	}
 void GameLogic::applyTBBehavior ()
@@ -399,7 +400,7 @@ void GameLogic::applyBehavior ()
 				
 				if (writeObj->isAlive()) {
 					
-					if (singleton->gem->turnBased) {
+					if (singleton->settings[E_BS_TURN_BASED]) {
 						
 						deltaAng = writeObj->turnTowardsTargAng(TBDIR_ARR[writeObj->tbDir]);
 						
@@ -1227,9 +1228,9 @@ void GameLogic::update ()
 			int i;
 			BaseObj* ca;
 			
-			if (singleton->pathfindingOn) {
+			if (singleton->settings[E_BS_PATH_FINDING]) {
 				
-				if (singleton->pathfindingTestOn) {
+				if (singleton->settings[E_BS_PATH_FINDING_TEST]) {
 					if (
 						(!testPath.searchedForPath) && (singleton->pathFindingStep == 2)
 					) {
@@ -1239,7 +1240,7 @@ void GameLogic::update ()
 				}
 				
 				
-				if (singleton->drawTargPaths) {
+				if (singleton->settings[E_BS_DRAW_TARG_PATHS]) {
 					for (i = 0; i < singleton->gem->turnList.size(); i++) {
 						
 						ca = &(singleton->gem->gameObjects[ singleton->gem->turnList[i] ]); 
@@ -1748,8 +1749,8 @@ void GameLogic::processCurHolder (GamePageHolder * curHolder, bool doPaths)
 		
 		
 	}
-void GameLogic::loadNearestHolders (int rad, bool doUpdate)
-                                                        {
+void GameLogic::loadNearestHolders (bool doUpdate)
+                                               { //int rad, 
 		
 		int p;
 		int q;
@@ -1806,7 +1807,7 @@ void GameLogic::loadNearestHolders (int rad, bool doUpdate)
 		}
 		
 		int maxGen = singleton->iGetConst(E_CONST_MAX_HOLDER_GEN);
-		
+		//int genMod = 1;
 		
 
 		GamePageHolder* curHolder;
@@ -1814,25 +1815,51 @@ void GameLogic::loadNearestHolders (int rad, bool doUpdate)
 
 		singleton->gw->ensureBlocks();
 		
+		LoadHolderStruct loadHolder;
+		
 		freePD();
 		
-		if (doUpdate) {
+		// if (doUpdate) {
 			
-		}
-		else {
-			return;
-		}
+		// }
+		// else {
+		// 	return;
+		// }
 		
 		bool usingHolderStack = (holderStack.size() > 0);
 		
 		int lockCount = 0;
 		int numPasses = 1;
-		if (usingHolderStack) {
+		
+		
+		if (dirtyStack) {
+			cout << "dirtyStack\n";
+		}
+		
+		
+		if (doUpdate) {
 			numPasses = 1;
 		}
 		else {
-			numPasses = 1;
-			maxLoadRad = 16;
+			if (dirtyStack) {
+				numPasses = 1;
+			}
+			else {
+				numPasses = 0;
+			}
+		}
+		
+		if (usingHolderStack) {
+			
+		}
+		else {
+			if (doUpdate) {
+				maxLoadRad = 16;
+			}
+			else {
+				maxLoadRad = 0;
+			}
+			
 			tempFIV.copyFrom(&(singleton->gw->camHolderPos));
 		}
 		
@@ -1850,6 +1877,17 @@ void GameLogic::loadNearestHolders (int rad, bool doUpdate)
 					holderStack.front().y,
 					holderStack.front().z
 				);
+				
+				loadHolder = holderStack.front();
+				
+				curHolder = singleton->gw->getHolderAtCoords(loadHolder.x, loadHolder.y, loadHolder.z, true);
+				
+				if (curHolder->listGenerated) {
+					
+				}
+				else {
+					holderStack.push_back(loadHolder);
+				}
 				holderStack.pop_front();
 			}
 			
@@ -1891,12 +1929,16 @@ void GameLogic::loadNearestHolders (int rad, bool doUpdate)
 							curHolder = singleton->gw->getHolderAtCoords(ii, jj, kk, true);
 							// curBlock = singleton->gw->getBlockAtId(curHolder->blockId);
 							
+							// if ((curHolder->listGenerated)&&(curHolder->isDirty)) {
+							// 	readyCount++;
+							// }
+							
 							if (curHolder->wasGenerated) {
-										
+								
 								
 								if (
 									// (curLoadRadius < 2) &&
-									(singleton->pathfindingGen) && 
+									(singleton->settings[E_BS_PATH_FINDING_GEN]) && 
 									doPaths
 								) {
 									if (curHolder->pathsReady || curHolder->lockWrite) {
@@ -1920,13 +1962,23 @@ void GameLogic::loadNearestHolders (int rad, bool doUpdate)
 									}
 								}
 								
-								if (curHolder->listGenerated || curHolder->lockWrite) {
+								if (
+									(
+										(curHolder->listGenerated)
+										// && (!(curHolder->isDirty))	
+									)
+									|| curHolder->lockWrite
+								) {
 									
 								}
 								else {
+									
+									
 									if(
 										curHolder->prepPathRefresh(1)										
 									) {
+										
+										
 										
 										curPD = -1;
 										for (q = 0; q < MAX_PDPOOL_SIZE; q++) {
@@ -1936,21 +1988,36 @@ void GameLogic::loadNearestHolders (int rad, bool doUpdate)
 											}
 										}
 										
-										if (curPD >= 0) {
+										if (
+											(curPD >= 0) &&
+											(threadPoolList->anyThreadAvail())	
+										) {
+											
+											//genMod = 1;
+											
+											// if (curHolder->isDirty) {
+											// 	genMod = 0;
+											// 	//cout << "dirtyReset\n";
+											// 	curHolder->reset();
+											// 	// if (curHolder->checkCache()) {
+											// 	// 	cout << "failed to remove key\n";
+											// 	// }
+											// }
+											
 											curHolder->checkCache();
 											curHolder->bindPD(curPD);
+											//curHolder->gatherObjects();
 											
 											threadPoolList->intData[0] = E_TT_GENLIST;
 											threadPoolList->intData[1] = curHolder->blockId;
 											threadPoolList->intData[2] = curHolder->chunkId;
 											threadPoolList->intData[3] = curHolder->holderId;
 											
-											if (threadPoolList->startThread()) {
-												genCount++;
-											}
-											else {
-												curHolder->unbindPD();
-											}
+											threadPoolList->startThread(false);
+											genCount++;
+											
+											
+											
 										}
 									}
 								}
@@ -1979,22 +2046,33 @@ void GameLogic::loadNearestHolders (int rad, bool doUpdate)
 									}
 									else {
 										
-										if (curHolder->offsetInHolders.distance(&(singleton->gw->camHolderPos)) < maxStackDis) {
-											curHolder->wasStacked = true;
-											holderStack.push_back(LoadHolderStruct());
-											holderStack.back().blockId = curHolder->blockId;
-											holderStack.back().holderId = curHolder->holderId;
-											holderStack.back().x = ii;
-											holderStack.back().y = jj;
-											holderStack.back().z = kk;
+										if (dirtyStack) {
+											
 										}
+										else {
+											if (curHolder->offsetInHolders.distance(&(singleton->gw->camHolderPos)) < maxStackDis) {
+												curHolder->wasStacked = true;
+												
+												loadHolder.blockId = curHolder->blockId;
+												loadHolder.holderId = curHolder->holderId;
+												loadHolder.x = ii;
+												loadHolder.y = jj;
+												loadHolder.z = kk;
+												holderStack.push_back(loadHolder);
+												
+											}
+										}
+										
 										
 										
 									}
 								}
 							}
 							
-							if (genCount >= maxGen) {
+							if (
+								(genCount >= maxGen)
+								&& (!dirtyStack)
+							) {
 								return;
 							}
 							
@@ -2007,12 +2085,54 @@ void GameLogic::loadNearestHolders (int rad, bool doUpdate)
 			
 			if (usingHolderStack) {
 				if (lockCount == 0) {
-					//holderStack.pop_front();
+					
 				}
 			}
 		}
 		
 		
+		// readyCount = 0;
+		// std::list<LoadHolderStruct>::iterator it;
+		
+		if (dirtyStack) {
+			
+			if (holderStack.size() == 0) {
+				dirtyStack = false;
+			}
+			
+			// for (it=holderStack.begin(); it != holderStack.end(); ++it) {
+			// 	curHolder = singleton->gw->getHolderAtCoords(
+			// 		it->x,
+			// 		it->y,
+			// 		it->z,
+			// 		true
+			// 	);
+				
+			// 	if (
+			// 		(curHolder->isDirty)&&(curHolder->listGenerated)	
+			// 	) {
+			// 		readyCount++;
+			// 	}
+			// }
+			
+			
+			// if (holderStack.size() == readyCount) {
+				
+			// 	for (it=holderStack.begin(); it != holderStack.end(); ++it) {
+			// 		curHolder = singleton->gw->getHolderAtCoords(
+			// 			it->x,
+			// 			it->y,
+			// 			it->z,
+			// 			true
+			// 		);
+			// 		curHolder->isDirty = false;
+			// 	}
+				
+			// 	holderStack.clear();
+			// 	dirtyStack = false;
+			// }
+			
+		}
 		
 		
 		//minv.copyFrom(&camBlockPos);
@@ -2059,7 +2179,7 @@ void GameLogic::loadNearestHolders (int rad, bool doUpdate)
 										
 		// 								if (
 		// 									// (curLoadRadius < 2) &&
-		// 									(singleton->pathfindingGen) && 
+		// 									(singleton->settings[E_BS_PATH_FINDING_GEN]) && 
 		// 									doPaths
 		// 								) {
 		// 									if (curHolder->pathsReady || curHolder->lockWrite) {

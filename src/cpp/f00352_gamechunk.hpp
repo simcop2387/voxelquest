@@ -12,6 +12,7 @@ public:
 	bool readyToRender;
 	bool listEmpty;
 	bool changeFlag;
+	bool isDirty;
 	
 	int iHolderSize;
 	int holdersPerChunk;
@@ -22,11 +23,15 @@ public:
 	
 	int chunkId;
 	int blockId;
+	
+	std::vector<ObjectStruct> localObjects;
+	
 
 	GameChunk() {
 		lastPointCount = 0;
 		changeFlag = false;
 		changeTick = 1;
+		isDirty = false;
 		
 		readyToRender = false;
 		listEmpty = true;
@@ -71,6 +76,10 @@ public:
 			holderData[i] = NULL;
 		}
 		
+	}
+
+	void makeDirty() {
+		isDirty = true;
 	}
 
 	VBOWrapper* getCurVBO() {
@@ -132,30 +141,75 @@ public:
 		
 		mipLev = testMip;
 		
+		bool foundDirty = false;
+		
 		int maxTicks = singleton->iGetConst(E_CONST_MAX_CHUNK_TICKS);
+		GamePageHolder* curHolder;
 		
-		
-		if (singleton->updateHolders) {
-			if (
-				changeFlag
-				// || (abs(testMip-mipLev) > 2) ||
-				// (
-				// 	(testMip == 0) &&
-				// 	(mipLev != 0)	
-				// ) ||
-				// (
-				// 	(testMip == NUM_MIP_LEVELS) &&
-				// 	(mipLev != NUM_MIP_LEVELS)	
-				// )
-			) {
-				changeTick++;
+		if (isDirty) {
+			// for (i = 0; i < iHolderSize; i++) {
+			// 	curHolder = holderData[i];
+
+			// 	if (curHolder == NULL) {
+					
+			// 	}
+			// 	else {
+			// 		if (curHolder->lockWrite) {
+			// 			foundDirty = true;
+			// 		}
+			// 		else {
+			// 			if (curHolder->isDirty) {
+			// 				foundDirty = true;
+			// 			}
+			// 		}
+			// 	}
+			// }
+			
+			// if (foundDirty) {
 				
-				if (((changeTick%maxTicks) == 0)) {
-					changeFlag = false;
-					fillVBO();
-				}	
+			// }
+			// else {
+			// 	fillVBO();
+			// }
+			
+			if (singleton->gameLogic->dirtyStack) {
+				
+			}
+			else {
+				fillVBO();
+			}
+			
+			
+			
+		}
+		else {
+			if (singleton->settings[E_BS_UPDATE_HOLDERS]) {
+				if (
+					changeFlag
+					// || (abs(testMip-mipLev) > 2) ||
+					// (
+					// 	(testMip == 0) &&
+					// 	(mipLev != 0)	
+					// ) ||
+					// (
+					// 	(testMip == NUM_MIP_LEVELS) &&
+					// 	(mipLev != NUM_MIP_LEVELS)	
+					// )
+				) {
+					changeTick++;
+					
+					if (((changeTick%maxTicks) == 0)) {
+						fillVBO();
+					}	
+				}
 			}
 		}
+		
+		
+		
+		
+		
+		
 		
 		
 	}
@@ -170,6 +224,9 @@ public:
 	}
 	
 	void fillVBO() {
+		
+		isDirty = false;
+		changeFlag = false;
 		
 		//cout << "fillVBO a\n";
 		
@@ -251,6 +308,7 @@ public:
 		//changeCount = 0;
 		
 		readyToRender = true;
+		singleton->forceShadowUpdate = 5;
 		
 		//cout << "fillVBO b\n";
 		

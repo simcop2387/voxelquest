@@ -15,7 +15,6 @@ public:
 	//uint* cubeData;
 	//std::vector<CubeWrap> cubeWraps;
 
-	bool preGenList;
 	bool listGenerated;
 	bool readyToRender;
 	bool listEmpty;
@@ -23,10 +22,10 @@ public:
 	bool hasPath;
 	bool hasCache;
 	bool wasStacked;
-	//bool appliedFill;
+	bool isDirty;
 	
 	bool lockWrite;
-	bool lockRead;
+	// /bool lockRead;
 	
 	int begMip[NUM_MIP_LEVELS_WITH_FIRST];
 	int endMip[NUM_MIP_LEVELS_WITH_FIRST];
@@ -38,7 +37,8 @@ public:
 	
 	GameVoxelWrap* voxelWrap;
 	
-	
+	std::vector<ObjectStruct> tempObjects;
+	std::vector<intPair> objectOrder;
 	
 	//GLuint holderDL;
 	
@@ -75,19 +75,16 @@ public:
 	std::vector<GroupInfoStruct> groupInfoStack; // stores all info about one group
 	std::vector<ConnectingNodeStruct> bestConnectingNodes; // best connections between groups
 	
-	// std::vector<float> vertexVec; //btScalar
-	// std::vector<uint> indexVec; //unsigned short
+
 	std::vector<int> collideIndices;
 	
-	//std::vector<GameEnt *> entityGeom;
-	//int entityGeomCounter;
+
 	FIVector4 offsetInHolders;
 
 	FIVector4 gphMinInCells;
 	FIVector4 gphMaxInCells;
 	FIVector4 gphCenInCells;
 
-	//FIVector4 offsetInBlocks;
 	FIVector4 origOffset;
 
 	
@@ -121,14 +118,30 @@ public:
 	// unsigned short *indices;
 
 	
-	void reset() {
+	
+	void reset(bool destroyCache) {
 		vertexVec.clear();
 		vertexVec.shrink_to_fit();
-		//vboWrapper.deallocVBO();
 		unbindPD();
+		//isDirty = false;
 		wasStacked = false;
+		hasCache = false;
+		hasData = true;
+		hasPath = true;
+		holderFlags = E_CD_UNKNOWN;
+		listEmpty = true;
 		listGenerated = false;
 		readyToRender = false;
+		pathsInvalid = true;
+		idealPathsInvalid = true;
+		pathsReady = false;
+		idealPathsReady = false;
+		wasGenerated = false;
+		lockWrite = false;
+		
+		if (destroyCache) {
+			singleton->checkCacheEntry(blockId,chunkId,holderId,true);
+		}
 	}
 	
 
@@ -141,39 +154,26 @@ public:
 			endMip[i] = 0;
 		}
 		
-		// boxShape = NULL;
-		// trimeshShape = NULL;
-		// meshInterface = NULL;
-		// body = NULL;
 		
-		//appliedFill = false;
-		wasStacked = false;
-		hasCache = false;
-		hasData = true;
-		hasPath = true;
+		
+		isDirty = false;
+		
+		
+		
 		
 		terVW = NULL;
-		
-		holderFlags = E_CD_UNKNOWN;
-		
-		listEmpty = true;
-		preGenList = false;
-		listGenerated = false;
-		readyToRender = false;
-		pathsInvalid = true;
-		idealPathsInvalid = true;
-		
-		pathsReady = false;
-		idealPathsReady = false;
+		curPD = -1;
 		
 		//cubeData = NULL;
 		cellData = NULL;
 		extrData = NULL;
 		pathData = NULL;
 		
+		reset(false);
 		
-		wasGenerated = false;
 	}
+	
+
 	
 	
 	
@@ -193,14 +193,6 @@ public:
 
 		curPD = -1;
 
-		//isBlockHolder = _isBlockHolder;
-
-		//cout << "gph init\n";
-
-		lockRead = false;
-		lockWrite = false;
-
-		//entityGeomCounter = 0;
 		totIdealNodes = 0;
 		totGroupIds = 0;
 
@@ -266,6 +258,94 @@ public:
 		
 	}
 	
+	void makeDirty() {
+		reset(true);
+		//cout << "makeDirty\n";
+		isDirty = true;
+	}
+	
+	void gatherObjects() {
+		
+		//PaddedData* pd = &(singleton->pdPool[curPD]);
+		
+		tempObjects.clear();
+		objectOrder.clear();
+		
+		int chunkRad = singleton->iGetConst(E_CONST_CHUNK_GATHER_RAD);
+		GameChunk* parentChunk = singleton->gw->getChunkAtId(blockId,chunkId);
+		GameChunk* curChunk;
+		
+		int i;
+		int j;
+		int k;
+		
+		int q;
+		
+		intPair ip;
+		
+		FIVector4 tempVec;
+		
+		tempVec.averageNegXYZ(&gphMaxInCells,&gphMinInCells);
+		
+		vec3 gphCen = gphCenInCells.getVec3();
+		vec3 gphRad = tempVec.getVec3();
+		vec3 cenDif;
+		vec3 radAdd;
+		
+		float fPadding = singleton->paddingInCells;
+		
+		ObjectStruct* curObj;
+		
+		gphRad += fPadding;
+		
+		if (parentChunk != NULL) {
+			for (k = -chunkRad; k <= chunkRad; k++) {
+				for (j = -chunkRad; j <= chunkRad; j++) {
+					for (i = -chunkRad; i <= chunkRad; i++) {
+						curChunk = singleton->gw->getChunkAtCoords(
+							parentChunk->offsetInChunks.getIX()+i,
+							parentChunk->offsetInChunks.getIY()+j,
+							parentChunk->offsetInChunks.getIZ()+k,
+							false
+						);
+						
+						if (curChunk != NULL) {
+							
+							for (q = 0; q < curChunk->localObjects.size(); q++) {
+								curObj = &(curChunk->localObjects[q]);
+								cenDif = gphCen-curObj->data[E_OSD_CENTER];
+								cenDif.doAbs();
+								radAdd = curObj->data[E_OSD_RADIUS] + gphRad;
+								
+								if (
+									(cenDif.x <= radAdd.x) &&
+									(cenDif.y <= radAdd.y) &&
+									(cenDif.z <= radAdd.z)
+								) {
+									tempObjects.push_back(*curObj);
+								
+									ip.v0 = tempObjects.size()-1;
+									ip.v1 = tempObjects.back().globalId;
+								
+									objectOrder.push_back(ip);
+								}
+								
+							}
+							
+						}
+					}
+				}
+			}
+		}
+		
+		if (tempObjects.size() > 0) {
+			
+			
+			sort(objectOrder.begin(),objectOrder.end(),sortByV1);
+		}
+		
+		
+	}
 	
 	int getCellAtCoordsLocal(int xx, int yy, int zz) {
 		int ii = xx;
@@ -1536,6 +1616,7 @@ FIRST_FILL_DONE:
 		
 		int p;
 		int q;
+		int r;
 		
 		int ind;
 		
@@ -1594,7 +1675,7 @@ FIRST_FILL_DONE:
 		FBOWrapper* fbow = curVW->fboSet.getFBOWrapper(0);
 		
 		// if (isBlockHolder) {
-		// 	wasGenerated = true;
+		// 	
 		// 	return;
 		// }
 		
@@ -1612,6 +1693,14 @@ FIRST_FILL_DONE:
 		float watHeight = singleton->getSeaHeightScaled();
 		
 		int cdo4 = cellDataSize/4;
+		int curInd;
+		ObjectStruct* curObj;
+		
+		gatherObjects();
+		
+		
+		
+		
 		
 		for (p = 0; p < cdo4; p++) {
 			
@@ -1665,7 +1754,68 @@ FIRST_FILL_DONE:
 			cellData[ind+E_PTT_TER] = iTer;
 			cellData[ind+E_PTT_WAT] = iWat;
 			cellData[ind+E_PTT_LST] = iWat;
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
 		}
+		
+		
+		
+		
+		
+		
+		vec3 gphMin = gphMinInCells.getVec3();
+		vec3 fWorldPosCell;
+		int curMP;
+		
+		for (p = 0; p < cdo4; p++) {
+			
+			kk = p/(cellsPerHolder*cellsPerHolder);
+			jj = (p-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+			ii = p-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+			
+			ind = p*4;
+			
+			fWorldPosCell = gphMin + vec3(ii,jj,kk);
+			
+			for (r = 0; r < objectOrder.size(); r++) {
+				curInd = objectOrder[r].v0;
+				curObj = &(tempObjects[curInd]);
+				
+				
+				if (fWorldPosCell.distance(curObj->data[E_OSD_CENTER]) <= curObj->data[E_OSD_RADIUS].x) {
+					curMP = curObj->data[E_OSD_MATPARAMS].z;
+					
+					switch (curMP) {
+						case E_BRUSH_MOVE:
+							
+						break;
+						case E_BRUSH_ADD:
+							cellData[ind+E_PTT_TER] = FLUID_UNIT_MAX;
+						break;
+						case E_BRUSH_SUB:
+							cellData[ind+E_PTT_TER] = FLUID_UNIT_MIN;
+						break;
+					}
+					
+				}
+				
+				
+			}
+			
+			
+		}
+		
+		
+		
+		
 		
 		int cph2 = cellsPerHolder/2;
 		int readInd;
@@ -1703,429 +1853,20 @@ FIRST_FILL_DONE:
 		}
 		
 		
+		
+		
+		
+		
+		
+		
+		
+		
 		wasGenerated = true;
 		
 		
 		
 	}
 
-	// void genCellData2() {
-		
-	// 	//cout << "genCellData()\n";
-		
-	// 	int i;
-	// 	int j;
-	// 	int k;
-		
-	// 	int q;
-		
-	// 	int ind;
-		
-	// 	float fi;
-	// 	float fj;
-	// 	float fk;
-		
-	// 	float zv;
-		
-	// 	float fiAbs;
-	// 	float fjAbs;
-	// 	float fkAbs;
-		
-	// 	float terHeight;
-	// 	float simplexVal;
-	// 	float simplexVal1;
-	// 	float simplexVal2;
-		
-	// 	float disVal;
-		
-	// 	float fSimp;
-	// 	int iSimp;
-	// 	int iSimp2;
-		
-		
-		
-		
-	// 	float wspX = singleton->cellsPerWorld/2.0f;
-	// 	float wspY = singleton->cellsPerWorld/2.0f;
-		
-	// 	float distanceBelowTer;
-		
-	// 	checkData();
-		
-	// 	for (i = 0; i < cellDataSize; i++) {
-	// 		cellData[i] = FLUID_UNIT_MIN;
-	// 		extrData[i] = FLUID_UNIT_MIN;
-	// 	}
-		
-		
-	// 	float watHeight = singleton->getSeaHeightScaled();
-		
-	// 	float simplexRegion = 200.0f;
-	// 	float simplexMod = 0.0f;
-		
-	// 	for (j = 0; j < cellsPerHolder; j++) {
-	// 		fj = abs(j + gphMinInCells[1]);
-	// 		fjAbs = abs(wspY-fj);
-	// 		for (i = 0; i < cellsPerHolder; i++) {
-	// 			fi = abs(i + gphMinInCells[0]);
-	// 			fiAbs = abs(wspX-fi);
-				
-				
-				
-	// 			/*
-	// 			for x=0,bufferwidth-1,1 do
-	// 				for y=0,bufferheight-1,1 do
-	// 					s=x/bufferwidth
-	// 					t=y/bufferheight
-	// 			    dx=x2-x1
-	// 			    dy=y2-y1
-						
-	// 					nx=x1+cos(s*2*pi)*dx/(2*pi)
-	// 					ny=y1+cos(t*2*pi)*dy/(2*pi)
-	// 					nz=x1+sin(s*2*pi)*dx/(2*pi)
-	// 					nw=y1+sin(t*2*pi)*dy/(2*pi)
-						
-	// 					buffer:set(x,y,Noise4D(nx,ny,nz,nw))
-	// 				end
-	// 			end
-	// 			*/
-				
-	// 			/*
-	// 			float simplexScaledNoise(
-	// 				const float octaves,
-	// 				const float persistence,
-	// 				const float scale,
-	// 				const float loBound,
-	// 				const float hiBound,
-	// 				const float x,
-	// 				const float y,
-	// 				const float z,
-	// 				const float w
-	// 			) {
-	// 				return simplexNoise(octaves, persistence, scale, x, y, z, w) * (hiBound - loBound) / 2 + (hiBound + loBound) / 2;
-	// 			}
-	// 			*/
-				
-	// 			// - singleton->cellsPerWorld*0.5f
-				
-	// 			// zv = simplexScaledNoise(
-	// 			// 		4.0f, //octaves
-	// 			// 		0.5f, //persistence (amount added in each successive generation)
-	// 			// 		1.0f/16.0f, //scale (frequency)
-	// 			// 		0.0f, // lo bound
-	// 			// 		1.0f, // hi bound
-	// 			// 		fi + 2333.2,
-	// 			// 		fj + 1352.4,
-	// 			// 		4222.3
-	// 			// 	);
-				
-				
-	// 			terHeight = singleton->getHeightAtPixelPos(fi,fj);
-				
-				
-				
-	// 			for (k = 0; k < cellsPerHolder; k++) {
-	// 				fk = (k + gphMinInCells[2]);
-	// 				fkAbs = fk;//abs(j-singleton->heightMapMaxInCells*0.5f);
-					
-					
-	// 				simplexMod = (
-	// 					clampfZO(
-	// 						1.0f - 
-	// 						abs(
-	// 							fk-(terHeight-simplexRegion*0.5f)
-	// 						)/simplexRegion
-	// 					)	
-	// 				);
-					
-	// 				distanceBelowTer = (
-	// 					clampfZO(
-							
-	// 						(
-	// 							terHeight-fk
-	// 						)/simplexRegion
-	// 					)	
-	// 				);
-					
-					
-	// 				if (simplexMod > 0.0f) {
-	// 					simplexVal = clampfZO(
-	// 						simplexScaledNoise(
-	// 							4.0f, //octaves
-	// 							0.5f, //persistence (amount added in each successive generation)
-	// 							1.0f/64.0f, //scale (frequency)
-	// 							0.0f, // lo bound
-	// 							1.0f, // hi bound
-	// 							fiAbs,
-	// 							fjAbs,
-	// 							fkAbs
-	// 						) 
-	// 					);
-	// 				}
-	// 				else {
-	// 					simplexVal = 0.0f;
-	// 				}
-					
-					
-					
-	// 				//simplexVal = simplexVal*2.0f-1.0f;
-					
-	// 				// simplexVal2 = clampfZO(
-	// 				// 	simplexScaledNoise(
-	// 				// 		5.0f, //octaves
-	// 				// 		0.5f, //persistence (amount added in each successive generation)
-	// 				// 		1.0f/128.0f, //scale (frequency)
-	// 				// 		0.0f, // lo bound
-	// 				// 		1.0f, // hi bound
-	// 				// 		fiAbs,
-	// 				// 		fjAbs,
-	// 				// 		fkAbs
-	// 				// 	) 
-	// 				// );
-					
-	// 				// disVal = (fi/wspX)*(fj/wspY);
-					
-					
-					
-	// 				// simplexVal = mixf(simplexVal1,simplexVal2,disVal);
-					
-	// 				if (
-	// 					//fk < terHeight
-	// 					((terHeight + simplexVal*simplexMod*800.0f) - (fk+100.0f+300.0f*distanceBelowTer)) > 0.0f
-	// 				) {
-	// 					iSimp = FLUID_UNIT_MAX;
-	// 				}
-	// 				else {
-	// 					iSimp = FLUID_UNIT_MIN;
-	// 				}
-					
-	// 				if (iSimp == FLUID_UNIT_MAX) {
-	// 					iSimp2 = FLUID_UNIT_MIN;
-	// 				}
-	// 				else {
-	// 					if (fk < watHeight) {
-	// 						iSimp2 = FLUID_UNIT_MAX;
-	// 					}
-	// 					else {
-	// 						iSimp2 = FLUID_UNIT_MIN;
-	// 					}
-	// 				}
-					
-					
-					
-					
-					
-					
-	// 				// if (fSimp > 0.5) {
-	// 				// 	iSimp = FLUID_UNIT_MAX;
-	// 				// }
-	// 				// else {
-	// 				// 	iSimp = FLUID_UNIT_MIN;
-	// 				// }
-					
-					
-	// 				ind = (i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder)*4;
-					
-	// 				for (q = 0; q < 4; q++) {
-	// 					cellData[ind+q] = FLUID_UNIT_MIN;
-	// 					extrData[ind+q] = FLUID_UNIT_MIN;
-	// 				}
-					
-					
-	// 				cellData[ind+0] = iSimp;
-	// 				cellData[ind+1] = iSimp2;
-	// 				cellData[ind+2] = iSimp2;
-					
-		
-		
-	// 			}
-	// 		}
-	// 	}
-		
-		
-	// 	wasGenerated = true;
-	// }
-
-	
-	// void fetchHolderGeom() {
-	// 	int i;
-	// 	int j;
-	// 	int k;
-	// 	int n;
-		
-	// 	int m;
-		
-	// 	GameBlock* curBlock;
-	// 	GamePageHolder* gph;
-	// 	FIVector4 start;
-	// 	FIVector4 end;
-	// 	GameEnt* gameEnt;
-
-
-	// 	for (n = 0; n < E_ET_LENGTH; n++) {
-	// 		containsEntIds[n].data.clear();
-			
-	// 		for (i = -1; i <= 1; i++) {
-	// 			for (j = -1; j <= 1; j++) {
-	// 				for (k = -1; k <= 1; k++) {
-	// 					curBlock = singleton->gw->getBlockAtCoords(
-	// 						offsetInBlocks.getIX()+i,
-	// 						offsetInBlocks.getIY()+j,
-	// 						offsetInBlocks.getIZ()+k,
-	// 						true
-	// 					);
-
-	// 					for (m = 0; m < curBlock->gameEnts[n].data.size(); m++) {
-
-	// 						gameEnt = &(curBlock->gameEnts[n].data[m]);
-
-	// 						start.copyFrom( &(gameEnt->moveMinInPixels) );
-	// 						end.copyFrom( &(gameEnt->moveMaxInPixels) );
-
-	// 						start.clampZ(0.0,singleton->cellsPerWorld-1.0f);
-	// 						end.clampZ(0.0,singleton->cellsPerWorld-1.0f);
-
-	// 						if (FIVector4::intersectInt(&start,&end,&gphMinInCells,&gphMaxInCells)) {
-	// 							containsEntIds[n].data.push_back(intPair());
-	// 							containsEntIds[n].data.back().v0 = curBlock->blockId;
-	// 							containsEntIds[n].data.back().v1 = m;
-	// 						}
-	// 					}
-	// 				}
-					
-	// 			}
-	// 		}
-	// 	}
-
-	// }
-	
-	
-	
-	// #################
-	
-	// void bindHolderDL() {
-	// 	if (listGenerated) {
-	// 		glDeleteLists(holderDL, 1);
-	// 	}
-		
-	// 	holderDL = glGenLists(1);
-	// 	glNewList(holderDL, GL_COMPILE);
-	// }
-	// void unbindHolderDL() {
-	// 	glEndList();
-	// 	listGenerated = true;
-	// }
-	
-	
-	
-
-
-
-	// void createMesh()
-	// {
-	// 	btTransform trans;
-	// 	trans.setIdentity();
-		
-	// 	float objRad;
-		
-	// 	if (trimeshShape == NULL) {
-			
-	// 	}
-	// 	else {
-			
-	// 		//cout << "regen\n";
-			
-	// 		singleton->gamePhysics->example->removeRigidBody(body);
-	// 		delete meshInterface;
-	// 		meshInterface = NULL;
-	// 		delete trimeshShape;
-	// 		trimeshShape = NULL;
-	// 		//delete body;
-	// 		//body = NULL;
-			
-	// 		if (body != NULL) {
-				
-	// 			delete body;
-	// 			body = NULL;
-				
-	// 			//cout << "body not null\n";
-	// 		}
-	// 	}
-		
-	// 	if (boxShape == NULL) {
-			
-	// 	}
-	// 	else {
-	// 		singleton->gamePhysics->example->removeRigidBody(body);
-	// 		delete boxShape;
-	// 		boxShape = NULL;
-	// 	}
-		
-		
-	// 	if ((holderFlags == E_CD_SOLID)&&listEmpty) {
-	// 		objRad = (gphMaxInCells[0]-gphMinInCells[0])*0.5f;
-			
-	// 		boxShape = new btBoxShape(btVector3(objRad,objRad,objRad));
-	// 		trans.setOrigin(btVector3(
-	// 			(gphMinInCells[0]+gphMaxInCells[0])*0.5f,
-	// 			(gphMinInCells[1]+gphMaxInCells[1])*0.5f,
-	// 			(gphMinInCells[2]+gphMaxInCells[2])*0.5f
-	// 		));
-
-	// 		body = singleton->gamePhysics->example->createRigidBodyMask(
-	// 			0,
-	// 			trans,
-	// 			boxShape
-	// 			,COL_STATIC,
-	// 			terCollidesWith
-	// 		);
-			
-	// 	}
-	// 	else {
-			
-	// 		meshInterface = new btTriangleIndexVertexArray();
-			
-	// 		part.m_vertexBase = (const unsigned char*)(&(vertexVec[0]));
-	// 		part.m_vertexStride = sizeof(btScalar) * 3;
-	// 		part.m_numVertices = vertexVec.size()/3;
-	// 		part.m_triangleIndexBase = (const unsigned char*)(&(indexVec[0]));
-	// 		part.m_triangleIndexStride = sizeof(short) * 3;
-	// 		part.m_numTriangles = indexVec.size()/3;
-	// 		part.m_indexType = PHY_SHORT;
-
-	// 		meshInterface->addIndexedMesh(part,PHY_SHORT);
-
-			
-	// 		trimeshShape = new btBvhTriangleMeshShape(meshInterface,true,true);
-			
-	// 		trans.setOrigin(btVector3(
-	// 			gphMinInCells[0],
-	// 			gphMinInCells[1],
-	// 			gphMinInCells[2]
-	// 		));
-
-	// 		body = singleton->gamePhysics->example->createRigidBodyMask(
-	// 			0,
-	// 			trans,
-	// 			trimeshShape
-	// 			,COL_STATIC,
-	// 			terCollidesWith
-	// 		);
-			
-			
-	// 	}
-		
-
-		
-	// 	body->setFriction(btScalar(0.9));
-	// 	body->bodyUID = -1;
-	// 	body->limbUID = -1;
-		
-	// 	singleton->gamePhysics->example->updateGraphicsObjects();
-		
-		
-		
-	// }
 
 	void bindPD(int pd) {
 		curPD = pd;
@@ -2172,7 +1913,11 @@ FIRST_FILL_DONE:
 					
 				}
 				else {
-					res = singleton->saveCacheEntry(blockId,chunkId,holderId);
+					
+					if (DO_CACHE) {
+						res = singleton->saveCacheEntry(blockId,chunkId,holderId);
+					}
+					
 					
 					// if (res) {
 					// 	//cout << "saved cache\n";
@@ -2194,7 +1939,6 @@ FIRST_FILL_DONE:
 			
 		}
 		
-		//appliedFill = true;
 		
 	}
 
@@ -2238,6 +1982,9 @@ FIRST_FILL_DONE:
 			extrData = NULL;
 			
 			hasData = false;
+		}
+		else {
+			//hasData = true;
 		}
 		
 		
@@ -2413,6 +2160,77 @@ FIRST_FILL_DONE:
 		return tempHF;
 	}
 
+
+	bool checkCache() {
+		if (DO_CACHE) {
+			hasCache = singleton->checkCacheEntry(blockId,chunkId,holderId);
+		}
+		else {
+			hasCache = false;
+		}
+		
+		return hasCache;
+	}
+
+	void generateList() {
+		//PaddedData* pd = &(singleton->pdPool[curPD]);
+		
+		if (singleton->gamePhysics == NULL) {
+			return;
+		}
+		
+		
+		uint tempHF = gatherData();		
+		
+		
+		
+		if (
+			(
+				(tempHF == E_CD_SOLID) ||
+				(tempHF == E_CD_EMPTY) ||
+				(tempHF == E_CD_WATER)	
+			) &&
+			(
+				(tempObjects.size() == 0)
+			)
+		) {
+			
+		}
+		else {
+			
+			if (DO_VOXEL_WRAP) {
+				if (hasCache) {
+					
+				}
+				else {
+					voxelWrap->process(this);
+				}
+				
+			}
+			
+			if (POLYS_FOR_CELLS) {
+				wrapPolys();
+			}
+			
+		}
+		
+		
+		listEmpty = (vertexVec.size() == 0); //vboWrapper.
+		
+		// if (DO_VOXEL_WRAP) {
+		// 	listEmpty = (cubeWraps.size() <= 0);
+		// }
+		
+		holderFlags = tempHF;
+		
+		
+	}
+
+
+	
+
+
+	
 
 
 	void wrapPolys() {
@@ -2650,64 +2468,6 @@ FIRST_FILL_DONE:
 		
 		
 	}
-
-	bool checkCache() {
-		hasCache = singleton->checkCacheEntry(blockId,chunkId,holderId);
-		return hasCache;
-	}
-
-	void generateList() { //int fboNum
-		
-		if (singleton->gamePhysics == NULL) {
-			return;
-		}
-		
-		preGenList = false;
-		
-		uint tempHF = gatherData();		
-		
-		
-		
-		if (
-			(tempHF == E_CD_SOLID) ||
-			(tempHF == E_CD_EMPTY) ||
-			(tempHF == E_CD_WATER)
-		) {
-			
-		}
-		else {
-			
-			if (DO_VOXEL_WRAP) {
-				if (hasCache) {
-					
-				}
-				else {
-					voxelWrap->process(this);
-				}
-				
-			}
-			
-			if (POLYS_FOR_CELLS) {
-				wrapPolys();
-			}
-			
-		}
-		
-		
-		listEmpty = (vertexVec.size() == 0); //vboWrapper.
-		
-		// if (DO_VOXEL_WRAP) {
-		// 	listEmpty = (cubeWraps.size() <= 0);
-		// }
-		
-		holderFlags = tempHF;
-		
-		preGenList = true;
-		
-	}
-
-
-	
 
 	
 

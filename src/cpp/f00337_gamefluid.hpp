@@ -400,7 +400,7 @@ public:
 			break;	
 			case 2: //mb
 				modifyUnit(mp, E_BRUSH_REF, earthMod, curBrushRad);
-			break;	
+			break;
 		}
 		
 		modifiedUnit = true;
@@ -656,6 +656,13 @@ public:
 	}
 	
 	
+	void flushStacks() {
+		flushActionStack();
+		
+		if (modifiedUnit) {
+			applyMods();
+		}
+	}
 	
 	
 	bool updateAll() {
@@ -737,7 +744,7 @@ public:
 							if (hasRead&&(!firstVPUpdate)) {
 								writeMIP.copyFrom(&volMinInPixels); //volMinInPixels
 								
-								if (singleton->updateFluid) {
+								if (singleton->settings[E_BS_UPDATE_FLUID]) {
 									//if (mainId == E_FID_SML) {
 										singleton->gameLogic->threadPoolPath->stopAll();
 										singleton->gameLogic->threadPoolList->stopAll();
@@ -1140,7 +1147,7 @@ public:
 	void funcFT() {
 		threadFluid.setRunningLocked(true);
 		
-		if (singleton->updateFluid) {
+		if (singleton->settings[E_BS_UPDATE_FLUID]) {
 			//if (mainId==E_FID_SML) {
 				fluidChanged = updateFluidData();
 			//}
@@ -3215,6 +3222,134 @@ public:
 		int radius
 	) {
 		
+			cout << "applyUnitModification\n";
+			singleton->stopAllThreads();
+			singleton->gameLogic->holderStack.clear();
+			singleton->gameLogic->dirtyStack = true;
+		
+			LoadHolderStruct loadHolder;
+			ObjectStruct os;
+			GamePageHolder* curHolder;
+			GameChunk* curChunk;
+			GameChunk* tempChunk;
+			FIVector4 chunkPos;
+			FIVector4 holderPosMin;
+			FIVector4 holderPosMax;
+			
+			FIVector4 chunkPosMin;
+			FIVector4 chunkPosMax;
+			
+			chunkPos.copyFrom( fPixelWorldCoordsBase );
+			chunkPos.intDivXYZ(singleton->cellsPerChunk);
+			
+			os.globalId = GLOBAL_OBJ_COUNT;
+			GLOBAL_OBJ_COUNT++;
+			os.data[E_OSD_CENTER] = fPixelWorldCoordsBase->getVec3();
+			os.data[E_OSD_RADIUS] = vec3(radius,radius,radius);
+			os.data[E_OSD_MATPARAMS].z = brushAction;
+			
+			switch (brushAction) {
+				case E_BRUSH_MOVE:
+					cout << "this should not hit\n";
+				break;
+				case E_BRUSH_ADD:
+					
+				break;
+				case E_BRUSH_SUB:
+					
+				break;
+			}
+			
+			tempChunk = singleton->gw->getChunkAtCoords(
+				chunkPos.getIX(),
+				chunkPos.getIY(),
+				chunkPos.getIZ(),
+				true
+			);
+			
+			tempChunk->localObjects.push_back(os);
+			
+			int newRadius = radius + singleton->paddingInCells;
+			
+			holderPosMin.copyFrom( fPixelWorldCoordsBase );
+			holderPosMin.addXYZ(-newRadius,-newRadius,-newRadius);
+			holderPosMin.intDivXYZ(cellsPerHolder);
+			
+			holderPosMax.copyFrom( fPixelWorldCoordsBase );
+			holderPosMax.addXYZ(newRadius,newRadius,newRadius);
+			holderPosMax.intDivXYZ(cellsPerHolder);
+			
+			
+			
+			ivec3 minHP = holderPosMin.getIVec3();
+			ivec3 maxHP = holderPosMax.getIVec3();
+			
+			int i;
+			int j;
+			int k;
+			
+			for (k = minHP.z; k <= maxHP.z; k++) {
+				for (j = minHP.y; j <= maxHP.y; j++) {
+					for (i = minHP.x; i <= maxHP.x; i++) {
+						curHolder = singleton->gw->getHolderAtCoords(i,j,k,true);
+						
+						curHolder->makeDirty();
+						
+						curHolder->wasStacked = true;
+						
+						loadHolder.blockId = curHolder->blockId;
+						loadHolder.holderId = curHolder->holderId;
+						loadHolder.x = i;
+						loadHolder.y = j;
+						loadHolder.z = k;
+						singleton->gameLogic->holderStack.push_back(loadHolder);
+						
+						
+					}	
+				}
+			}
+			
+			
+			
+			chunkPosMin.copyFrom( fPixelWorldCoordsBase );
+			chunkPosMin.addXYZ(-newRadius,-newRadius,-newRadius);
+			chunkPosMin.intDivXYZ(singleton->cellsPerChunk);
+			
+			chunkPosMax.copyFrom( fPixelWorldCoordsBase );
+			chunkPosMax.addXYZ(newRadius,newRadius,newRadius);
+			chunkPosMax.intDivXYZ(singleton->cellsPerChunk);
+			
+			
+			minHP = chunkPosMin.getIVec3();
+			maxHP = chunkPosMax.getIVec3();
+			for (k = minHP.z; k <= maxHP.z; k++) {
+				for (j = minHP.y; j <= maxHP.y; j++) {
+					for (i = minHP.x; i <= maxHP.x; i++) {
+						curChunk = singleton->gw->getChunkAtCoords(i,j,k,true);
+						
+						curChunk->makeDirty();
+						
+					}	
+				}
+			}
+			
+			
+			
+			
+			
+			
+			return;
+			
+			
+			
+			// ????????????????????
+			
+			
+			
+			
+			
+			
+			
 			
 		
 			FIVector4 baseVec;
@@ -3245,9 +3380,6 @@ public:
 			FIVector4::growBoundary(&dirtyMin,&dirtyMax,&minV,&maxV);
 			
 			
-			int i;
-			int j;
-			int k;
 			
 			int* empVal;
 			int* bldVal;

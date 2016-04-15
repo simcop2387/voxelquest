@@ -125,28 +125,19 @@ public:
   PatternStruct (patterns) [E_PAT_LENGTH*4];
   TBOWrapper limbTBO;
   float (limbTBOData) [MAX_LIMB_DATA_IN_BYTES];
-  int destructCount;
+  bool (settings) [E_BS_LENGTH];
+  bool fpsTest;
+  bool commandOn;
   bool sphereMapOn;
   bool waitingOnDestruction;
-  bool debugViewOn;
   bool lightChanged;
   bool updateShadows;
   bool updateHolderLookat;
-  bool vsyncOn;
-  bool commandOn;
-  bool renderingOctBounds;
-  bool renderingOct;
-  bool placingPattern;
-  bool drawTargPaths;
-  bool gridOn;
-  bool physicsOn;
   bool isPressingMove;
-  bool fxaaOn;
   bool doPathReport;
   bool refreshPaths;
   bool placingTemplate;
   bool smoothMove;
-  bool waterBulletOn;
   bool ignoreFrameLimit;
   bool autoMove;
   bool allInit;
@@ -157,9 +148,6 @@ public:
   bool lastPersp;
   bool (isInteractiveEnt) [E_CT_LENGTH];
   bool inputOn;
-  bool pathfindingOn;
-  bool pathfindingGen;
-  bool pathfindingTestOn;
   bool placingGeom;
   bool isMacro;
   bool cavesOn;
@@ -174,11 +162,7 @@ public:
   bool bCtrlOld;
   bool bCtrl;
   bool bShift;
-  bool testOn;
-  bool testOn2;
-  bool testOn3;
   bool emptyVDNotReady;
-  bool radiosityOn;
   bool updateLock;
   bool isFullScreen;
   bool mapInvalid;
@@ -196,20 +180,19 @@ public:
   bool isBare;
   bool showMap;
   bool traceOn;
-  bool waterOn;
-  bool treesOn;
   bool firstRun;
   bool rotOn;
   bool doPageRender;
   bool markerFound;
-  bool updateFluid;
-  bool updateHolders;
-  bool fpsTest;
   bool frameMouseMove;
   bool depthInvalidRotate;
   bool depthInvalidMove;
   bool lastDepthInvalidMove;
   bool drawOrient;
+  bool multiLights;
+  bool timeMod;
+  int forceShadowUpdate;
+  int destructCount;
   int curPrimTemplate;
   int geomStep;
   int earthMod;
@@ -303,7 +286,6 @@ public:
   uint * terDataScaled;
   GLfloat (camRotation) [2];
   GLfloat (curCamRotation) [2];
-  bool timeMod;
   uint (naUintData) [8];
   int (naIntData) [8];
   float (naFloatData) [8];
@@ -327,7 +309,6 @@ public:
   float targetSubjectZoom;
   float cameraZoom;
   float targetZoom;
-  float fogOn;
   float curBrushRad;
   float timeOfDay;
   float targetTimeOfDay;
@@ -421,6 +402,7 @@ public:
   ThreadWrapper threadNetSend;
   ThreadWrapper threadNetRecv;
   std::list <KeyStackEvent> keyStack;
+  ThreadPoolWrapper * threadPoolSpeech;
   std::vector <ExplodeStruct> explodeStack;
   std::vector <DebrisStruct> debrisStack;
   std::vector <FIVector4> primTemplateStack;
@@ -492,7 +474,6 @@ public:
   VIStruct (chunkVI) [NUM_MIP_LEVELS_WITH_FIRST];
   float (lightArr) [MAX_LIGHTS * 16];
   int numLights;
-  bool multiLights;
   int * rbStack;
   int * rbHeightStack;
   TerTexture (terTextures) [MAX_TER_TEX];
@@ -511,6 +492,7 @@ public:
   FIVector4 btvConv;
   FIVector4 * BTV2FIV (btVector3 btv);
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
+  bool speak (string speechString);
   void applyPat (int patInd, int patShape, int rot, int x, int y, int val, int rad);
   void getVoroOffsets ();
   void generatePatterns ();
@@ -619,6 +601,9 @@ public:
   void updateCS ();
   void getMarkerPos (int x, int y);
   void holderReport ();
+  void speakSetting (int settingName);
+  void toggleSetting (int settingName, bool withVoice = true);
+  void setSetting (int settingName, bool value, bool withVoice = true);
   void resetGeom ();
   void stopAllThreads ();
   void processInput (unsigned char key, bool keyDown, int x, int y);
@@ -683,7 +668,7 @@ public:
   void loadGUI ();
   string loadFileString (string fnString);
   std::ifstream::pos_type filesize (char const * filename);
-  bool checkCacheEntry (int blockId, int chunkId, int holderId);
+  bool checkCacheEntry (int blockId, int chunkId, int holderId, bool doErase = false);
   bool loadCacheEntry (int blockId, int chunkId, int holderId);
   bool saveCacheEntry (int blockId, int chunkId, int holderId);
   bool loadCacheMetaData ();
@@ -908,6 +893,7 @@ public:
   vec3 crand0;
   vec3 crand1;
   vec3 crand2;
+  FBOWrapper * hmFBO;
   GameVoxelWrap ();
   void init (Singleton * _singleton);
   void fillVec (GamePageHolder * gph);
@@ -923,7 +909,7 @@ public:
   PaddedDataEntry * getPadData (int ii, int jj, int kk);
   float rand2D (vec3 co);
   vec3 randPN (vec3 co);
-  void getVoro (ivec3 * worldPos, ivec3 * worldClosestCenter, int iSpacing);
+  void getVoro (ivec3 * worldPos, ivec3 * worldClosestCenter, vec3 * otherData, int iSpacing);
   void calcVoxel (ivec3 * pos, int octPtr, int VLIndex);
 };
 #undef LZZ_INLINE
@@ -1320,6 +1306,7 @@ public:
   void fetchGeom ();
   void setupPrimTexture ();
   bool anyThreadsRunning ();
+  void flushStacks ();
   bool updateAll ();
   void copyPrimTexture (int ox, int oy, int oz, int dim, uint * * myData);
   void fillAllGeom ();
@@ -1536,15 +1523,9 @@ class GameEntManager
 public:
   Singleton * singleton;
   bool curActorNeedsRefresh;
-  bool destroyTerrain;
-  bool mirrorOn;
-  bool combatOn;
-  bool turnBased;
-  bool editPose;
   bool orgOn;
   bool isDraggingObject;
   bool firstPerson;
-  bool showHealth;
   bool takingTurn;
   int weaponToPlace;
   int activeActorUID;
@@ -1699,7 +1680,6 @@ private:
   int * cellData;
   int * extrData;
 public:
-  bool preGenList;
   bool listGenerated;
   bool readyToRender;
   bool listEmpty;
@@ -1707,13 +1687,15 @@ public:
   bool hasPath;
   bool hasCache;
   bool wasStacked;
+  bool isDirty;
   bool lockWrite;
-  bool lockRead;
   int (begMip) [NUM_MIP_LEVELS_WITH_FIRST];
   int (endMip) [NUM_MIP_LEVELS_WITH_FIRST];
   vector <float> vertexVec;
   VolumeWrapper * terVW;
   GameVoxelWrap * voxelWrap;
+  std::vector <ObjectStruct> tempObjects;
+  std::vector <intPair> objectOrder;
   int curPD;
   int blockId;
   int chunkId;
@@ -1741,9 +1723,11 @@ public:
   FIVector4 origOffset;
   Singleton * singleton;
   bool wasGenerated;
-  void reset ();
+  void reset (bool destroyCache);
   GamePageHolder ();
   void init (Singleton * _singleton, int _blockId, int _chunkId, int _holderId, int trueX, int trueY, int trueZ);
+  void makeDirty ();
+  void gatherObjects ();
   int getCellAtCoordsLocal (int xx, int yy, int zz);
   int getCellAtInd (int ind);
   void getArrAtInd (int ind, int * tempCellData, int * tempCellData2);
@@ -1770,9 +1754,9 @@ public:
   void fillVBO ();
   PaddedDataEntry * getPadData (int ii, int jj, int kk);
   int gatherData ();
-  void wrapPolys ();
   bool checkCache ();
   void generateList ();
+  void wrapPolys ();
 };
 LZZ_INLINE PaddedDataEntry * GamePageHolder::getPadData (int ii, int jj, int kk)
                                                                    {
@@ -1809,6 +1793,7 @@ public:
   bool readyToRender;
   bool listEmpty;
   bool changeFlag;
+  bool isDirty;
   int iHolderSize;
   int holdersPerChunk;
   GamePageHolder * * holderData;
@@ -1816,8 +1801,10 @@ public:
   FIVector4 chunkCenInCells;
   int chunkId;
   int blockId;
+  std::vector <ObjectStruct> localObjects;
   GameChunk ();
   void init (Singleton * _singleton, int _blockId, int _chunkId, int trueX, int trueY, int trueZ);
+  void makeDirty ();
   VBOWrapper * getCurVBO ();
   void drawLoadingHolders ();
   void checkHolders ();
@@ -1973,16 +1960,19 @@ class ThreadPoolWrapper
 public:
   int maxThreads;
   int (intData) [THREAD_DATA_COUNT];
+  string (stringData) [THREAD_DATA_COUNT];
   ThreadWrapper * threadPool;
   Singleton * singleton;
   bool singleThreaded;
   std::vector <int> availIds;
   ThreadPoolWrapper ();
   void init (Singleton * _singleton, int _maxThreads, bool _singleThreaded);
+  void doSpeak (string speechString);
   void funcTP (int threadId);
   void startTP (int threadId);
   bool stopTP (int threadId);
-  bool startThread ();
+  bool anyThreadAvail ();
+  bool startThread (bool checkAvail = true);
   bool anyRunning ();
   void stopAll ();
   ~ ThreadPoolWrapper ();
@@ -2012,6 +2002,7 @@ public:
   GamePageHolder * globEndHolder;
   int globEndGroupId;
   bool globFoundTarg;
+  bool dirtyStack;
   bool allowThreadCreation;
   GameLogic ();
   void setEntTargPath (int sourceUID, int destUID);
@@ -2041,7 +2032,7 @@ public:
   bool anyThreadsRunning ();
   void freePD ();
   void processCurHolder (GamePageHolder * curHolder, bool doPaths);
-  void loadNearestHolders (int rad, bool doUpdate);
+  void loadNearestHolders (bool doUpdate);
 };
 #undef LZZ_INLINE
 #endif

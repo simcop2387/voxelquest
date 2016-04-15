@@ -31,7 +31,10 @@ public:
 	vec3 crand1;
 	vec3 crand2;
 	
+	FBOWrapper *hmFBO;
+	
 	GameVoxelWrap() {
+		hmFBO = NULL;
 		lastFFSteps = 0;
 		voxelBuffer = NULL;
 		basePD = NULL;
@@ -68,6 +71,7 @@ public:
 		voxelsPerHolderPad = singleton->voxelsPerHolderPad;
 		voxelsPerHolder = singleton->voxelsPerHolder;
 		
+		hmFBO = singleton->getFBOWrapper("hmFBO", 0);
 		
 		
 	}
@@ -136,6 +140,7 @@ public:
 		vec3 totNorm;
 		vec3 tempPos;
 		vec3 tempPos2;
+		vec3 tempPos3;
 		vec3 zeroVec = vec3(0.0f,0.0f,0.0f);
 		
 		float weight;
@@ -325,15 +330,28 @@ public:
 								}
 								
 								
+								
+								
+								
+								
+								
+								curMat = voxelBuffer->voxelList[p].matId;
+
+								// if (curMat == TEX_GRASS) {
+								// 	tempPos3 = tempPos;
+								// 	tempPos3.z = 0.123452f;
+								// 	totNorm = randPN(tempPos3);
+								// 	totNorm.z = 3.0f;
+								// }
+
 								if (totNorm.normalize()) {
 									
 								}
 								else {
 									totNorm = vec3(0.0f,0.0f,1.0f);
 								}
-								
+
 								voxelBuffer->voxelList[p].normal = totNorm;
-								curMat = voxelBuffer->voxelList[p].matId;
 
 								// if (totNorm.z > 0.5f) {
 								// 	if (curMat == TEX_EARTH) {
@@ -702,6 +720,10 @@ public:
 		int q;
 		int r;
 		
+		int ii2;
+		int jj2;
+		int kk2;
+		
 		int ii;
 		int jj;
 		int kk;
@@ -733,106 +755,139 @@ public:
 							getPadData(i,j,k)->visited = true;						
 							
 							cellData = getPadData(i,j,k)->cellVal;
+							foundCell = false;
 							
 							if (cellData == E_CD_SOLID) {
 								
-								foundCell = false;
-								
-								for (q = 0; q < NUM_ORIENTATIONS; q++) {
-									cellData2 = getPadData(
-										i + DIR_VECS_I[q][0],
-										j + DIR_VECS_I[q][1],
-										k + DIR_VECS_I[q][2]
-									)->cellVal;
-									
-									if (cellData2 != E_CD_SOLID) {
-										foundCell = true;
-										break;
+								for (kk2 = -1; kk2 <= 1; kk2++) {
+									for (jj2 = -1; jj2 <= 1; jj2++) {
+										for (ii2 = -1; ii2 <= 1; ii2++) {
+											cellData2 = getPadData(
+												i + ii2,
+												j + jj2,
+												k + kk2
+											)->cellVal;
+											
+											if (cellData2 != E_CD_SOLID) {
+												foundCell = true;
+												goto FOUND_CELL_LABEL;
+											}
+										}
 									}
-									
 								}
+								
+							}
+							else {
+								for (kk2 = -1; kk2 <= 1; kk2++) {
+									for (jj2 = -1; jj2 <= 1; jj2++) {
+										for (ii2 = -1; ii2 <= 1; ii2++) {
+											cellData2 = getPadData(
+												i + ii2,
+												j + jj2,
+												k + kk2
+											)->cellVal;
+											
+											if (cellData2 == E_CD_SOLID) {
+												foundCell = true;
+												goto FOUND_CELL_LABEL;
+											}
+										}
+									}
+								}
+							}
+								
+								
+					FOUND_CELL_LABEL:
 							
-								if (foundCell) {
+							
+							
+							
+							
+							
+							
+						
+							if (foundCell) {
+								
+								
+								localOffset.set(i,j,k);
+								localOffset *= voxelsPerCell;
+								
+								for (kk = 0; kk < voxelsPerCell; kk++) {
 									
-									foundCell = true;
+									ikk = voxelsPerCellM1-kk;
 									
-									localOffset.set(i,j,k);
-									localOffset *= voxelsPerCell;
-									
-									for (kk = 0; kk < voxelsPerCell; kk++) {
+									for (r = 0; r < 4; r++) {
+										switch (r) {
+											case 0:
+												curVoxel.set(kk, kk, ikk);
+											break;
+											case 1:
+												curVoxel.set(ikk, kk, ikk);
+											break;
+											case 2:
+												curVoxel.set(kk, ikk, ikk);
+											break;
+											case 3:
+												curVoxel.set(ikk, ikk, ikk);
+											break;
+										}
 										
-										ikk = voxelsPerCellM1-kk;
+										//curVoxel += offsetInVoxels;
+										curVoxel += localOffset;
+										if (isSurfaceVoxel(&curVoxel,lastPtr, false)) {
+											voxResult->set(
+												curVoxel.x, curVoxel.y, curVoxel.z
+											);
+											return true;
+										}
 										
-										for (r = 0; r < 4; r++) {
+									}
+								}
+								
+								for (jj = 0; jj < voxelsPerCell; jj++) {
+									for (ii = 0; ii < voxelsPerCell; ii++) {
+										for (r = 0; r < 6; r++) {
 											switch (r) {
 												case 0:
-													curVoxel.set(kk, kk, ikk);
+													curVoxel.set(0, ii, jj);
 												break;
 												case 1:
-													curVoxel.set(ikk, kk, ikk);
+													curVoxel.set(voxelsPerCellM1, ii, jj);
 												break;
 												case 2:
-													curVoxel.set(kk, ikk, ikk);
+													curVoxel.set( ii, 0, jj );
 												break;
 												case 3:
-													curVoxel.set(ikk, ikk, ikk);
+													curVoxel.set( ii, voxelsPerCellM1, jj );
+												break;
+												case 4:
+													curVoxel.set(ii,jj,0);
+												break;
+												case 5:
+													curVoxel.set(ii,jj,voxelsPerCellM1);
 												break;
 											}
 											
 											//curVoxel += offsetInVoxels;
 											curVoxel += localOffset;
-											if (isSurfaceVoxel(&curVoxel,lastPtr, false)) {
+											if (isSurfaceVoxel(&curVoxel,lastPtr,false)) {
 												voxResult->set(
 													curVoxel.x, curVoxel.y, curVoxel.z
 												);
 												return true;
 											}
 											
-										}
 									}
-									
-									for (jj = 0; jj < voxelsPerCell; jj++) {
-										for (ii = 0; ii < voxelsPerCell; ii++) {
-											for (r = 0; r < 6; r++) {
-												switch (r) {
-													case 0:
-														curVoxel.set(0, ii, jj);
-													break;
-													case 1:
-														curVoxel.set(voxelsPerCellM1, ii, jj);
-													break;
-													case 2:
-														curVoxel.set( ii, 0, jj );
-													break;
-													case 3:
-														curVoxel.set( ii, voxelsPerCellM1, jj );
-													break;
-													case 4:
-														curVoxel.set(ii,jj,0);
-													break;
-													case 5:
-														curVoxel.set(ii,jj,voxelsPerCellM1);
-													break;
-												}
-												
-												//curVoxel += offsetInVoxels;
-												curVoxel += localOffset;
-												if (isSurfaceVoxel(&curVoxel,lastPtr,false)) {
-													voxResult->set(
-														curVoxel.x, curVoxel.y, curVoxel.z
-													);
-													return true;
-												}
-												
-										}
-									}
-									
-									
-									
 								}
-							
+								
+								
+								
 							}
+						
 						}
+						
+								
+							
 					}
 						
 				}
@@ -1108,7 +1163,7 @@ public:
 		res[0] = res[0]*(1.0f-fy) + res[2]*fy;
 		res[1] = res[1]*(1.0f-fy) + res[3]*fy;
 		
-		return res[0]*(1.0f-fx) + res[1]*fx;
+		return mixf(0.5f,-0.5f,clampfZO(res[0]*(1.0f-fx) + res[1]*fx));
 		
 	}
 
@@ -1177,7 +1232,7 @@ public:
 	
 	
 	
-	void getVoro(ivec3* worldPos, ivec3* worldClosestCenter, int iSpacing) {
+	void getVoro(ivec3* worldPos, ivec3* worldClosestCenter, vec3* otherData, int iSpacing) {
 		
 		vec3 fWorldPos = vec3(
 			worldPos->x,
@@ -1207,16 +1262,29 @@ public:
 		float testDis;
 		float variance = 0.4f;
 		
+		
 		vec3 bestPos = VORO_OFFSETS[0] + randPN(fWorldCellPos+VORO_OFFSETS[0])*variance;
+		vec3 nextBestPos = bestPos;
+		
 		float bestDis = fWorldPos.distance(bestPos);
+		float nextBestDis = 999999.0f;//fWorldPos.distance(nextBestPos);
 		
 		for (i = 1; i < 27; i++) {
 			testPos = VORO_OFFSETS[i] + randPN(fWorldCellPos+VORO_OFFSETS[i])*variance;
 			testDis = fWorldPos.distance(testPos);
 			
 			if (testDis < bestDis) {
+				nextBestDis = bestDis;
+				nextBestPos = bestPos;
+				
 				bestDis = testDis;
 				bestPos = testPos;
+			}
+			else {
+				if (testDis < nextBestDis) {
+					nextBestDis = testDis;
+					nextBestPos = testPos;
+				}
 			}
 		}
 		
@@ -1226,10 +1294,17 @@ public:
 			(bestPos.z + fWorldCellPos.z)*fSpacing
 		);
 		
+		otherData->x = (bestDis * 2.0f) / (bestDis + nextBestDis);//clampfZO((1.0f - (bestDis * 2.0f / (bestDis + nextBestDis))));
+		
+		// *norVal = normalize(nextBestPos.xyz-bestPos.xyz);
 	}
 	
 	// should only be called when a new node is inserted!
 	void calcVoxel(ivec3* pos, int octPtr, int VLIndex) {
+		
+		int i;
+		int curInd;
+		ObjectStruct* curObj;
 		
 		ivec3 worldPos = (*pos) + offsetInVoxels;
 		vec3 fWorldPos = vec3(
@@ -1242,9 +1317,15 @@ public:
 		ivec3 worldClosestCenter;// = worldPos;
 		ivec3 localClosestCenter;
 		
-		getVoro(&worldPos,&worldClosestCenter, voxelsPerCell);
+		vec3 otherData;
 		
+		float voroSize = voxelsPerCell;
 		
+		getVoro(&worldPos,&worldClosestCenter, &otherData, voroSize);
+		
+		float fVPC = voxelsPerCell;
+		fVPC = 1.0f/fVPC;
+		vec3 fWorldPosCell = fWorldPos*fVPC;
 		
 		localClosestCenter = worldClosestCenter - offsetInVoxels;
 		//localClosestCenter += paddingInVoxels;
@@ -1253,14 +1334,14 @@ public:
 		int vOff = 8;
 		float terSampVoro = sampLinear(&localClosestCenter, ivec3(0,0,0));
 		float terSampOrig =  sampLinear(pos, ivec3(0,0,0));
-		bool isTer = (terSampVoro >= 0.5f); //mixf(terSampVoro,terSampOrig,0.0f)
+		
 		bool isGrass = false;
 		uint finalMat = TEX_NULL;
 		
 		// if (isTer) {
 		// 	finalMat = TEX_EARTH;
 		// }
-		
+		float voroJut = clampfZO((fWorldPos.z - (worldClosestCenter.z-voroSize*0.5f))/voroSize);
 		
 		
 		float terSampOrigX = sampLinear(pos, ivec3(vOff,0,0));
@@ -1271,31 +1352,103 @@ public:
 			terSampOrigY-terSampOrig,
 			terSampOrigZ-terSampOrig
 		);
-		terNorm *= -1.0f;
+		// terNorm *= -1.0f;
+		terNorm.normalize();
 		
-		if (isTer) {
+		// float divVal = singleton->conVals[E_CONST_DIV_VAL];
+		
+		// vec3 sinPos = vec3(
+		// 	sin(fWorldPos.x/divVal),
+		// 	sin(fWorldPos.y/divVal),
+		// 	sin(fWorldPos.z/divVal)
+		// );
+		
+		
+		
+		vec3 absNorm = terNorm;
+		absNorm.doAbs();
+		
+		float xv = fWorldPos.x;
+		float yv = fWorldPos.y;
+		float zv = fWorldPos.z;
+		
+		float sampScale = singleton->conVals[E_CONST_SAMP_SCALE];
+		float hmSampYZ = hmFBO->getPixelAtLinear(yv*sampScale,zv*sampScale, 0);
+		float hmSampXZ = hmFBO->getPixelAtLinear(xv*sampScale,zv*sampScale, 0);
+		float hmSampXY = hmFBO->getPixelAtLinear(xv*sampScale,yv*sampScale, 0);
+		
+		float hmSamp = mixf(hmSampYZ,hmSampXZ,absNorm.y);//(hmSampYZ*absNorm.x + hmSampXZ*absNorm.y + hmSampXY*absNorm.z);
+		hmSamp = mixf(hmSamp,hmSampXY,absNorm.z);
+		
+		//terSampVoro += sin(hmSamp*18.0f)*0.25f;
+		
+		float voroMod1 = clampfZO(1.0f-otherData.x); // the less this is, the farther from center
+		float voroMod2 = clampfZO(otherData.x); // the less this is, the closer to center
+		
+		float hmMod = (sin(hmSamp*9.0f)*singleton->conVals[E_CONST_VORO_STRENGTH]);
+		
+		//float rockMod = 0.0f;
+		bool isRock = (
+			(terSampVoro <= 0.4f)	&&
+			(voroMod2 < (0.96f + hmMod*0.03f))
+		) &&
+		((terSampOrig) < (0.3f+voroJut*singleton->conVals[E_CONST_DIV_VAL])); // + (0.2f*(1.0-abs(terNorm.z)))
+		
+		//+hmMod
+		
+		//
+		
+		bool isTer = ((terSampOrig+hmMod) < 0.0f); //(terSampOrig - voroMod1*rockMod*8.0f)
+		
+		if (isRock) {
 			finalMat = TEX_EARTH;
-			voxelBuffer->voxelList[VLIndex].normId = worldClosestCenter.x*3 + worldClosestCenter.y*7 + worldClosestCenter.z*11;
+			voxelBuffer->voxelList[VLIndex].normId = 0;//worldClosestCenter.x*3 + worldClosestCenter.y*7 + worldClosestCenter.z*11;
 		}
 		else {
-			if (terNorm.normalize()) {
-				if (terNorm.z > 0.5f) {
-					int grassOff = rand2D(fWorldPos)*clampfZO((terNorm.z-0.5f)*2.0f)*8.0f;
-					float terSampGrass = sampLinear(pos, ivec3(0,0,-grassOff));
-					
-					if (terSampGrass > 0.5f) {
-						isGrass = true;
-						finalMat = TEX_GRASS;
-						voxelBuffer->voxelList[VLIndex].normId = 0;
-					}
+			if (isTer) {
+				finalMat = TEX_EARTH;
+				voxelBuffer->voxelList[VLIndex].normId = 0;
+			}
+			else {
+				
+			}
+		}
+		
+		if (finalMat == TEX_NULL) {
+			if ((terNorm.z > 0.5f)
+				// && (
+				// 	((worldPos.x%2) == 0) &&
+				// 	((worldPos.y%2) == 0)
+				// )
+			) { //&&(sin(hmSamp*18.0f) > 0.0f)
+				int grassOff = rand2D(fWorldPos)*clampfZO((terNorm.z-0.5f)*2.0f)*8.0f;
+				float terSampGrass = sampLinear(pos, ivec3(0,0,-grassOff));
+				
+				if ((terSampGrass-(hmMod+1.0f)*0.15) <= 0.0f) {
+					isGrass = true;
+					finalMat = TEX_GRASS;
+					voxelBuffer->voxelList[VLIndex].normId = 0;
 				}
 			}
 		}
 		
 		
+		// for (i = 0; i < basePD->objectOrder.size(); i++) {
+		// 	curInd = basePD->objectOrder[i].v0;
+		// 	curObj = &(basePD->tempObjects[curInd]);
+			
+			
+		// 	if (fWorldPosCell.distance(curObj->data[E_OSD_CENTER]) <= curObj->data[E_OSD_RADIUS].x) {
+		// 		finalMat = TEX_NULL;
+		// 		voxelBuffer->voxelList[VLIndex].normId = 0;
+		// 	}
+			
+			
+		// }
 		
 		
-		bool isSolid = isTer||isGrass;
+		
+		bool isSolid = (finalMat != TEX_NULL);
 		
 		//clampfZO(terNorm.z)*0.5f + 0.5f
 		

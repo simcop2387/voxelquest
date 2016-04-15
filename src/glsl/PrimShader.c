@@ -2905,9 +2905,11 @@ vec4 cell2D(
 		vec3 MAX_MOD = vec3(0.25);// *(sin(curTime/2.0));
 		
 		vec4 bestPoint = centerPos;
+		vec4 nextBestPoint = centerPos;
+		
 		bestPoint.xyz += randPN(bestPoint.xyz)*MAX_MOD;
 		
-		vec4 nextBestPoint = centerPos;
+		
 		
 		bestPoint.w = distance(pos,bestPoint.xyz);
 		nextBestPoint.w = INVALID;
