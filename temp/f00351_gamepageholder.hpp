@@ -417,7 +417,7 @@ public:
 			
 			if (
 				(cellData[ind+E_PTT_TER] != FLUID_UNIT_MIN) ||
-				(extrData[ind+E_PTT_BLD] != FLUID_UNIT_MIN)
+				(cellData[ind+E_PTT_BLD] != FLUID_UNIT_MIN)
 			) {
 				return E_CD_SOLID;
 			}
@@ -491,7 +491,7 @@ public:
 				switch (holderFlags) {
 					case E_CD_WATER:
 						tempCellData[E_PTT_WAT] = FLUID_UNIT_MAX;
-						tempCellData[E_PTT_LST] = FLUID_UNIT_MAX;
+						tempCellData2[E_PTT_LST] = FLUID_UNIT_MAX;
 					break;
 					case E_CD_SOLID:
 						tempCellData[E_PTT_TER] = FLUID_UNIT_MAX;
@@ -1753,7 +1753,7 @@ FIRST_FILL_DONE:
 			
 			cellData[ind+E_PTT_TER] = iTer;
 			cellData[ind+E_PTT_WAT] = iWat;
-			cellData[ind+E_PTT_LST] = iWat;
+			extrData[ind+E_PTT_LST] = iWat;
 			
 			
 			
@@ -1769,49 +1769,6 @@ FIRST_FILL_DONE:
 		
 		
 		
-		
-		
-		vec3 gphMin = gphMinInCells.getVec3();
-		vec3 fWorldPosCell;
-		int curMP;
-		
-		for (p = 0; p < cdo4; p++) {
-			
-			kk = p/(cellsPerHolder*cellsPerHolder);
-			jj = (p-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
-			ii = p-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
-			
-			ind = p*4;
-			
-			fWorldPosCell = gphMin + vec3(ii,jj,kk);
-			
-			for (r = 0; r < objectOrder.size(); r++) {
-				curInd = objectOrder[r].v0;
-				curObj = &(tempObjects[curInd]);
-				
-				
-				if (fWorldPosCell.distance(curObj->data[E_OSD_CENTER]) <= curObj->data[E_OSD_RADIUS].x) {
-					curMP = curObj->data[E_OSD_MATPARAMS].z;
-					
-					switch (curMP) {
-						case E_BRUSH_MOVE:
-							
-						break;
-						case E_BRUSH_ADD:
-							cellData[ind+E_PTT_TER] = FLUID_UNIT_MAX;
-						break;
-						case E_BRUSH_SUB:
-							cellData[ind+E_PTT_TER] = FLUID_UNIT_MIN;
-						break;
-					}
-					
-				}
-				
-				
-			}
-			
-			
-		}
 		
 		
 		
@@ -1853,6 +1810,55 @@ FIRST_FILL_DONE:
 		}
 		
 		
+		
+		
+		
+		
+		vec3 gphMin = gphMinInCells.getVec3();
+		vec3 fWorldPosCell;
+		float primRes;
+		vec3 halfOff = vec3(0.5f);
+		
+		for (p = 0; p < cdo4; p++) {
+			
+			kk = p/(cellsPerHolder*cellsPerHolder);
+			jj = (p-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+			ii = p-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+			
+			ind = p*4;
+			
+			fWorldPosCell = gphMin + vec3(ii,jj,kk) + halfOff;
+			
+			for (r = 0; r < objectOrder.size(); r++) {
+				curInd = objectOrder[r].v0;
+				curObj = &(tempObjects[curInd]);
+				
+				primRes = primDis(fWorldPosCell,curObj);
+				
+				if (
+					primRes <= 0.0f
+					//fWorldPosCell.distance(curObj->data[E_OSD_CENTER]) <= curObj->data[E_OSD_RADIUS].x
+				) {
+										
+					switch (curObj->addType) {
+						case E_BRUSH_MOVE:
+							
+						break;
+						case E_BRUSH_ADD:
+							cellData[ind+curObj->objType] = FLUID_UNIT_MAX;
+						break;
+						case E_BRUSH_SUB:
+							cellData[ind+curObj->objType] = FLUID_UNIT_MIN;
+						break;
+					}
+					
+				}
+				
+				
+			}
+			
+			
+		}
 		
 		
 		
@@ -2090,6 +2096,9 @@ FIRST_FILL_DONE:
 		
 		float terVal = 0.0f;
 		
+		int cData0[4];
+		int cData1[4];
+		
 		// if (isBlockHolder) {
 		// 	minRad = 0;
 		// 	maxRad = cellsPerHolder-1;
@@ -2133,10 +2142,18 @@ FIRST_FILL_DONE:
 						);
 					//}
 					
+					singleton->gw->getArrAtCoords(
+						iX - paddingInCells,
+						iY - paddingInCells,
+						iZ - paddingInCells,
+						cData0,
+						cData1
+					);
+					
 					
 					tempHF = tempHF|cellVal;
 					
-					if (cellVal == E_CD_SOLID) {
+					if (cData0[E_PTT_TER] != FLUID_UNIT_MIN) {
 						terVal = 1.0f;
 					}
 					else {
@@ -2182,7 +2199,7 @@ FIRST_FILL_DONE:
 		
 		uint tempHF = gatherData();		
 		
-		
+		vertexVec.clear();//beginFill();
 		
 		if (
 			(
@@ -2318,7 +2335,7 @@ FIRST_FILL_DONE:
 		int maskVals[8];
 		int newInd;
 		
-		vertexVec.clear();//beginFill();
+		
 		
 		
 		for (k = 0; k < cellsPerHolder; k++) {

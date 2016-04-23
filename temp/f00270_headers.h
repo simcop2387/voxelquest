@@ -290,6 +290,7 @@ public:
   int (naIntData) [8];
   float (naFloatData) [8];
   float (conVals) [E_CONST_LENGTH];
+  float gammaVal;
   float lastMouseOrigX;
   float lastMouseOrigY;
   float globWheelDelta;
@@ -492,6 +493,7 @@ public:
   FIVector4 btvConv;
   FIVector4 * BTV2FIV (btVector3 btv);
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
+  void listVoices ();
   bool speak (string speechString);
   void applyPat (int patInd, int patShape, int rot, int x, int y, int val, int rad);
   void getVoroOffsets ();
@@ -877,6 +879,7 @@ public:
   VoxelBuffer * voxelBuffer;
   PaddedData * basePD;
   PaddedDataEntry * baseData;
+  GamePageHolder * gph;
   int lastFFSteps;
   int curPD;
   int voxelsPerCell;
@@ -888,6 +891,7 @@ public:
   int paddingInVoxels;
   ivec3 offsetInCells;
   ivec3 offsetInVoxels;
+  vec3 fOffsetInVoxels;
   vec3 oneVec;
   vec3 halfOff;
   vec3 crand0;
@@ -896,8 +900,8 @@ public:
   FBOWrapper * hmFBO;
   GameVoxelWrap ();
   void init (Singleton * _singleton);
-  void fillVec (GamePageHolder * gph);
-  void process (GamePageHolder * gph);
+  void fillVec ();
+  void process (GamePageHolder * _gph);
   bool findNextCoord (ivec3 * voxResult);
   bool inBounds (ivec3 * pos, int minB, int maxB);
   int getNode (ivec3 * pos);
@@ -905,12 +909,12 @@ public:
   bool isInvSurfaceVoxel (ivec3 * pos, int ignorePtr, int & curPtr, bool checkVisited);
   bool isSurfaceVoxel (ivec3 * pos, int & curPtr, bool checkVisited);
   int getVoxelAtCoord (ivec3 * pos);
-  float sampLinear (ivec3 * pos, ivec3 offset);
+  float sampLinear (vec3 * pos, vec3 offset);
   PaddedDataEntry * getPadData (int ii, int jj, int kk);
   float rand2D (vec3 co);
   vec3 randPN (vec3 co);
-  void getVoro (ivec3 * worldPos, ivec3 * worldClosestCenter, vec3 * otherData, int iSpacing);
-  void calcVoxel (ivec3 * pos, int octPtr, int VLIndex);
+  void getVoro (vec3 * worldPos, vec3 * worldClosestCenter, vec3 * otherData, float fSpacing);
+  void calcVoxel (ivec3 * _pos, int octPtr, int VLIndex);
 };
 #undef LZZ_INLINE
 #endif

@@ -1334,13 +1334,13 @@ public:
 				// for (i = 0; i < totSize; i++) {
 				// 	indSrc = i*4;
 					
-				// 	fluidData[indSrc+E_PTT_LST] += (fluidData[indSrc+E_PTT_LST] - fluidData[indSrc+E_PTT_WAT])/16;
+				// 	extraData[indSrc+E_PTT_LST] += (extraData[indSrc+E_PTT_LST] - fluidData[indSrc+E_PTT_WAT])/16;
 					
-				// 	if (fluidData[indSrc+E_PTT_LST] > fluidData[indSrc+E_PTT_WAT]) {
-				// 		fluidData[indSrc+E_PTT_LST]--;
+				// 	if (extraData[indSrc+E_PTT_LST] > fluidData[indSrc+E_PTT_WAT]) {
+				// 		extraData[indSrc+E_PTT_LST]--;
 				// 	}
-				// 	if (fluidData[indSrc+E_PTT_LST] < fluidData[indSrc+E_PTT_WAT]) {
-				// 		fluidData[indSrc+E_PTT_LST]++;
+				// 	if (extraData[indSrc+E_PTT_LST] < fluidData[indSrc+E_PTT_WAT]) {
+				// 		extraData[indSrc+E_PTT_LST]++;
 				// 	}
 				// }
 				
@@ -1697,7 +1697,7 @@ public:
 				ind = i;
 				extraData[ind*4+E_PTT_IDE] = 0;
 				extraData[ind*4+E_PTT_STB] = 0;
-				fluidData[ind*4+E_PTT_LST] = fluidData[ind*4+E_PTT_WAT];
+				extraData[ind*4+E_PTT_LST] = fluidData[ind*4+E_PTT_WAT];
 			}
 			
 			// for (i = 0; i < fsVec.size(); i++) {
@@ -1724,7 +1724,7 @@ public:
 		immobileHeight = 0;
 		while (notFound && (ind < totSize)) {
 			watVal = &(fluidData[ind*4+E_PTT_WAT]);
-			bldVal = &(extraData[ind*4+E_PTT_BLD]);
+			bldVal = &(fluidData[ind*4+E_PTT_BLD]);
 			terVal = &(fluidData[ind*4+E_PTT_TER]);
 			
 			if (
@@ -1792,7 +1792,7 @@ public:
 				
 		// 		watVal2 = &(fluidData[indAbove*4+E_PTT_WAT]);
 		// 		terVal = &(fluidData[indAbove*4+E_PTT_TER]);
-		// 		bldVal = &(extraData[indAbove*4+E_PTT_BLD]);
+		// 		bldVal = &(fluidData[indAbove*4+E_PTT_BLD]);
 				
 		// 		if (
 		// 			(*watVal > 0) &&
@@ -1892,7 +1892,7 @@ public:
 				#endif
 				
 				
-				bldVal = &(extraData[ind*4+E_PTT_BLD]);
+				bldVal = &(fluidData[ind*4+E_PTT_BLD]);
 				terVal = &(fluidData[ind*4+E_PTT_TER]);
 				watVal = &(fluidData[ind*4+E_PTT_WAT]);
 				
@@ -1942,7 +1942,7 @@ public:
 								testInd3 = testInd2 - volSizePrimBuf*volSizePrimBuf;
 								if (
 									(fluidData[testInd3*4+E_PTT_TER] > UNIT_MIN) ||
-									(extraData[testInd3*4+E_PTT_BLD] > UNIT_MIN)
+									(fluidData[testInd3*4+E_PTT_BLD] > UNIT_MIN)
 									// || (fluidData[testInd3*4+E_PTT_WAT] == UNIT_MIN)
 								) {
 									iciPushBack(n,ind);
@@ -1990,7 +1990,7 @@ public:
 					j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
 					i = ind - ( j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf );
 					
-					bldVal = &(extraData[ind*4+E_PTT_BLD]);
+					bldVal = &(fluidData[ind*4+E_PTT_BLD]);
 					terVal = &(fluidData[ind*4+E_PTT_TER]);
 					watVal = &(fluidData[ind*4+E_PTT_WAT]);
 					
@@ -2033,7 +2033,7 @@ public:
 									// testInd3 = testInd2 - volSizePrimBuf*volSizePrimBuf;
 									// if (
 									// 	(fluidData[testInd3*4+E_PTT_TER] > UNIT_MIN) ||
-									// 	(extraData[testInd3*4+E_PTT_BLD] > UNIT_MIN)
+									// 	(fluidData[testInd3*4+E_PTT_BLD] > UNIT_MIN)
 									// 	// || (fluidData[testInd3*4+E_PTT_WAT] == UNIT_MIN)
 									// ) {
 										iciPushBack(n,ind);
@@ -2118,7 +2118,7 @@ public:
 					// 	testInd = ind + (volSizePrimBuf*volSizePrimBuf);
 					// 	watVal2 = &(fluidData[testInd*4+E_PTT_WAT]);
 					// 	terVal2 = &(fluidData[testInd*4+E_PTT_TER]);
-					// 	bldVal2 = &(extraData[testInd*4+E_PTT_BLD]);
+					// 	bldVal2 = &(fluidData[testInd*4+E_PTT_BLD]);
 						
 					// 	if (
 					// 		(*watVal > 0) &&
@@ -2460,15 +2460,15 @@ public:
 		
 		// 			if (
 					
-		// 				fluidData[ind*4 + E_PTT_WAT] != fluidData[ind*4 + E_PTT_LST]
+		// 				fluidData[ind*4 + E_PTT_WAT] != extraData[ind*4 + E_PTT_LST]
 						
 		// 			) {
 						
-		// 				// if (fluidData[indSrc + E_PTT_LST] < fluidData[indSrc + E_PTT_WAT]) {
-		// 				// 	fluidData[indSrc + E_PTT_LST]++;
+		// 				// if (extraData[indSrc + E_PTT_LST] < fluidData[indSrc + E_PTT_WAT]) {
+		// 				// 	extraData[indSrc + E_PTT_LST]++;
 		// 				// }
-		// 				// if (fluidData[indSrc + E_PTT_LST] > fluidData[indSrc + E_PTT_WAT]) {
-		// 				// 	fluidData[indSrc + E_PTT_LST]--;
+		// 				// if (extraData[indSrc + E_PTT_LST] > fluidData[indSrc + E_PTT_WAT]) {
+		// 				// 	extraData[indSrc + E_PTT_LST]--;
 		// 				// }
 						
 		// 				if (i < iMin2) {iMin2 = i;}
@@ -2579,7 +2579,7 @@ public:
 				terVal = &(fluidData[testInd*4+E_PTT_TER]);
 				watVal = &(fluidData[testInd*4+E_PTT_WAT]);
 				ideVal = &(extraData[testInd*4+E_PTT_STB]);
-				bldVal = &(extraData[testInd*4+E_PTT_BLD]);
+				bldVal = &(fluidData[testInd*4+E_PTT_BLD]);
 				
 				
 				// isAir = 
@@ -2814,7 +2814,7 @@ public:
 					
 					if (
 						(fluidData[testInd*4+E_PTT_TER] != UNIT_MIN) ||
-						(extraData[testInd*4+E_PTT_BLD] != UNIT_MIN)	
+						(fluidData[testInd*4+E_PTT_BLD] != UNIT_MIN)	
 					) {
 						fidPushBack(groupId,ind); //fsPtr->fluidIds.push_back(ind);
 						notFound = false;
@@ -2838,7 +2838,7 @@ public:
 				
 				
 				if (testK > immobileHeight) {
-					bldVal = &(extraData[testInd*4+E_PTT_BLD]);
+					bldVal = &(fluidData[testInd*4+E_PTT_BLD]);
 					terVal = &(fluidData[testInd*4+E_PTT_TER]);
 					watVal = &(fluidData[testInd*4+E_PTT_WAT]);
 					ideVal = &(extraData[testInd*4+E_PTT_IDE]);
@@ -2895,7 +2895,7 @@ public:
 			j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
 			i = ind - ( j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf );
 			
-			bldVal = &(extraData[ind*4+E_PTT_BLD]);
+			bldVal = &(fluidData[ind*4+E_PTT_BLD]);
 			terVal = &(fluidData[ind*4+E_PTT_TER]);
 			watVal = &(fluidData[ind*4+E_PTT_WAT]);
 			
@@ -3031,7 +3031,7 @@ public:
 		int ind;
 		for (i = 0; i < totSize; i++) {
 			ind = i;
-			extraData[ind*4+E_PTT_BLD] = UNIT_MIN;
+			fluidData[ind*4+E_PTT_BLD] = UNIT_MIN;
 		}
 	}
 	void clearInsideValues() {
@@ -3039,8 +3039,8 @@ public:
 		int ind;
 		for (i = 0; i < totSize; i++) {
 			ind = i;
-			if (extraData[ind*4+E_PTT_BLD] == UNIT_INSIDE) {
-				extraData[ind*4+E_PTT_BLD] = UNIT_MIN;
+			if (fluidData[ind*4+E_PTT_BLD] == UNIT_INSIDE) {
+				fluidData[ind*4+E_PTT_BLD] = UNIT_MIN;
 			}
 			
 		}
@@ -3142,7 +3142,7 @@ public:
 					);
 					
 					ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf);
-					bldVal = &(extraData[ind*4+E_PTT_BLD]);
+					bldVal = &(fluidData[ind*4+E_PTT_BLD]);
 					terVal = &(fluidData[ind*4+E_PTT_TER]);
 					watVal = &(fluidData[ind*4+E_PTT_WAT]);
 					empVal = &(fluidData[ind*4+E_PTT_EMP]);
@@ -3245,8 +3245,24 @@ public:
 			os.globalId = GLOBAL_OBJ_COUNT;
 			GLOBAL_OBJ_COUNT++;
 			os.data[E_OSD_CENTER] = fPixelWorldCoordsBase->getVec3();
-			os.data[E_OSD_RADIUS] = vec3(radius,radius,radius);
-			os.data[E_OSD_MATPARAMS].z = brushAction;
+			float outerRad = radius*0.5f;
+			os.data[E_OSD_CORNERDIS] = vec3(2.0f,2.0f,outerRad);
+			float innerRad = radius - outerRad;
+			os.data[E_OSD_RADIUS] = vec3(innerRad);
+			os.data[E_OSD_THICKNESS] = vec3(1.0f,0.0f,0.0f);
+			
+			vec3 totBounds = os.data[E_OSD_RADIUS] + outerRad;
+			
+			os.data[E_OSD_VISMIN] = -totBounds;
+			os.data[E_OSD_VISMAX] = totBounds;
+			os.data[E_OSD_VISMAX].z -= 2.0f;
+			
+			
+			
+			//os.data[E_OSD_MATPARAMS].z = brushAction;
+			os.addType = brushAction;
+			os.objType = modType;
+			//bldVal = &(fluidData[ind*4+E_PTT_BLD]);
 			
 			switch (brushAction) {
 				case E_BRUSH_MOVE:
@@ -3412,7 +3428,7 @@ public:
 							
 							ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf);
 							
-							bldVal = &(extraData[ind*4+E_PTT_BLD]);
+							bldVal = &(fluidData[ind*4+E_PTT_BLD]);
 							empVal = &(fluidData[ind*4+E_PTT_EMP]);
 							terVal = &(fluidData[ind*4+E_PTT_TER]);
 							watVal = &(fluidData[ind*4+E_PTT_WAT]);
@@ -3462,7 +3478,7 @@ public:
 									// 				j3*volSizePrimBuf +
 									// 				k3*volSizePrimBuf*volSizePrimBuf;
 												
-									// 			touchesBuilding = touchesBuilding || (extraData[ind2*4+E_PTT_BLD] != UNIT_MIN);
+									// 			touchesBuilding = touchesBuilding || (fluidData[ind2*4+E_PTT_BLD] != UNIT_MIN);
 												
 									// 		}
 									// 	}

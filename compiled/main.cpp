@@ -96,8 +96,11 @@ const static int MAX_HOLDER_LOAD_COUNT = 512;
 //const static int RASTER_HOLDER_RAD = 8;
 
 const static int VOXELS_PER_CELL = 16;
-const static int CELLS_PER_HOLDER = 8;
-const static int HOLDER_MOD = 2; // HOLDER_MOD*CELLS_PER_HOLDER should == 16
+const static int CELLS_PER_HOLDER = 4;
+const static int HOLDERS_PER_CHUNK = 2;
+const static int CHUNKS_PER_BLOCK = 32;
+
+const static int HOLDER_MOD = 4; // HOLDER_MOD*CELLS_PER_HOLDER should == 16
 
 
 const static int PADDING_IN_CELLS = 1;
@@ -3675,6 +3678,8 @@ bool replaceStr(std::string& str, const std::string& from, const std::string& to
 
 
 #define E_CONST(DDD) \
+DDD(E_CONST_SAMP_SIN) \
+DDD(E_CONST_MAX_STACK_DIS) \
 DDD(E_CONST_DIV_VAL) \
 DDD(E_CONST_SAMP_SCALE) \
 DDD(E_CONST_VORO_STRENGTH) \
@@ -3826,7 +3831,7 @@ enum E_CACHE_METADATA {
 enum E_PRIM_TYPE_TER {
 	E_PTT_TER,
 	E_PTT_WAT,
-	E_PTT_LST,
+	E_PTT_BLD,//E_PTT_LST,
 	E_PTT_EMP,
 	E_PTT_LENGTH
 };
@@ -3836,7 +3841,7 @@ enum E_PRIM_TYPE_TER {
 enum E_PRIM_TYPE_EXT {
 	E_PTT_IDE,
 	E_PTT_STB,
-	E_PTT_BLD,
+	E_PTT_LST,//E_PTT_BLD,
 	E_PTT_FLG,
 	E_EXT_LENGTH
 };
@@ -6079,6 +6084,7 @@ enum eSSProperties {
 enum E_FIELD_CALLBACKS {
 	E_FC_SAVEORG,
 	E_FC_LOADORG,
+	E_FC_SPEAK,
 	E_FC_LENGTH
 };
 
@@ -6348,17 +6354,21 @@ struct Vector3
     // ctors
     Vector3() : x(0), y(0), z(0) {};
     Vector3(float x, float y, float z) : x(x), y(y), z(z) {};
+    Vector3(float v) : x(v), y(v), z(v) {};
 
     // utils functions
     void        doAbs();
     void        doSin();
     void        doFract();
+    void        doFloor();
     void        set(float x, float y, float z);
     float       length() const;                         //
     float       distance(const Vector3& vec) const;     // distance between two vectors
+    float       distance2(const Vector3& vec, float powVal) const;     // distance between two vectors
     bool        normalize();                            //
     float       dot(const Vector3& vec) const;          // dot product
     Vector3     cross(const Vector3& vec) const;        // cross product
+    void        doMax(const Vector3& vec);        // cross product
     bool        equal(const Vector3& vec, float e) const; // compare with epsilon
 
     // operators
@@ -6661,6 +6671,12 @@ inline void Vector3::doSin() {
     this->z = sin(this->z);
 }
 
+inline void Vector3::doFloor() {
+    this->x = floor(this->x);
+    this->y = floor(this->y);
+    this->z = floor(this->z);
+}
+
 inline void Vector3::doFract() {
     this->x = fract(this->x);
     this->y = fract(this->y);
@@ -6673,6 +6689,23 @@ inline float Vector3::length() const {
 
 inline float Vector3::distance(const Vector3& vec) const {
     return sqrtf((vec.x-x)*(vec.x-x) + (vec.y-y)*(vec.y-y) + (vec.z-z)*(vec.z-z));
+}
+
+inline float Vector3::distance2(const Vector3& vec, float powVal) const {
+    Vector3 newVec = vec-(*this);
+    newVec.doAbs();
+    
+    
+    //return sqrtf(newVec.x*newVec.x + newVec.y*newVec.y + newVec.z*newVec.z);
+    
+    return max(max(newVec.x,newVec.y),newVec.z);
+    
+    // return pow(
+    //     pow(newVec.x,powVal) +
+    //     pow(newVec.y,powVal) +
+    //     pow(newVec.z,powVal),   
+    //     1.0f/powVal
+    // );
 }
 
 inline bool Vector3::normalize() {
@@ -6696,6 +6729,13 @@ inline float Vector3::dot(const Vector3& rhs) const {
 
 inline Vector3 Vector3::cross(const Vector3& rhs) const {
     return Vector3(y*rhs.z - z*rhs.y, z*rhs.x - x*rhs.z, x*rhs.y - y*rhs.x);
+}
+
+inline void Vector3::doMax(const Vector3& rhs) {
+    x = max(rhs.x,x);
+    y = max(rhs.y,y);
+    z = max(rhs.z,z);
+    //y*rhs.z - z*rhs.y, z*rhs.x - x*rhs.z, x*rhs.y - y*rhs.x
 }
 
 inline bool Vector3::equal(const Vector3& rhs, float epsilon) const {
@@ -9069,10 +9109,10 @@ public:
 		iv4.z = (int)scalar;
 	}
 
-	void setFXYZRef(FIVector4 *v1) {
-		fv4.x = v1->getFX();
-		fv4.y = v1->getFY();
-		fv4.z = v1->getFZ();
+	void setFXYZRef(FIVector4 *v1, float multiplier = 1.0f) {
+		fv4.x = v1->getFX()*multiplier;
+		fv4.y = v1->getFY()*multiplier;
+		fv4.z = v1->getFZ()*multiplier;
 		iv4.x = (int)fv4.x;
 		iv4.y = (int)fv4.y;
 		iv4.z = (int)fv4.z;
@@ -12991,14 +13031,15 @@ enum E_OBJECT_STRUCT_DATA {
 	E_OSD_VISMIN,
 	E_OSD_VISMAX,
 	E_OSD_CORNERDIS,
+	E_OSD_THICKNESS,
 	E_OSD_MATPARAMS,
 	E_OSD_LENGTH
 };
 
-
-
 struct ObjectStruct {
 	int64_t globalId;
+	int objType;
+	int addType;
 	vec3 data[E_OSD_LENGTH];
 	
 };
@@ -13365,6 +13406,103 @@ vec3 BASE_NORMALS[64];
 
 // 	currentState = E_OP_SEAMLESS_SIMPLEX_NOISE;
 // }
+
+
+
+
+
+inline float opI( float d1, float d2 ) {
+		return max(d1,d2);
+}
+
+inline float opS( float d1, float d2 ) {
+		return max(-d2,d1);
+}
+
+inline float sdBox( vec3 _p, vec3 b ) {
+	vec3 p = _p;
+	p.doAbs();
+	vec3 d = p - b;
+	
+	float res = min(max(d.x,max(d.y,d.z)),0.0f);
+	d.doMax(vec3(0.0f));
+	res += d.length();
+	
+	return res;
+}
+
+inline float primDis(
+	vec3 pos,
+	ObjectStruct* curObj
+) {
+	
+	vec3 vectorFromCenter = pos - curObj->data[E_OSD_CENTER];
+	vec3 box_dim = curObj->data[E_OSD_RADIUS];
+	vec3 box_power = curObj->data[E_OSD_CORNERDIS];
+	float cornerRad = box_power.z;
+	float wallThickness	 = curObj->data[E_OSD_THICKNESS].x;
+	
+	
+	vec3 absVecFromCenter = vectorFromCenter;
+	absVecFromCenter.doAbs();
+	
+	
+	
+	vec3 newP = absVecFromCenter-box_dim;
+	newP.doMax(vec3(0.0));
+	newP.doAbs();
+	
+	
+	
+	newP.x = pow(newP.x, box_power.x );
+	newP.y = pow(newP.y, box_power.x );
+	newP.x = pow( newP.x + newP.y, 1.0/box_power.x );
+	
+	newP.x = pow(newP.x, box_power.y );
+	newP.z = pow(newP.z, box_power.y );
+	newP.x = pow( newP.x + newP.z, 1.0/box_power.y );
+	
+	float finalRes = (newP.x-cornerRad);
+	
+	vec3 newBoxDim;
+	
+	if (
+		(absVecFromCenter.x <= box_dim.x) &&	
+		(absVecFromCenter.y <= box_dim.y) &&
+		(absVecFromCenter.z <= box_dim.z)
+	) {
+		
+		newBoxDim = box_dim-absVecFromCenter;
+		
+		finalRes -= min(min(newBoxDim.x,newBoxDim.y),newBoxDim.z);
+	}
+	
+	finalRes = abs(finalRes+wallThickness*0.5f)-wallThickness*0.5f;
+	
+	vec3 boxMin = curObj->data[E_OSD_VISMIN];
+	vec3 boxMax = curObj->data[E_OSD_VISMAX];
+	vec3 boxRad = (boxMax-boxMin)*0.5f;
+	vec3 boxCen = (boxMax+boxMin)*0.5f + curObj->data[E_OSD_CENTER];
+	
+	
+	
+	return (
+		opI(
+			sdBox(pos-boxCen,boxRad),
+			finalRes
+		)
+	);
+	
+	// return vec3(
+	// 		(newP.x-cornerRad),
+	// 		( (cornerRad-wallThickness)-newP.x ),
+	// 		(newP.x-(cornerRad-wallThickness))
+	// );
+	
+	
+}
+
+
 
 
  
@@ -24685,6 +24823,7 @@ public:
   int (naIntData) [8];
   float (naFloatData) [8];
   float (conVals) [E_CONST_LENGTH];
+  float gammaVal;
   float lastMouseOrigX;
   float lastMouseOrigY;
   float globWheelDelta;
@@ -24887,6 +25026,7 @@ public:
   FIVector4 btvConv;
   FIVector4 * BTV2FIV (btVector3 btv);
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
+  void listVoices ();
   bool speak (string speechString);
   void applyPat (int patInd, int patShape, int rot, int x, int y, int val, int rad);
   void getVoroOffsets ();
@@ -25272,6 +25412,7 @@ public:
   VoxelBuffer * voxelBuffer;
   PaddedData * basePD;
   PaddedDataEntry * baseData;
+  GamePageHolder * gph;
   int lastFFSteps;
   int curPD;
   int voxelsPerCell;
@@ -25283,6 +25424,7 @@ public:
   int paddingInVoxels;
   ivec3 offsetInCells;
   ivec3 offsetInVoxels;
+  vec3 fOffsetInVoxels;
   vec3 oneVec;
   vec3 halfOff;
   vec3 crand0;
@@ -25291,8 +25433,8 @@ public:
   FBOWrapper * hmFBO;
   GameVoxelWrap ();
   void init (Singleton * _singleton);
-  void fillVec (GamePageHolder * gph);
-  void process (GamePageHolder * gph);
+  void fillVec ();
+  void process (GamePageHolder * _gph);
   bool findNextCoord (ivec3 * voxResult);
   bool inBounds (ivec3 * pos, int minB, int maxB);
   int getNode (ivec3 * pos);
@@ -25300,12 +25442,12 @@ public:
   bool isInvSurfaceVoxel (ivec3 * pos, int ignorePtr, int & curPtr, bool checkVisited);
   bool isSurfaceVoxel (ivec3 * pos, int & curPtr, bool checkVisited);
   int getVoxelAtCoord (ivec3 * pos);
-  float sampLinear (ivec3 * pos, ivec3 offset);
+  float sampLinear (vec3 * pos, vec3 offset);
   PaddedDataEntry * getPadData (int ii, int jj, int kk);
   float rand2D (vec3 co);
   vec3 randPN (vec3 co);
-  void getVoro (ivec3 * worldPos, ivec3 * worldClosestCenter, vec3 * otherData, int iSpacing);
-  void calcVoxel (ivec3 * pos, int octPtr, int VLIndex);
+  void getVoro (vec3 * worldPos, vec3 * worldClosestCenter, vec3 * otherData, float fSpacing);
+  void calcVoxel (ivec3 * _pos, int octPtr, int VLIndex);
 };
 #undef LZZ_INLINE
 #endif
@@ -27001,6 +27143,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		hitGUI = false;
 		guiDirty = true;
 		
+		gammaVal = 0.5f;
 		
 		lastMouseOrigX = 0.0f;
 		lastMouseOrigY = 0.0f;
@@ -27223,8 +27366,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		paddingInCells = PADDING_IN_CELLS;
 		
 		cellsPerHolder = CELLS_PER_HOLDER;
-		holdersPerChunk = 4;
-		chunksPerBlock = 8;
+		holdersPerChunk = HOLDERS_PER_CHUNK;
+		chunksPerBlock = CHUNKS_PER_BLOCK;
 		holdersPerWorld = newPitch;
 		
 		
@@ -28235,6 +28378,58 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 
+	}
+void Singleton::listVoices ()
+                          {
+		// // Declare local identifiers:
+		// HRESULT                        hr = S_OK;
+		// CComPtr<ISpObjectToken>        cpVoiceToken;
+		// CComPtr<IEnumSpObjectTokens>   cpEnum;
+		// CComPtr<ISpVoice>              cpVoice;
+		// ULONG                          ulCount = 0;
+
+		// // Create the SAPI voice.
+		// hr = cpVoice.CoCreateInstance(CLSID_SpVoice);
+
+		// if (SUCCEEDED (hr))
+		// {
+		//    // Enumerate the available voices.
+		//    hr = SpEnumTokens(SPCAT_VOICES, NULL, NULL, &cpEnum;);
+		// }
+
+		// if (SUCCEEDED (hr))
+		// {
+		//    // Get the number of voices.
+		//    hr = cpEnum->GetCount(&ulCount;);
+		// }
+
+		// // Obtain a list of available voice tokens, set
+		// // the voice to the token, and call Speak.
+		// while (SUCCEEDED(hr) && ulCount--)
+		// {
+		//    cpVoiceToken.Release();
+
+		//    if (SUCCEEDED (hr))
+		//    {
+		//       hr = cpEnum->Next(1, &cpVoiceToken;, NULL);
+		//    }
+
+		//    if (SUCCEEDED (hr))
+		//    {
+		//       hr = cpVoice->SetVoice(cpVoiceToken);
+		//    }
+
+		//    if (SUCCEEDED (hr))
+		//    {
+		//       hr = cpVoice->Speak( L"How are you?", SPF_DEFAULT, NULL );
+		//    }
+
+		// }
+
+		// if (SUCCEEDED (hr))
+		// {
+		//    // Do more stuff here.
+		// }
 	}
 bool Singleton::speak (string speechString)
                                         {
@@ -29351,6 +29546,9 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 			FOV = mixf(5.0f,120.0f,curValue);
 			focalLength = 1.0f / tan(FOV / 2.0f);
 			
+		}
+		else if (comp->uid.compare("$options.graphics.gammaVal") == 0) {
+			gammaVal = curValue;
 		}
 		else if (comp->uid.compare("$options.graphics.sphereMapPrec") == 0) {
 			sphereMapPrec = mixf(0.0f,200.0f,curValue);
@@ -31232,7 +31430,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 		int tempType = E_ENTTYPE_NPC;
 		
 		
-		
+		string speakString = "";
 		
 		GamePageHolder* curHolder;
 		
@@ -31270,6 +31468,13 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				switch (key) {
 					
+					case 'g':
+						// cout << "Enter input to speak:\n>";
+						// getline(cin, speakString);
+						// speak(speakString);
+					
+						beginFieldInput("",E_FC_SPEAK);
+					break;
 					case 'd':
 						toggleSetting(E_BS_DEBUG_VIEW);
 					break;
@@ -31429,6 +31634,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						saveExternalJSON();
 						saveGUIValues();
 						gem->saveCurrentPose();
+						speak("Done Saving.");
 						//cout << "Use s key in web editor to save\n";
 						break;
 
@@ -31579,27 +31785,35 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 					case 'g':
 					
-						mouseState++;
 
 						
-						if (mouseState == E_MOUSE_STATE_PICKING) {
+						if (mouseState == E_MOUSE_STATE_MOVE) {
 							
 							mouseState = E_MOUSE_STATE_BRUSH;
-							
-							if (earthMod == E_PTT_WAT) {
-								mouseState = 0;
-								earthMod = E_PTT_TER;
-							}
-							else {
-								earthMod = E_PTT_WAT;
-							}
+							earthMod = E_PTT_TER;
 							
 						}
-						
+						else {
+							
+							earthMod++;
+							
+							if (earthMod == E_PTT_EMP) {
+								mouseState = E_MOUSE_STATE_MOVE;
+							}
+							
+							// if (earthMod == E_PTT_WAT) {
+							// 	mouseState = E_MOUSE_STATE_MOVE;
+							// 	earthMod = E_PTT_TER;
+							// }
+							// else {
+							// 	earthMod = E_PTT_WAT;
+							// }
+							
+						}
 
 						
 						
-						cout << mouseStateStrings[mouseState] << "\n";
+						//cout << mouseStateStrings[mouseState] << "\n";
 
 
 						wsBufferInvalid = true;
@@ -31647,7 +31861,9 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 					case 'o':
 						//targetTimeOfDay = 1.0f-targetTimeOfDay;
-						sphereMapOn = !sphereMapOn;
+						//sphereMapOn = !sphereMapOn;
+						
+						listVoices();
 						
 						break;
 
@@ -31667,6 +31883,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						break;
 						
 					case 'y':
+						
 						// throw
 					break;
 					case 'T':
@@ -31676,7 +31893,6 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 						
 						toggleSetting(E_BS_RENDER_VOXELS);
-						
 						
 					break;
 					// case 'o':
@@ -34379,7 +34595,9 @@ void Singleton::endFieldInput (bool success)
 				case E_FC_LOADORG:
 					gem->loadOrgFromMenu(currentFieldString);					
 				break;
-				
+				case E_FC_SPEAK:
+					speak(currentFieldString);
+				break;
 			}
 		}
 		
@@ -34888,7 +35106,7 @@ bool Singleton::saveFileString (string fileName, string * source)
 
 		outfile.close();
 
-		doTraceND("Save Successful");
+		cout << "Save Successful";
 
 		return true;
 	}
@@ -35205,11 +35423,17 @@ void Singleton::frameUpdate (bool doFrameRender)
 						
 						
 						if (currentTick < 4) {
-							cameraGetPosNoShake()->setFXYZ(2048.0,2048.0,0.0);
+							cameraGetPosNoShake()->setFXYZ(3192.0,3192.0,0.0);
 							camLerpPos.copyFrom(cameraGetPosNoShake());
 						}
 						
 						if (currentTick == 4) {
+							
+							// modXYZ.setFXYZRef(&lookAtVec,2048.0f);
+							// moveCamera(&modXYZ);
+							// modXYZ.setFXYZRef(&origin);
+							// cameraGetPosNoShake()->copyFrom(&camLerpPos);
+							
 							setCameraToElevation();
 							
 							gamePhysics = new GamePhysics();
@@ -37501,14 +37725,6 @@ GameVoxelWrap::GameVoxelWrap ()
 void GameVoxelWrap::init (Singleton * _singleton)
           {
 		singleton = _singleton;
-		//dimInVoxels = _dimInVoxels;
-		// octInVoxels = dimInVoxels*2;
-		
-		// octOffsetInVoxels = ivec3(
-		// 	(octInVoxels-dimInVoxels)/2,
-		// 	(octInVoxels-dimInVoxels)/2,
-		// 	(octInVoxels-dimInVoxels)/2	
-		// );
 		
 		voxelsPerCell = singleton->voxelsPerCell;
 		//fVoxelsPerCell = voxelsPerCell;
@@ -37524,8 +37740,8 @@ void GameVoxelWrap::init (Singleton * _singleton)
 		
 		
 	}
-void GameVoxelWrap::fillVec (GamePageHolder * gph)
-                                          {
+void GameVoxelWrap::fillVec ()
+                       {
 		int totSize = voxelBuffer->voxelList.size();
 		
 		if (totSize <= 0) {
@@ -37938,7 +38154,7 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 								tempData[4] = totNorm.x;
 								tempData[5] = totNorm.y;
 								tempData[6] = totNorm.z;
-								tempData[7] = curMat*256;
+								tempData[7] = curMat;
 								
 								for (m = 0; m < dataSize; m++) {
 									gph->vertexVec.push_back(tempData[m]);
@@ -38118,10 +38334,12 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 		}
 		
 	}
-void GameVoxelWrap::process (GamePageHolder * gph)
-                                          {
+void GameVoxelWrap::process (GamePageHolder * _gph)
+                                           {
 		ivec3 cellCoord;
 		ivec3 voxResult;
+		
+		gph = _gph;
 		
 		curPD = gph->curPD;
 		
@@ -38133,7 +38351,7 @@ void GameVoxelWrap::process (GamePageHolder * gph)
 		
 		offsetInVoxels = offsetInCells - paddingInCells;
 		offsetInVoxels *= voxelsPerCell;
-		
+		fOffsetInVoxels = vec3(offsetInVoxels.x,offsetInVoxels.y,offsetInVoxels.z);
 
 		basePD = (&singleton->pdPool[curPD]);
 		baseData = singleton->pdPool[curPD].data;
@@ -38148,7 +38366,7 @@ void GameVoxelWrap::process (GamePageHolder * gph)
 		
 		DONE_WITH_IT:
 		
-		fillVec(gph);
+		fillVec();
 		
 	}
 bool GameVoxelWrap::findNextCoord (ivec3 * voxResult)
@@ -38545,8 +38763,8 @@ int GameVoxelWrap::getVoxelAtCoord (ivec3 * pos)
 		
 		
 	}
-float GameVoxelWrap::sampLinear (ivec3 * pos, ivec3 offset)
-                                                   {
+float GameVoxelWrap::sampLinear (vec3 * pos, vec3 offset)
+                                                 {
 		int q;
 		int i;
 		int j;
@@ -38554,7 +38772,7 @@ float GameVoxelWrap::sampLinear (ivec3 * pos, ivec3 offset)
 		
 		float res[8];
 		
-		ivec3 newPos = ((*pos) + offset);
+		vec3 newPos = ((*pos) + offset);
 		
 		int xv = newPos.x/voxelsPerCell;
 		int yv = newPos.y/voxelsPerCell;
@@ -38651,47 +38869,32 @@ vec3 GameVoxelWrap::randPN (vec3 co)
 			
 			return myres*2.0f - oneVec;
 	}
-void GameVoxelWrap::getVoro (ivec3 * worldPos, ivec3 * worldClosestCenter, vec3 * otherData, int iSpacing)
+void GameVoxelWrap::getVoro (vec3 * worldPos, vec3 * worldClosestCenter, vec3 * otherData, float fSpacing)
                                                                                                 {
 		
-		vec3 fWorldPos = vec3(
-			worldPos->x,
-			worldPos->y,
-			worldPos->z
-		);
+		vec3 fWorldPos = (*worldPos)/fSpacing;
 		
-		float fSpacing = iSpacing;
+		vec3 fWorldCellPos = fWorldPos;
+		fWorldCellPos.doFloor();
 		
-		fWorldPos *= 1.0f/fSpacing;
-		
-		vec3 fWorldCellPos = vec3(
-			worldPos->x/iSpacing,
-			worldPos->y/iSpacing,
-			worldPos->z/iSpacing
-		);
-		
-		fWorldPos -= vec3(
-			fWorldCellPos.x,
-			fWorldCellPos.y,
-			fWorldCellPos.z
-		);
+		fWorldPos -= fWorldCellPos;
 		
 		int i;
 		
 		vec3 testPos;
 		float testDis;
-		float variance = 0.4f;
+		vec3 variance = vec3(0.0f,0.0f,0.4f);
 		
 		
 		vec3 bestPos = VORO_OFFSETS[0] + randPN(fWorldCellPos+VORO_OFFSETS[0])*variance;
 		vec3 nextBestPos = bestPos;
 		
-		float bestDis = fWorldPos.distance(bestPos);
-		float nextBestDis = 999999.0f;//fWorldPos.distance(nextBestPos);
+		float bestDis = fWorldPos.distance2(bestPos,4.0f);
+		float nextBestDis = 999999.0f;
 		
 		for (i = 1; i < 27; i++) {
 			testPos = VORO_OFFSETS[i] + randPN(fWorldCellPos+VORO_OFFSETS[i])*variance;
-			testDis = fWorldPos.distance(testPos);
+			testDis = fWorldPos.distance2(testPos,4.0f);
 			
 			if (testDis < bestDis) {
 				nextBestDis = bestDis;
@@ -38718,23 +38921,22 @@ void GameVoxelWrap::getVoro (ivec3 * worldPos, ivec3 * worldClosestCenter, vec3 
 		
 		// *norVal = normalize(nextBestPos.xyz-bestPos.xyz);
 	}
-void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
-                                                            {
+void GameVoxelWrap::calcVoxel (ivec3 * _pos, int octPtr, int VLIndex)
+                                                             {
+		
+		
+		vec3 pos = vec3(_pos->x,_pos->y,_pos->z);
 		
 		int i;
 		int curInd;
 		ObjectStruct* curObj;
 		
-		ivec3 worldPos = (*pos) + offsetInVoxels;
-		vec3 fWorldPos = vec3(
-			worldPos.x,
-			worldPos.y,
-			worldPos.z
-		);
+		vec3 worldPos = pos + fOffsetInVoxels;
+
 		//worldPos -= paddingInVoxels;
 		
-		ivec3 worldClosestCenter;// = worldPos;
-		ivec3 localClosestCenter;
+		vec3 worldClosestCenter;// = worldPos;
+		vec3 localClosestCenter;
 		
 		vec3 otherData;
 		
@@ -38744,15 +38946,16 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
 		
 		float fVPC = voxelsPerCell;
 		fVPC = 1.0f/fVPC;
-		vec3 fWorldPosCell = fWorldPos*fVPC;
+		vec3 worldPosCell = worldPos*fVPC;
+		vec3 cellClosestCenter = worldClosestCenter*fVPC;
 		
-		localClosestCenter = worldClosestCenter - offsetInVoxels;
+		localClosestCenter = worldClosestCenter - fOffsetInVoxels;
 		//localClosestCenter += paddingInVoxels;
 		
 		
 		int vOff = 8;
-		float terSampVoro = sampLinear(&localClosestCenter, ivec3(0,0,0));
-		float terSampOrig =  sampLinear(pos, ivec3(0,0,0));
+		float terSampVoro = sampLinear(&localClosestCenter, vec3(0,0,0));
+		float terSampOrig =  sampLinear(&pos, vec3(0,0,0));
 		
 		bool isGrass = false;
 		uint finalMat = TEX_NULL;
@@ -38760,26 +38963,38 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
 		// if (isTer) {
 		// 	finalMat = TEX_EARTH;
 		// }
-		float voroJut = clampfZO((fWorldPos.z - (worldClosestCenter.z-voroSize*0.5f))/voroSize);
+		float voroJut = clampfZO((worldPos.z - (worldClosestCenter.z-voroSize*0.5f))/voroSize);
 		
+		float worldSin = clampfZO(
+			(
+									(sin(worldPos.z/905.0)+1.0f)*
+									(sin(worldPos.x/761.0)+1.0f)*
+									(sin(worldPos.y/324.0)+1.0f)
+			)*0.5f
+		);
 		
-		float terSampOrigX = sampLinear(pos, ivec3(vOff,0,0));
-		float terSampOrigY = sampLinear(pos, ivec3(0,vOff,0));
-		float terSampOrigZ = sampLinear(pos, ivec3(0,0,vOff));
+		float terSampOrigX = sampLinear(&pos, vec3(vOff,0,0));
+		float terSampOrigY = sampLinear(&pos, vec3(0,vOff,0));
+		float terSampOrigZ = sampLinear(&pos, vec3(0,0,vOff));
 		vec3 terNorm = vec3(
 			terSampOrigX-terSampOrig,
 			terSampOrigY-terSampOrig,
 			terSampOrigZ-terSampOrig
 		);
 		// terNorm *= -1.0f;
-		terNorm.normalize();
+		if (terNorm.normalize()) {
+			
+		}
+		else {
+			terNorm = vec3(0.0f,0.0f,1.0f);
+		}
 		
 		// float divVal = singleton->conVals[E_CONST_DIV_VAL];
 		
 		// vec3 sinPos = vec3(
-		// 	sin(fWorldPos.x/divVal),
-		// 	sin(fWorldPos.y/divVal),
-		// 	sin(fWorldPos.z/divVal)
+		// 	sin(worldPos.x/divVal),
+		// 	sin(worldPos.y/divVal),
+		// 	sin(worldPos.z/divVal)
 		// );
 		
 		
@@ -38787,51 +39002,92 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
 		vec3 absNorm = terNorm;
 		absNorm.doAbs();
 		
-		float xv = fWorldPos.x;
-		float yv = fWorldPos.y;
-		float zv = fWorldPos.z;
+		float xv = worldPos.x;
+		float yv = worldPos.y;
+		float zv = worldPos.z;
 		
 		float sampScale = singleton->conVals[E_CONST_SAMP_SCALE];
 		float hmSampYZ = hmFBO->getPixelAtLinear(yv*sampScale,zv*sampScale, 0);
 		float hmSampXZ = hmFBO->getPixelAtLinear(xv*sampScale,zv*sampScale, 0);
 		float hmSampXY = hmFBO->getPixelAtLinear(xv*sampScale,yv*sampScale, 0);
 		
-		float hmSamp = mixf(hmSampYZ,hmSampXZ,absNorm.y);//(hmSampYZ*absNorm.x + hmSampXZ*absNorm.y + hmSampXY*absNorm.z);
-		hmSamp = mixf(hmSamp,hmSampXY,absNorm.z);
+		float hmSamp = mixf(hmSampYZ,hmSampXZ,absNorm.y*absNorm.y);//(hmSampYZ*absNorm.x + hmSampXZ*absNorm.y + hmSampXY*absNorm.z);
+		hmSamp = mixf(hmSamp,hmSampXY,absNorm.z*absNorm.z);
+		
+		float hmSin = sin( hmSamp * singleton->conVals[E_CONST_SAMP_SIN] );
+		float hmSinZO = (hmSin+1.0f)*0.5f;
+		//float hmMod = (hmSin*singleton->conVals[E_CONST_VORO_STRENGTH]);
 		
 		//terSampVoro += sin(hmSamp*18.0f)*0.25f;
 		
 		float voroMod1 = clampfZO(1.0f-otherData.x); // the less this is, the farther from center
 		float voroMod2 = clampfZO(otherData.x); // the less this is, the closer to center
 		
-		float hmMod = (sin(hmSamp*9.0f)*singleton->conVals[E_CONST_VORO_STRENGTH]);
+		int finalNormId = 0;
+		
+		float randVal;
+		
+		int voroHash = worldClosestCenter.x*3 + worldClosestCenter.y*7 + worldClosestCenter.z*11;
+		float fVoroHash = voroHash;
+		fVoroHash = (sin(fVoroHash)+1.0f)*0.5f;
 		
 		//float rockMod = 0.0f;
-		bool isRock = (
-			(terSampVoro <= 0.4f)	&&
-			(voroMod2 < (0.96f + hmMod*0.03f))
-		) &&
-		((terSampOrig) < (0.3f+voroJut*singleton->conVals[E_CONST_DIV_VAL])); // + (0.2f*(1.0-abs(terNorm.z)))
+		bool isRock;
+		
+		//if ((voroHash%4) == 1) {
+		//	isRock = (terSampVoro <= 0.2f);
+		//}
+		//else {
+		// 	isRock = (terSampVoro <= (0.2f + worldSin*0.2f)) &&
+		// 	(voroMod2 < (0.96f + hmMod*0.03f)) &&
+		// 	((terSampOrig) < ((worldSin*0.3f+0.3f)+voroJut*singleton->conVals[E_CONST_DIV_VAL])  ); // + (0.2f*(1.0-abs(terNorm.z)))
+			
+		// //}
+			
+			
+		if ((voroHash%4) == 1) {
+			isRock = (terSampVoro <= 0.2f);
+		}
+		else {
+			isRock = (terSampVoro <= 0.5f) &&
+			(voroMod2 < (0.85f + hmSinZO*0.1f)) &&
+			((terSampOrig) < (0.3f+voroJut*singleton->conVals[E_CONST_DIV_VAL])); // + (0.2f*(1.0-abs(terNorm.z)))
+			
+		}
 		
 		//+hmMod
 		
+		vec3 randOff = vec3(10.5232f,20.323842,33.0221);
+		
 		//
 		
-		bool isTer = ((terSampOrig+hmMod) < 0.0f); //(terSampOrig - voroMod1*rockMod*8.0f)
+		
+		
+		float finalMod = 0.0f;
+		
+		bool isTer = ((terSampOrig) < (hmSinZO*0.4f*clampfZO(terNorm.z)) ); //(terSampOrig - voroMod1*rockMod*8.0f)
 		
 		if (isRock) {
 			finalMat = TEX_EARTH;
-			voxelBuffer->voxelList[VLIndex].normId = 0;//worldClosestCenter.x*3 + worldClosestCenter.y*7 + worldClosestCenter.z*11;
+			finalNormId = 0;//worldClosestCenter.x*3 + worldClosestCenter.y*7 + worldClosestCenter.z*11;
 		}
 		else {
-			if (isTer) {
-				finalMat = TEX_EARTH;
-				voxelBuffer->voxelList[VLIndex].normId = 0;
-			}
-			else {
-				
-			}
+			
 		}
+		
+		if (isTer) {
+			finalMat = TEX_EARTH;
+			finalNormId = 0;
+		}
+		else {
+			
+		}
+		
+		
+		
+		
+		
+		
 		
 		if (finalMat == TEX_NULL) {
 			if ((terNorm.z > 0.5f)
@@ -38840,32 +39096,84 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
 				// 	((worldPos.y%2) == 0)
 				// )
 			) { //&&(sin(hmSamp*18.0f) > 0.0f)
-				int grassOff = rand2D(fWorldPos)*clampfZO((terNorm.z-0.5f)*2.0f)*8.0f;
-				float terSampGrass = sampLinear(pos, ivec3(0,0,-grassOff));
+				randVal = rand2D(worldPos);
 				
-				if ((terSampGrass-(hmMod+1.0f)*0.15) <= 0.0f) {
+				int grassOff = randVal*clampfZO((terNorm.z-0.5f)*2.0f + hmSin)*8.0f;
+				float terSampGrass = sampLinear(&pos, vec3(0,0,-grassOff));
+				
+				if (
+					(
+						(terSampGrass+voroMod2*0.1f-(-hmSin*0.25f+1.0f)*0.25)
+						<= 0.0f	
+					) &&
+					(
+						(1.0f-hmSinZO) > 0.25f
+					)
+				) {
 					isGrass = true;
+					finalMod = abs(rand2D(worldPos+randOff));//clampfZO()*255.0f;
 					finalMat = TEX_GRASS;
-					voxelBuffer->voxelList[VLIndex].normId = 0;
+					finalNormId = 0;
 				}
 			}
 		}
 		
 		
-		// for (i = 0; i < basePD->objectOrder.size(); i++) {
-		// 	curInd = basePD->objectOrder[i].v0;
-		// 	curObj = &(basePD->tempObjects[curInd]);
-			
-			
-		// 	if (fWorldPosCell.distance(curObj->data[E_OSD_CENTER]) <= curObj->data[E_OSD_RADIUS].x) {
-		// 		finalMat = TEX_NULL;
-		// 		voxelBuffer->voxelList[VLIndex].normId = 0;
-		// 	}
-			
-			
-		// }
 		
 		
+		
+		
+		
+		
+		float primRes;
+		
+		for (i = 0; i < gph->objectOrder.size(); i++) {
+			curInd = gph->objectOrder[i].v0;
+			curObj = &(gph->tempObjects[curInd]);
+			
+			
+			
+			if (curObj->objType == E_PTT_BLD) {
+				
+				
+				primRes = primDis(worldPosCell, curObj);
+				
+				if (primRes <= 0.0f) {
+					
+					if (curObj->addType == E_BRUSH_ADD) {
+						finalMat = TEX_BRICK;
+						finalNormId = 1;
+					}
+					else {
+						finalMat = TEX_NULL;
+						finalNormId = 0;
+					}
+					
+					finalMod = 0;
+					
+					
+				}
+			}
+			
+			
+			
+			// if (worldPosCell.distance(curObj->data[E_OSD_CENTER]) <= curObj->data[E_OSD_RADIUS].x) {
+			// 	finalMat = TEX_NULL;
+			// 	finalNormId = 0;
+			// }			
+			
+		}
+		
+		
+		
+		if (finalMat == TEX_EARTH) {
+			finalMod = 
+				//hmSinZO
+				hmSinZO*0.2f +
+				fVoroHash*0.1f +
+				worldSin*0.7f
+				;
+		}
 		
 		bool isSolid = (finalMat != TEX_NULL);
 		
@@ -38873,15 +39181,16 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
 		
 		
 		//bool isSolid = (terSamp >= 0.5f);
-		
+		voxelBuffer->voxelList[VLIndex].normId = finalNormId;
 		
 		if (isSolid) {
+			
 			voxelBuffer->setFlag(octPtr, E_OCT_SOLID);
 			
 			// x = base tex, y = variant
 			//floor(curTex.x*256.0*255.0) + floor(curTex.y*255.0);
 			
-			voxelBuffer->voxelList[VLIndex].matId = finalMat;
+			voxelBuffer->voxelList[VLIndex].matId = finalMat*256 + clampfZO(finalMod)*255.0f;
 		}
 		
 		
@@ -44814,13 +45123,13 @@ void GameFluid::getPrimData (int n)
 				// for (i = 0; i < totSize; i++) {
 				// 	indSrc = i*4;
 					
-				// 	fluidData[indSrc+E_PTT_LST] += (fluidData[indSrc+E_PTT_LST] - fluidData[indSrc+E_PTT_WAT])/16;
+				// 	extraData[indSrc+E_PTT_LST] += (extraData[indSrc+E_PTT_LST] - fluidData[indSrc+E_PTT_WAT])/16;
 					
-				// 	if (fluidData[indSrc+E_PTT_LST] > fluidData[indSrc+E_PTT_WAT]) {
-				// 		fluidData[indSrc+E_PTT_LST]--;
+				// 	if (extraData[indSrc+E_PTT_LST] > fluidData[indSrc+E_PTT_WAT]) {
+				// 		extraData[indSrc+E_PTT_LST]--;
 				// 	}
-				// 	if (fluidData[indSrc+E_PTT_LST] < fluidData[indSrc+E_PTT_WAT]) {
-				// 		fluidData[indSrc+E_PTT_LST]++;
+				// 	if (extraData[indSrc+E_PTT_LST] < fluidData[indSrc+E_PTT_WAT]) {
+				// 		extraData[indSrc+E_PTT_LST]++;
 				// 	}
 				// }
 				
@@ -45171,7 +45480,7 @@ bool GameFluid::updateFluidData ()
 				ind = i;
 				extraData[ind*4+E_PTT_IDE] = 0;
 				extraData[ind*4+E_PTT_STB] = 0;
-				fluidData[ind*4+E_PTT_LST] = fluidData[ind*4+E_PTT_WAT];
+				extraData[ind*4+E_PTT_LST] = fluidData[ind*4+E_PTT_WAT];
 			}
 			
 			// for (i = 0; i < fsVec.size(); i++) {
@@ -45198,7 +45507,7 @@ bool GameFluid::updateFluidData ()
 		immobileHeight = 0;
 		while (notFound && (ind < totSize)) {
 			watVal = &(fluidData[ind*4+E_PTT_WAT]);
-			bldVal = &(extraData[ind*4+E_PTT_BLD]);
+			bldVal = &(fluidData[ind*4+E_PTT_BLD]);
 			terVal = &(fluidData[ind*4+E_PTT_TER]);
 			
 			if (
@@ -45266,7 +45575,7 @@ bool GameFluid::updateFluidData ()
 				
 		// 		watVal2 = &(fluidData[indAbove*4+E_PTT_WAT]);
 		// 		terVal = &(fluidData[indAbove*4+E_PTT_TER]);
-		// 		bldVal = &(extraData[indAbove*4+E_PTT_BLD]);
+		// 		bldVal = &(fluidData[indAbove*4+E_PTT_BLD]);
 				
 		// 		if (
 		// 			(*watVal > 0) &&
@@ -45366,7 +45675,7 @@ bool GameFluid::updateFluidData ()
 				#endif
 				
 				
-				bldVal = &(extraData[ind*4+E_PTT_BLD]);
+				bldVal = &(fluidData[ind*4+E_PTT_BLD]);
 				terVal = &(fluidData[ind*4+E_PTT_TER]);
 				watVal = &(fluidData[ind*4+E_PTT_WAT]);
 				
@@ -45416,7 +45725,7 @@ bool GameFluid::updateFluidData ()
 								testInd3 = testInd2 - volSizePrimBuf*volSizePrimBuf;
 								if (
 									(fluidData[testInd3*4+E_PTT_TER] > UNIT_MIN) ||
-									(extraData[testInd3*4+E_PTT_BLD] > UNIT_MIN)
+									(fluidData[testInd3*4+E_PTT_BLD] > UNIT_MIN)
 									// || (fluidData[testInd3*4+E_PTT_WAT] == UNIT_MIN)
 								) {
 									iciPushBack(n,ind);
@@ -45464,7 +45773,7 @@ bool GameFluid::updateFluidData ()
 					j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
 					i = ind - ( j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf );
 					
-					bldVal = &(extraData[ind*4+E_PTT_BLD]);
+					bldVal = &(fluidData[ind*4+E_PTT_BLD]);
 					terVal = &(fluidData[ind*4+E_PTT_TER]);
 					watVal = &(fluidData[ind*4+E_PTT_WAT]);
 					
@@ -45507,7 +45816,7 @@ bool GameFluid::updateFluidData ()
 									// testInd3 = testInd2 - volSizePrimBuf*volSizePrimBuf;
 									// if (
 									// 	(fluidData[testInd3*4+E_PTT_TER] > UNIT_MIN) ||
-									// 	(extraData[testInd3*4+E_PTT_BLD] > UNIT_MIN)
+									// 	(fluidData[testInd3*4+E_PTT_BLD] > UNIT_MIN)
 									// 	// || (fluidData[testInd3*4+E_PTT_WAT] == UNIT_MIN)
 									// ) {
 										iciPushBack(n,ind);
@@ -45592,7 +45901,7 @@ bool GameFluid::updateFluidData ()
 					// 	testInd = ind + (volSizePrimBuf*volSizePrimBuf);
 					// 	watVal2 = &(fluidData[testInd*4+E_PTT_WAT]);
 					// 	terVal2 = &(fluidData[testInd*4+E_PTT_TER]);
-					// 	bldVal2 = &(extraData[testInd*4+E_PTT_BLD]);
+					// 	bldVal2 = &(fluidData[testInd*4+E_PTT_BLD]);
 						
 					// 	if (
 					// 		(*watVal > 0) &&
@@ -45934,15 +46243,15 @@ bool GameFluid::updateFluidData ()
 		
 		// 			if (
 					
-		// 				fluidData[ind*4 + E_PTT_WAT] != fluidData[ind*4 + E_PTT_LST]
+		// 				fluidData[ind*4 + E_PTT_WAT] != extraData[ind*4 + E_PTT_LST]
 						
 		// 			) {
 						
-		// 				// if (fluidData[indSrc + E_PTT_LST] < fluidData[indSrc + E_PTT_WAT]) {
-		// 				// 	fluidData[indSrc + E_PTT_LST]++;
+		// 				// if (extraData[indSrc + E_PTT_LST] < fluidData[indSrc + E_PTT_WAT]) {
+		// 				// 	extraData[indSrc + E_PTT_LST]++;
 		// 				// }
-		// 				// if (fluidData[indSrc + E_PTT_LST] > fluidData[indSrc + E_PTT_WAT]) {
-		// 				// 	fluidData[indSrc + E_PTT_LST]--;
+		// 				// if (extraData[indSrc + E_PTT_LST] > fluidData[indSrc + E_PTT_WAT]) {
+		// 				// 	extraData[indSrc + E_PTT_LST]--;
 		// 				// }
 						
 		// 				if (i < iMin2) {iMin2 = i;}
@@ -46045,7 +46354,7 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 				terVal = &(fluidData[testInd*4+E_PTT_TER]);
 				watVal = &(fluidData[testInd*4+E_PTT_WAT]);
 				ideVal = &(extraData[testInd*4+E_PTT_STB]);
-				bldVal = &(extraData[testInd*4+E_PTT_BLD]);
+				bldVal = &(fluidData[testInd*4+E_PTT_BLD]);
 				
 				
 				// isAir = 
@@ -46279,7 +46588,7 @@ bool GameFluid::floodFillId (int startInd, int newId)
 					
 					if (
 						(fluidData[testInd*4+E_PTT_TER] != UNIT_MIN) ||
-						(extraData[testInd*4+E_PTT_BLD] != UNIT_MIN)	
+						(fluidData[testInd*4+E_PTT_BLD] != UNIT_MIN)	
 					) {
 						fidPushBack(groupId,ind); //fsPtr->fluidIds.push_back(ind);
 						notFound = false;
@@ -46303,7 +46612,7 @@ bool GameFluid::floodFillId (int startInd, int newId)
 				
 				
 				if (testK > immobileHeight) {
-					bldVal = &(extraData[testInd*4+E_PTT_BLD]);
+					bldVal = &(fluidData[testInd*4+E_PTT_BLD]);
 					terVal = &(fluidData[testInd*4+E_PTT_TER]);
 					watVal = &(fluidData[testInd*4+E_PTT_WAT]);
 					ideVal = &(extraData[testInd*4+E_PTT_IDE]);
@@ -46360,7 +46669,7 @@ bool GameFluid::floodFillId (int startInd, int newId)
 			j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
 			i = ind - ( j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf );
 			
-			bldVal = &(extraData[ind*4+E_PTT_BLD]);
+			bldVal = &(fluidData[ind*4+E_PTT_BLD]);
 			terVal = &(fluidData[ind*4+E_PTT_TER]);
 			watVal = &(fluidData[ind*4+E_PTT_WAT]);
 			
@@ -46476,7 +46785,7 @@ void GameFluid::clearAllGeom ()
 		int ind;
 		for (i = 0; i < totSize; i++) {
 			ind = i;
-			extraData[ind*4+E_PTT_BLD] = UNIT_MIN;
+			fluidData[ind*4+E_PTT_BLD] = UNIT_MIN;
 		}
 	}
 void GameFluid::clearInsideValues ()
@@ -46485,8 +46794,8 @@ void GameFluid::clearInsideValues ()
 		int ind;
 		for (i = 0; i < totSize; i++) {
 			ind = i;
-			if (extraData[ind*4+E_PTT_BLD] == UNIT_INSIDE) {
-				extraData[ind*4+E_PTT_BLD] = UNIT_MIN;
+			if (fluidData[ind*4+E_PTT_BLD] == UNIT_INSIDE) {
+				fluidData[ind*4+E_PTT_BLD] = UNIT_MIN;
 			}
 			
 		}
@@ -46588,7 +46897,7 @@ void GameFluid::fillCurrentGeom (int templateId, FIVector4 * templatePos)
 					);
 					
 					ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf);
-					bldVal = &(extraData[ind*4+E_PTT_BLD]);
+					bldVal = &(fluidData[ind*4+E_PTT_BLD]);
 					terVal = &(fluidData[ind*4+E_PTT_TER]);
 					watVal = &(fluidData[ind*4+E_PTT_WAT]);
 					empVal = &(fluidData[ind*4+E_PTT_EMP]);
@@ -46687,8 +46996,24 @@ void GameFluid::applyUnitModification (FIVector4 * fPixelWorldCoordsBase, int br
 			os.globalId = GLOBAL_OBJ_COUNT;
 			GLOBAL_OBJ_COUNT++;
 			os.data[E_OSD_CENTER] = fPixelWorldCoordsBase->getVec3();
-			os.data[E_OSD_RADIUS] = vec3(radius,radius,radius);
-			os.data[E_OSD_MATPARAMS].z = brushAction;
+			float outerRad = radius*0.5f;
+			os.data[E_OSD_CORNERDIS] = vec3(2.0f,2.0f,outerRad);
+			float innerRad = radius - outerRad;
+			os.data[E_OSD_RADIUS] = vec3(innerRad);
+			os.data[E_OSD_THICKNESS] = vec3(1.0f,0.0f,0.0f);
+			
+			vec3 totBounds = os.data[E_OSD_RADIUS] + outerRad;
+			
+			os.data[E_OSD_VISMIN] = -totBounds;
+			os.data[E_OSD_VISMAX] = totBounds;
+			os.data[E_OSD_VISMAX].z -= 2.0f;
+			
+			
+			
+			//os.data[E_OSD_MATPARAMS].z = brushAction;
+			os.addType = brushAction;
+			os.objType = modType;
+			//bldVal = &(fluidData[ind*4+E_PTT_BLD]);
 			
 			switch (brushAction) {
 				case E_BRUSH_MOVE:
@@ -46854,7 +47179,7 @@ void GameFluid::applyUnitModification (FIVector4 * fPixelWorldCoordsBase, int br
 							
 							ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf);
 							
-							bldVal = &(extraData[ind*4+E_PTT_BLD]);
+							bldVal = &(fluidData[ind*4+E_PTT_BLD]);
 							empVal = &(fluidData[ind*4+E_PTT_EMP]);
 							terVal = &(fluidData[ind*4+E_PTT_TER]);
 							watVal = &(fluidData[ind*4+E_PTT_WAT]);
@@ -46904,7 +47229,7 @@ void GameFluid::applyUnitModification (FIVector4 * fPixelWorldCoordsBase, int br
 									// 				j3*volSizePrimBuf +
 									// 				k3*volSizePrimBuf*volSizePrimBuf;
 												
-									// 			touchesBuilding = touchesBuilding || (extraData[ind2*4+E_PTT_BLD] != UNIT_MIN);
+									// 			touchesBuilding = touchesBuilding || (fluidData[ind2*4+E_PTT_BLD] != UNIT_MIN);
 												
 									// 		}
 									// 	}
@@ -52811,7 +53136,7 @@ int GamePageHolder::getCellAtInd (int ind)
 			
 			if (
 				(cellData[ind+E_PTT_TER] != FLUID_UNIT_MIN) ||
-				(extrData[ind+E_PTT_BLD] != FLUID_UNIT_MIN)
+				(cellData[ind+E_PTT_BLD] != FLUID_UNIT_MIN)
 			) {
 				return E_CD_SOLID;
 			}
@@ -52848,7 +53173,7 @@ void GamePageHolder::getArrAtInd (int ind, int * tempCellData, int * tempCellDat
 				switch (holderFlags) {
 					case E_CD_WATER:
 						tempCellData[E_PTT_WAT] = FLUID_UNIT_MAX;
-						tempCellData[E_PTT_LST] = FLUID_UNIT_MAX;
+						tempCellData2[E_PTT_LST] = FLUID_UNIT_MAX;
 					break;
 					case E_CD_SOLID:
 						tempCellData[E_PTT_TER] = FLUID_UNIT_MAX;
@@ -54095,7 +54420,7 @@ void GamePageHolder::genCellData ()
 			
 			cellData[ind+E_PTT_TER] = iTer;
 			cellData[ind+E_PTT_WAT] = iWat;
-			cellData[ind+E_PTT_LST] = iWat;
+			extrData[ind+E_PTT_LST] = iWat;
 			
 			
 			
@@ -54111,49 +54436,6 @@ void GamePageHolder::genCellData ()
 		
 		
 		
-		
-		
-		vec3 gphMin = gphMinInCells.getVec3();
-		vec3 fWorldPosCell;
-		int curMP;
-		
-		for (p = 0; p < cdo4; p++) {
-			
-			kk = p/(cellsPerHolder*cellsPerHolder);
-			jj = (p-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
-			ii = p-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
-			
-			ind = p*4;
-			
-			fWorldPosCell = gphMin + vec3(ii,jj,kk);
-			
-			for (r = 0; r < objectOrder.size(); r++) {
-				curInd = objectOrder[r].v0;
-				curObj = &(tempObjects[curInd]);
-				
-				
-				if (fWorldPosCell.distance(curObj->data[E_OSD_CENTER]) <= curObj->data[E_OSD_RADIUS].x) {
-					curMP = curObj->data[E_OSD_MATPARAMS].z;
-					
-					switch (curMP) {
-						case E_BRUSH_MOVE:
-							
-						break;
-						case E_BRUSH_ADD:
-							cellData[ind+E_PTT_TER] = FLUID_UNIT_MAX;
-						break;
-						case E_BRUSH_SUB:
-							cellData[ind+E_PTT_TER] = FLUID_UNIT_MIN;
-						break;
-					}
-					
-				}
-				
-				
-			}
-			
-			
-		}
 		
 		
 		
@@ -54195,6 +54477,55 @@ void GamePageHolder::genCellData ()
 		}
 		
 		
+		
+		
+		
+		
+		vec3 gphMin = gphMinInCells.getVec3();
+		vec3 fWorldPosCell;
+		float primRes;
+		vec3 halfOff = vec3(0.5f);
+		
+		for (p = 0; p < cdo4; p++) {
+			
+			kk = p/(cellsPerHolder*cellsPerHolder);
+			jj = (p-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+			ii = p-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+			
+			ind = p*4;
+			
+			fWorldPosCell = gphMin + vec3(ii,jj,kk) + halfOff;
+			
+			for (r = 0; r < objectOrder.size(); r++) {
+				curInd = objectOrder[r].v0;
+				curObj = &(tempObjects[curInd]);
+				
+				primRes = primDis(fWorldPosCell,curObj);
+				
+				if (
+					primRes <= 0.0f
+					//fWorldPosCell.distance(curObj->data[E_OSD_CENTER]) <= curObj->data[E_OSD_RADIUS].x
+				) {
+										
+					switch (curObj->addType) {
+						case E_BRUSH_MOVE:
+							
+						break;
+						case E_BRUSH_ADD:
+							cellData[ind+curObj->objType] = FLUID_UNIT_MAX;
+						break;
+						case E_BRUSH_SUB:
+							cellData[ind+curObj->objType] = FLUID_UNIT_MIN;
+						break;
+					}
+					
+				}
+				
+				
+			}
+			
+			
+		}
 		
 		
 		
@@ -54414,6 +54745,9 @@ int GamePageHolder::gatherData ()
 		
 		float terVal = 0.0f;
 		
+		int cData0[4];
+		int cData1[4];
+		
 		// if (isBlockHolder) {
 		// 	minRad = 0;
 		// 	maxRad = cellsPerHolder-1;
@@ -54457,10 +54791,18 @@ int GamePageHolder::gatherData ()
 						);
 					//}
 					
+					singleton->gw->getArrAtCoords(
+						iX - paddingInCells,
+						iY - paddingInCells,
+						iZ - paddingInCells,
+						cData0,
+						cData1
+					);
+					
 					
 					tempHF = tempHF|cellVal;
 					
-					if (cellVal == E_CD_SOLID) {
+					if (cData0[E_PTT_TER] != FLUID_UNIT_MIN) {
 						terVal = 1.0f;
 					}
 					else {
@@ -54505,7 +54847,7 @@ void GamePageHolder::generateList ()
 		
 		uint tempHF = gatherData();		
 		
-		
+		vertexVec.clear();//beginFill();
 		
 		if (
 			(
@@ -54634,7 +54976,7 @@ void GamePageHolder::wrapPolys ()
 		int maskVals[8];
 		int newInd;
 		
-		vertexVec.clear();//beginFill();
+		
 		
 		
 		for (k = 0; k < cellsPerHolder; k++) {
@@ -54993,6 +55335,8 @@ void GameChunk::fillVBO ()
 		int j;
 		int k;
 		
+		int curSize;
+		
 		GamePageHolder* curHolder;
 		
 		
@@ -55026,8 +55370,14 @@ void GameChunk::fillVBO ()
 					else {
 						if (curHolder->listGenerated) {
 							
+							curSize = curHolder->vertexVec.size();
+							
 							for (k = curHolder->begMip[j]; k < curHolder->endMip[j]; k++) {
-								vboWrapper[j].vi->vertexVec.push_back(curHolder->vertexVec[k]);
+								
+								if (k < curSize) {
+									vboWrapper[j].vi->vertexVec.push_back(curHolder->vertexVec[k]);
+								}
+								
 							}
 							
 							// curHolder->vertexVec.clear();
@@ -55053,6 +55403,9 @@ void GameChunk::fillVBO ()
 			
 			
 			vboWrapper[j].clearVecs(false);
+			
+			singleton->wsBufferInvalid = true;
+			singleton->forceGetPD = true;
 			
 			
 		}
@@ -59001,6 +59354,10 @@ void VolumeWrapper::init (int z, GLenum clampMethod, bool _isFloat, int filterTy
 		int ty = 0;
 		
 		switch (z) {
+			case 2:
+				tx = 4;
+				ty = 2;
+			break;
 			case 4:
 				tx = 8;
 				ty = 8;
@@ -61195,7 +61552,7 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 		int curPD;
 		intPair curId;
 		
-		float maxStackDis = 8.0f;
+		float maxStackDis = singleton->conVals[E_CONST_MAX_STACK_DIS];
 		
 		FIVector4 tempFIV;
 		
@@ -61250,9 +61607,9 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 		int numPasses = 1;
 		
 		
-		if (dirtyStack) {
-			cout << "dirtyStack\n";
-		}
+		// if (dirtyStack) {
+		// 	cout << "dirtyStack\n";
+		// }
 		
 		
 		if (doUpdate) {
@@ -69171,6 +69528,7 @@ void GameWorld::rasterHolders (bool doShadow)
 				singleton->bindFBO("rasterFBO", activeRaster);
 				singleton->sampleFBO("rasterFBO",0,activeRaster);
 				
+				singleton->setShaderInt("lastPass", (int)(q == (singleton->iGetConst(E_CONST_GROWPOINTSTEPS)-1)) );
 				singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 				
 				singleton->fsQuad.draw();
@@ -69212,11 +69570,17 @@ void GameWorld::rasterHolders (bool doShadow)
 		if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {
 			lastUnitPos.setFW(((int)singleton->curBrushRad));
 			singleton->setShaderfVec4("brushPos", &(lastUnitPos));
-			if (singleton->earthMod == E_PTT_TER) {
-				singleton->setShaderVec3("brushCol", 1.0f,0.0f,0.0f);
-			}
-			else {
-				singleton->setShaderVec3("brushCol", 0.0f,0.0f,1.0f);
+			
+			switch (singleton->earthMod) {
+				case E_PTT_TER:
+					singleton->setShaderVec3("brushCol", 1.0f,0.0f,0.0f);
+				break;
+				case E_PTT_WAT:
+					singleton->setShaderVec3("brushCol", 0.0f,0.0f,1.0f);
+				break;
+				case E_PTT_BLD:
+					singleton->setShaderVec3("brushCol", 0.0f,1.0f,0.0f);
+				break;
 			}
 			
 		}
@@ -69245,7 +69609,7 @@ void GameWorld::rasterHolders (bool doShadow)
 		*/
 		
 		
-		
+		singleton->setShaderFloat("gammaVal", singleton->gammaVal);
 		singleton->setShaderFloat("cellsPerChunk",singleton->cellsPerChunk);
 		singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
 		singleton->setShaderInt("testOn3", (int)(singleton->settings[E_BS_TEST_3]));
@@ -69266,6 +69630,7 @@ void GameWorld::rasterHolders (bool doShadow)
 		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
 		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
 		singleton->setShaderMatrix4x4("lightSpaceMatrix",singleton->lightSpaceMatrix.get(),1);
+		singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
 		
 		singleton->fsQuad.draw();
 

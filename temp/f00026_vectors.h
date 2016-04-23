@@ -468,10 +468,10 @@ public:
 		iv4.z = (int)scalar;
 	}
 
-	void setFXYZRef(FIVector4 *v1) {
-		fv4.x = v1->getFX();
-		fv4.y = v1->getFY();
-		fv4.z = v1->getFZ();
+	void setFXYZRef(FIVector4 *v1, float multiplier = 1.0f) {
+		fv4.x = v1->getFX()*multiplier;
+		fv4.y = v1->getFY()*multiplier;
+		fv4.z = v1->getFZ()*multiplier;
 		iv4.x = (int)fv4.x;
 		iv4.y = (int)fv4.y;
 		iv4.z = (int)fv4.z;
@@ -4390,14 +4390,15 @@ enum E_OBJECT_STRUCT_DATA {
 	E_OSD_VISMIN,
 	E_OSD_VISMAX,
 	E_OSD_CORNERDIS,
+	E_OSD_THICKNESS,
 	E_OSD_MATPARAMS,
 	E_OSD_LENGTH
 };
 
-
-
 struct ObjectStruct {
 	int64_t globalId;
+	int objType;
+	int addType;
 	vec3 data[E_OSD_LENGTH];
 	
 };
@@ -4764,6 +4765,103 @@ vec3 BASE_NORMALS[64];
 
 // 	currentState = E_OP_SEAMLESS_SIMPLEX_NOISE;
 // }
+
+
+
+
+
+inline float opI( float d1, float d2 ) {
+		return max(d1,d2);
+}
+
+inline float opS( float d1, float d2 ) {
+		return max(-d2,d1);
+}
+
+inline float sdBox( vec3 _p, vec3 b ) {
+	vec3 p = _p;
+	p.doAbs();
+	vec3 d = p - b;
+	
+	float res = min(max(d.x,max(d.y,d.z)),0.0f);
+	d.doMax(vec3(0.0f));
+	res += d.length();
+	
+	return res;
+}
+
+inline float primDis(
+	vec3 pos,
+	ObjectStruct* curObj
+) {
+	
+	vec3 vectorFromCenter = pos - curObj->data[E_OSD_CENTER];
+	vec3 box_dim = curObj->data[E_OSD_RADIUS];
+	vec3 box_power = curObj->data[E_OSD_CORNERDIS];
+	float cornerRad = box_power.z;
+	float wallThickness	 = curObj->data[E_OSD_THICKNESS].x;
+	
+	
+	vec3 absVecFromCenter = vectorFromCenter;
+	absVecFromCenter.doAbs();
+	
+	
+	
+	vec3 newP = absVecFromCenter-box_dim;
+	newP.doMax(vec3(0.0));
+	newP.doAbs();
+	
+	
+	
+	newP.x = pow(newP.x, box_power.x );
+	newP.y = pow(newP.y, box_power.x );
+	newP.x = pow( newP.x + newP.y, 1.0/box_power.x );
+	
+	newP.x = pow(newP.x, box_power.y );
+	newP.z = pow(newP.z, box_power.y );
+	newP.x = pow( newP.x + newP.z, 1.0/box_power.y );
+	
+	float finalRes = (newP.x-cornerRad);
+	
+	vec3 newBoxDim;
+	
+	if (
+		(absVecFromCenter.x <= box_dim.x) &&	
+		(absVecFromCenter.y <= box_dim.y) &&
+		(absVecFromCenter.z <= box_dim.z)
+	) {
+		
+		newBoxDim = box_dim-absVecFromCenter;
+		
+		finalRes -= min(min(newBoxDim.x,newBoxDim.y),newBoxDim.z);
+	}
+	
+	finalRes = abs(finalRes+wallThickness*0.5f)-wallThickness*0.5f;
+	
+	vec3 boxMin = curObj->data[E_OSD_VISMIN];
+	vec3 boxMax = curObj->data[E_OSD_VISMAX];
+	vec3 boxRad = (boxMax-boxMin)*0.5f;
+	vec3 boxCen = (boxMax+boxMin)*0.5f + curObj->data[E_OSD_CENTER];
+	
+	
+	
+	return (
+		opI(
+			sdBox(pos-boxCen,boxRad),
+			finalRes
+		)
+	);
+	
+	// return vec3(
+	// 		(newP.x-cornerRad),
+	// 		( (cornerRad-wallThickness)-newP.x ),
+	// 		(newP.x-(cornerRad-wallThickness))
+	// );
+	
+	
+}
+
+
 
 
  

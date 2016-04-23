@@ -1190,6 +1190,11 @@
 																								"template":"fillSlider",
 																								"label":"Max Height",
 																								"uid":"$options.graphics.maxHeight"
+																							},
+																							{
+																								"template":"fillSlider",
+																								"label":"Gamma",
+																								"uid":"$options.graphics.gammaVal"
 																							}
 																						]
 																					}

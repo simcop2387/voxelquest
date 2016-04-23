@@ -1777,7 +1777,7 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 		int curPD;
 		intPair curId;
 		
-		float maxStackDis = 8.0f;
+		float maxStackDis = singleton->conVals[E_CONST_MAX_STACK_DIS];
 		
 		FIVector4 tempFIV;
 		
@@ -1832,9 +1832,9 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 		int numPasses = 1;
 		
 		
-		if (dirtyStack) {
-			cout << "dirtyStack\n";
-		}
+		// if (dirtyStack) {
+		// 	cout << "dirtyStack\n";
+		// }
 		
 		
 		if (doUpdate) {

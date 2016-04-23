@@ -306,6 +306,7 @@ public:
 	float naFloatData[8];
 	float conVals[E_CONST_LENGTH];
 	
+	float gammaVal;
 	float lastMouseOrigX;
 	float lastMouseOrigY;
 	float globWheelDelta;
@@ -819,6 +820,7 @@ public:
 		hitGUI = false;
 		guiDirty = true;
 		
+		gammaVal = 0.5f;
 		
 		lastMouseOrigX = 0.0f;
 		lastMouseOrigY = 0.0f;
@@ -1041,8 +1043,8 @@ public:
 		paddingInCells = PADDING_IN_CELLS;
 		
 		cellsPerHolder = CELLS_PER_HOLDER;
-		holdersPerChunk = 4;
-		chunksPerBlock = 8;
+		holdersPerChunk = HOLDERS_PER_CHUNK;
+		chunksPerBlock = CHUNKS_PER_BLOCK;
 		holdersPerWorld = newPitch;
 		
 		
@@ -2055,6 +2057,58 @@ public:
 
 	}
 	
+	
+	void listVoices() {
+		// // Declare local identifiers:
+		// HRESULT                        hr = S_OK;
+		// CComPtr<ISpObjectToken>        cpVoiceToken;
+		// CComPtr<IEnumSpObjectTokens>   cpEnum;
+		// CComPtr<ISpVoice>              cpVoice;
+		// ULONG                          ulCount = 0;
+
+		// // Create the SAPI voice.
+		// hr = cpVoice.CoCreateInstance(CLSID_SpVoice);
+
+		// if (SUCCEEDED (hr))
+		// {
+		//    // Enumerate the available voices.
+		//    hr = SpEnumTokens(SPCAT_VOICES, NULL, NULL, &cpEnum;);
+		// }
+
+		// if (SUCCEEDED (hr))
+		// {
+		//    // Get the number of voices.
+		//    hr = cpEnum->GetCount(&ulCount;);
+		// }
+
+		// // Obtain a list of available voice tokens, set
+		// // the voice to the token, and call Speak.
+		// while (SUCCEEDED(hr) && ulCount--)
+		// {
+		//    cpVoiceToken.Release();
+
+		//    if (SUCCEEDED (hr))
+		//    {
+		//       hr = cpEnum->Next(1, &cpVoiceToken;, NULL);
+		//    }
+
+		//    if (SUCCEEDED (hr))
+		//    {
+		//       hr = cpVoice->SetVoice(cpVoiceToken);
+		//    }
+
+		//    if (SUCCEEDED (hr))
+		//    {
+		//       hr = cpVoice->Speak( L"How are you?", SPF_DEFAULT, NULL );
+		//    }
+
+		// }
+
+		// if (SUCCEEDED (hr))
+		// {
+		//    // Do more stuff here.
+		// }
+	}
 	
 	
 	bool speak(string speechString) {
@@ -3251,6 +3305,9 @@ public:
 			FOV = mixf(5.0f,120.0f,curValue);
 			focalLength = 1.0f / tan(FOV / 2.0f);
 			
+		}
+		else if (comp->uid.compare("$options.graphics.gammaVal") == 0) {
+			gammaVal = curValue;
 		}
 		else if (comp->uid.compare("$options.graphics.sphereMapPrec") == 0) {
 			sphereMapPrec = mixf(0.0f,200.0f,curValue);
@@ -5438,7 +5495,7 @@ DISPATCH_EVENT_END:
 		int tempType = E_ENTTYPE_NPC;
 		
 		
-		
+		string speakString = "";
 		
 		GamePageHolder* curHolder;
 		
@@ -5476,6 +5533,13 @@ DISPATCH_EVENT_END:
 				
 				switch (key) {
 					
+					case 'g':
+						// cout << "Enter input to speak:\n>";
+						// getline(cin, speakString);
+						// speak(speakString);
+					
+						beginFieldInput("",E_FC_SPEAK);
+					break;
 					case 'd':
 						toggleSetting(E_BS_DEBUG_VIEW);
 					break;
@@ -5635,6 +5699,7 @@ DISPATCH_EVENT_END:
 						saveExternalJSON();
 						saveGUIValues();
 						gem->saveCurrentPose();
+						speak("Done Saving.");
 						//cout << "Use s key in web editor to save\n";
 						break;
 
@@ -5785,27 +5850,35 @@ DISPATCH_EVENT_END:
 
 					case 'g':
 					
-						mouseState++;
 
 						
-						if (mouseState == E_MOUSE_STATE_PICKING) {
+						if (mouseState == E_MOUSE_STATE_MOVE) {
 							
 							mouseState = E_MOUSE_STATE_BRUSH;
-							
-							if (earthMod == E_PTT_WAT) {
-								mouseState = 0;
-								earthMod = E_PTT_TER;
-							}
-							else {
-								earthMod = E_PTT_WAT;
-							}
+							earthMod = E_PTT_TER;
 							
 						}
-						
+						else {
+							
+							earthMod++;
+							
+							if (earthMod == E_PTT_EMP) {
+								mouseState = E_MOUSE_STATE_MOVE;
+							}
+							
+							// if (earthMod == E_PTT_WAT) {
+							// 	mouseState = E_MOUSE_STATE_MOVE;
+							// 	earthMod = E_PTT_TER;
+							// }
+							// else {
+							// 	earthMod = E_PTT_WAT;
+							// }
+							
+						}
 
 						
 						
-						cout << mouseStateStrings[mouseState] << "\n";
+						//cout << mouseStateStrings[mouseState] << "\n";
 
 
 						wsBufferInvalid = true;
@@ -5853,7 +5926,9 @@ DISPATCH_EVENT_END:
 					
 					case 'o':
 						//targetTimeOfDay = 1.0f-targetTimeOfDay;
-						sphereMapOn = !sphereMapOn;
+						//sphereMapOn = !sphereMapOn;
+						
+						listVoices();
 						
 						break;
 
@@ -5873,6 +5948,7 @@ DISPATCH_EVENT_END:
 						break;
 						
 					case 'y':
+						
 						// throw
 					break;
 					case 'T':
@@ -5882,7 +5958,6 @@ DISPATCH_EVENT_END:
 					
 						
 						toggleSetting(E_BS_RENDER_VOXELS);
-						
 						
 					break;
 					// case 'o':
@@ -8790,7 +8865,9 @@ DISPATCH_EVENT_END:
 				case E_FC_LOADORG:
 					gem->loadOrgFromMenu(currentFieldString);					
 				break;
-				
+				case E_FC_SPEAK:
+					speak(currentFieldString);
+				break;
 			}
 		}
 		
@@ -9335,7 +9412,7 @@ DISPATCH_EVENT_END:
 
 		outfile.close();
 
-		doTraceND("Save Successful");
+		cout << "Save Successful";
 
 		return true;
 	}
@@ -9660,11 +9737,17 @@ DISPATCH_EVENT_END:
 						
 						
 						if (currentTick < 4) {
-							cameraGetPosNoShake()->setFXYZ(2048.0,2048.0,0.0);
+							cameraGetPosNoShake()->setFXYZ(3192.0,3192.0,0.0);
 							camLerpPos.copyFrom(cameraGetPosNoShake());
 						}
 						
 						if (currentTick == 4) {
+							
+							// modXYZ.setFXYZRef(&lookAtVec,2048.0f);
+							// moveCamera(&modXYZ);
+							// modXYZ.setFXYZRef(&origin);
+							// cameraGetPosNoShake()->copyFrom(&camLerpPos);
+							
 							setCameraToElevation();
 							
 							gamePhysics = new GamePhysics();
@@ -10360,6 +10443,7 @@ DISPATCH_EVENT_END:
 	}
 	
 	*/
+	
 	
 	
 	

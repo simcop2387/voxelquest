@@ -74,17 +74,21 @@ struct Vector3
     // ctors
     Vector3() : x(0), y(0), z(0) {};
     Vector3(float x, float y, float z) : x(x), y(y), z(z) {};
+    Vector3(float v) : x(v), y(v), z(v) {};
 
     // utils functions
     void        doAbs();
     void        doSin();
     void        doFract();
+    void        doFloor();
     void        set(float x, float y, float z);
     float       length() const;                         //
     float       distance(const Vector3& vec) const;     // distance between two vectors
+    float       distance2(const Vector3& vec, float powVal) const;     // distance between two vectors
     bool        normalize();                            //
     float       dot(const Vector3& vec) const;          // dot product
     Vector3     cross(const Vector3& vec) const;        // cross product
+    void        doMax(const Vector3& vec);        // cross product
     bool        equal(const Vector3& vec, float e) const; // compare with epsilon
 
     // operators
@@ -387,6 +391,12 @@ inline void Vector3::doSin() {
     this->z = sin(this->z);
 }
 
+inline void Vector3::doFloor() {
+    this->x = floor(this->x);
+    this->y = floor(this->y);
+    this->z = floor(this->z);
+}
+
 inline void Vector3::doFract() {
     this->x = fract(this->x);
     this->y = fract(this->y);
@@ -399,6 +409,23 @@ inline float Vector3::length() const {
 
 inline float Vector3::distance(const Vector3& vec) const {
     return sqrtf((vec.x-x)*(vec.x-x) + (vec.y-y)*(vec.y-y) + (vec.z-z)*(vec.z-z));
+}
+
+inline float Vector3::distance2(const Vector3& vec, float powVal) const {
+    Vector3 newVec = vec-(*this);
+    newVec.doAbs();
+    
+    
+    //return sqrtf(newVec.x*newVec.x + newVec.y*newVec.y + newVec.z*newVec.z);
+    
+    return max(max(newVec.x,newVec.y),newVec.z);
+    
+    // return pow(
+    //     pow(newVec.x,powVal) +
+    //     pow(newVec.y,powVal) +
+    //     pow(newVec.z,powVal),   
+    //     1.0f/powVal
+    // );
 }
 
 inline bool Vector3::normalize() {
@@ -422,6 +449,13 @@ inline float Vector3::dot(const Vector3& rhs) const {
 
 inline Vector3 Vector3::cross(const Vector3& rhs) const {
     return Vector3(y*rhs.z - z*rhs.y, z*rhs.x - x*rhs.z, x*rhs.y - y*rhs.x);
+}
+
+inline void Vector3::doMax(const Vector3& rhs) {
+    x = max(rhs.x,x);
+    y = max(rhs.y,y);
+    z = max(rhs.z,z);
+    //y*rhs.z - z*rhs.y, z*rhs.x - x*rhs.z, x*rhs.y - y*rhs.x
 }
 
 inline bool Vector3::equal(const Vector3& rhs, float epsilon) const {

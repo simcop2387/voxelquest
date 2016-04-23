@@ -20,14 +20,6 @@ GameVoxelWrap::GameVoxelWrap ()
 void GameVoxelWrap::init (Singleton * _singleton)
           {
 		singleton = _singleton;
-		//dimInVoxels = _dimInVoxels;
-		// octInVoxels = dimInVoxels*2;
-		
-		// octOffsetInVoxels = ivec3(
-		// 	(octInVoxels-dimInVoxels)/2,
-		// 	(octInVoxels-dimInVoxels)/2,
-		// 	(octInVoxels-dimInVoxels)/2	
-		// );
 		
 		voxelsPerCell = singleton->voxelsPerCell;
 		//fVoxelsPerCell = voxelsPerCell;
@@ -43,8 +35,8 @@ void GameVoxelWrap::init (Singleton * _singleton)
 		
 		
 	}
-void GameVoxelWrap::fillVec (GamePageHolder * gph)
-                                          {
+void GameVoxelWrap::fillVec ()
+                       {
 		int totSize = voxelBuffer->voxelList.size();
 		
 		if (totSize <= 0) {
@@ -457,7 +449,7 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 								tempData[4] = totNorm.x;
 								tempData[5] = totNorm.y;
 								tempData[6] = totNorm.z;
-								tempData[7] = curMat*256;
+								tempData[7] = curMat;
 								
 								for (m = 0; m < dataSize; m++) {
 									gph->vertexVec.push_back(tempData[m]);
@@ -637,10 +629,12 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 		}
 		
 	}
-void GameVoxelWrap::process (GamePageHolder * gph)
-                                          {
+void GameVoxelWrap::process (GamePageHolder * _gph)
+                                           {
 		ivec3 cellCoord;
 		ivec3 voxResult;
+		
+		gph = _gph;
 		
 		curPD = gph->curPD;
 		
@@ -652,7 +646,7 @@ void GameVoxelWrap::process (GamePageHolder * gph)
 		
 		offsetInVoxels = offsetInCells - paddingInCells;
 		offsetInVoxels *= voxelsPerCell;
-		
+		fOffsetInVoxels = vec3(offsetInVoxels.x,offsetInVoxels.y,offsetInVoxels.z);
 
 		basePD = (&singleton->pdPool[curPD]);
 		baseData = singleton->pdPool[curPD].data;
@@ -667,7 +661,7 @@ void GameVoxelWrap::process (GamePageHolder * gph)
 		
 		DONE_WITH_IT:
 		
-		fillVec(gph);
+		fillVec();
 		
 	}
 bool GameVoxelWrap::findNextCoord (ivec3 * voxResult)
@@ -1064,8 +1058,8 @@ int GameVoxelWrap::getVoxelAtCoord (ivec3 * pos)
 		
 		
 	}
-float GameVoxelWrap::sampLinear (ivec3 * pos, ivec3 offset)
-                                                   {
+float GameVoxelWrap::sampLinear (vec3 * pos, vec3 offset)
+                                                 {
 		int q;
 		int i;
 		int j;
@@ -1073,7 +1067,7 @@ float GameVoxelWrap::sampLinear (ivec3 * pos, ivec3 offset)
 		
 		float res[8];
 		
-		ivec3 newPos = ((*pos) + offset);
+		vec3 newPos = ((*pos) + offset);
 		
 		int xv = newPos.x/voxelsPerCell;
 		int yv = newPos.y/voxelsPerCell;
@@ -1170,47 +1164,32 @@ vec3 GameVoxelWrap::randPN (vec3 co)
 			
 			return myres*2.0f - oneVec;
 	}
-void GameVoxelWrap::getVoro (ivec3 * worldPos, ivec3 * worldClosestCenter, vec3 * otherData, int iSpacing)
+void GameVoxelWrap::getVoro (vec3 * worldPos, vec3 * worldClosestCenter, vec3 * otherData, float fSpacing)
                                                                                                 {
 		
-		vec3 fWorldPos = vec3(
-			worldPos->x,
-			worldPos->y,
-			worldPos->z
-		);
+		vec3 fWorldPos = (*worldPos)/fSpacing;
 		
-		float fSpacing = iSpacing;
+		vec3 fWorldCellPos = fWorldPos;
+		fWorldCellPos.doFloor();
 		
-		fWorldPos *= 1.0f/fSpacing;
-		
-		vec3 fWorldCellPos = vec3(
-			worldPos->x/iSpacing,
-			worldPos->y/iSpacing,
-			worldPos->z/iSpacing
-		);
-		
-		fWorldPos -= vec3(
-			fWorldCellPos.x,
-			fWorldCellPos.y,
-			fWorldCellPos.z
-		);
+		fWorldPos -= fWorldCellPos;
 		
 		int i;
 		
 		vec3 testPos;
 		float testDis;
-		float variance = 0.4f;
+		vec3 variance = vec3(0.0f,0.0f,0.4f);
 		
 		
 		vec3 bestPos = VORO_OFFSETS[0] + randPN(fWorldCellPos+VORO_OFFSETS[0])*variance;
 		vec3 nextBestPos = bestPos;
 		
-		float bestDis = fWorldPos.distance(bestPos);
-		float nextBestDis = 999999.0f;//fWorldPos.distance(nextBestPos);
+		float bestDis = fWorldPos.distance2(bestPos,4.0f);
+		float nextBestDis = 999999.0f;
 		
 		for (i = 1; i < 27; i++) {
 			testPos = VORO_OFFSETS[i] + randPN(fWorldCellPos+VORO_OFFSETS[i])*variance;
-			testDis = fWorldPos.distance(testPos);
+			testDis = fWorldPos.distance2(testPos,4.0f);
 			
 			if (testDis < bestDis) {
 				nextBestDis = bestDis;
@@ -1237,23 +1216,22 @@ void GameVoxelWrap::getVoro (ivec3 * worldPos, ivec3 * worldClosestCenter, vec3 
 		
 		// *norVal = normalize(nextBestPos.xyz-bestPos.xyz);
 	}
-void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
-                                                            {
+void GameVoxelWrap::calcVoxel (ivec3 * _pos, int octPtr, int VLIndex)
+                                                             {
+		
+		
+		vec3 pos = vec3(_pos->x,_pos->y,_pos->z);
 		
 		int i;
 		int curInd;
 		ObjectStruct* curObj;
 		
-		ivec3 worldPos = (*pos) + offsetInVoxels;
-		vec3 fWorldPos = vec3(
-			worldPos.x,
-			worldPos.y,
-			worldPos.z
-		);
+		vec3 worldPos = pos + fOffsetInVoxels;
+
 		//worldPos -= paddingInVoxels;
 		
-		ivec3 worldClosestCenter;// = worldPos;
-		ivec3 localClosestCenter;
+		vec3 worldClosestCenter;// = worldPos;
+		vec3 localClosestCenter;
 		
 		vec3 otherData;
 		
@@ -1263,15 +1241,16 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
 		
 		float fVPC = voxelsPerCell;
 		fVPC = 1.0f/fVPC;
-		vec3 fWorldPosCell = fWorldPos*fVPC;
+		vec3 worldPosCell = worldPos*fVPC;
+		vec3 cellClosestCenter = worldClosestCenter*fVPC;
 		
-		localClosestCenter = worldClosestCenter - offsetInVoxels;
+		localClosestCenter = worldClosestCenter - fOffsetInVoxels;
 		//localClosestCenter += paddingInVoxels;
 		
 		
 		int vOff = 8;
-		float terSampVoro = sampLinear(&localClosestCenter, ivec3(0,0,0));
-		float terSampOrig =  sampLinear(pos, ivec3(0,0,0));
+		float terSampVoro = sampLinear(&localClosestCenter, vec3(0,0,0));
+		float terSampOrig =  sampLinear(&pos, vec3(0,0,0));
 		
 		bool isGrass = false;
 		uint finalMat = TEX_NULL;
@@ -1279,26 +1258,38 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
 		// if (isTer) {
 		// 	finalMat = TEX_EARTH;
 		// }
-		float voroJut = clampfZO((fWorldPos.z - (worldClosestCenter.z-voroSize*0.5f))/voroSize);
+		float voroJut = clampfZO((worldPos.z - (worldClosestCenter.z-voroSize*0.5f))/voroSize);
 		
+		float worldSin = clampfZO(
+			(
+									(sin(worldPos.z/905.0)+1.0f)*
+									(sin(worldPos.x/761.0)+1.0f)*
+									(sin(worldPos.y/324.0)+1.0f)
+			)*0.5f
+		);
 		
-		float terSampOrigX = sampLinear(pos, ivec3(vOff,0,0));
-		float terSampOrigY = sampLinear(pos, ivec3(0,vOff,0));
-		float terSampOrigZ = sampLinear(pos, ivec3(0,0,vOff));
+		float terSampOrigX = sampLinear(&pos, vec3(vOff,0,0));
+		float terSampOrigY = sampLinear(&pos, vec3(0,vOff,0));
+		float terSampOrigZ = sampLinear(&pos, vec3(0,0,vOff));
 		vec3 terNorm = vec3(
 			terSampOrigX-terSampOrig,
 			terSampOrigY-terSampOrig,
 			terSampOrigZ-terSampOrig
 		);
 		// terNorm *= -1.0f;
-		terNorm.normalize();
+		if (terNorm.normalize()) {
+			
+		}
+		else {
+			terNorm = vec3(0.0f,0.0f,1.0f);
+		}
 		
 		// float divVal = singleton->conVals[E_CONST_DIV_VAL];
 		
 		// vec3 sinPos = vec3(
-		// 	sin(fWorldPos.x/divVal),
-		// 	sin(fWorldPos.y/divVal),
-		// 	sin(fWorldPos.z/divVal)
+		// 	sin(worldPos.x/divVal),
+		// 	sin(worldPos.y/divVal),
+		// 	sin(worldPos.z/divVal)
 		// );
 		
 		
@@ -1306,51 +1297,92 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
 		vec3 absNorm = terNorm;
 		absNorm.doAbs();
 		
-		float xv = fWorldPos.x;
-		float yv = fWorldPos.y;
-		float zv = fWorldPos.z;
+		float xv = worldPos.x;
+		float yv = worldPos.y;
+		float zv = worldPos.z;
 		
 		float sampScale = singleton->conVals[E_CONST_SAMP_SCALE];
 		float hmSampYZ = hmFBO->getPixelAtLinear(yv*sampScale,zv*sampScale, 0);
 		float hmSampXZ = hmFBO->getPixelAtLinear(xv*sampScale,zv*sampScale, 0);
 		float hmSampXY = hmFBO->getPixelAtLinear(xv*sampScale,yv*sampScale, 0);
 		
-		float hmSamp = mixf(hmSampYZ,hmSampXZ,absNorm.y);//(hmSampYZ*absNorm.x + hmSampXZ*absNorm.y + hmSampXY*absNorm.z);
-		hmSamp = mixf(hmSamp,hmSampXY,absNorm.z);
+		float hmSamp = mixf(hmSampYZ,hmSampXZ,absNorm.y*absNorm.y);//(hmSampYZ*absNorm.x + hmSampXZ*absNorm.y + hmSampXY*absNorm.z);
+		hmSamp = mixf(hmSamp,hmSampXY,absNorm.z*absNorm.z);
+		
+		float hmSin = sin( hmSamp * singleton->conVals[E_CONST_SAMP_SIN] );
+		float hmSinZO = (hmSin+1.0f)*0.5f;
+		//float hmMod = (hmSin*singleton->conVals[E_CONST_VORO_STRENGTH]);
 		
 		//terSampVoro += sin(hmSamp*18.0f)*0.25f;
 		
 		float voroMod1 = clampfZO(1.0f-otherData.x); // the less this is, the farther from center
 		float voroMod2 = clampfZO(otherData.x); // the less this is, the closer to center
 		
-		float hmMod = (sin(hmSamp*9.0f)*singleton->conVals[E_CONST_VORO_STRENGTH]);
+		int finalNormId = 0;
+		
+		float randVal;
+		
+		int voroHash = worldClosestCenter.x*3 + worldClosestCenter.y*7 + worldClosestCenter.z*11;
+		float fVoroHash = voroHash;
+		fVoroHash = (sin(fVoroHash)+1.0f)*0.5f;
 		
 		//float rockMod = 0.0f;
-		bool isRock = (
-			(terSampVoro <= 0.4f)	&&
-			(voroMod2 < (0.96f + hmMod*0.03f))
-		) &&
-		((terSampOrig) < (0.3f+voroJut*singleton->conVals[E_CONST_DIV_VAL])); // + (0.2f*(1.0-abs(terNorm.z)))
+		bool isRock;
+		
+		//if ((voroHash%4) == 1) {
+		//	isRock = (terSampVoro <= 0.2f);
+		//}
+		//else {
+		// 	isRock = (terSampVoro <= (0.2f + worldSin*0.2f)) &&
+		// 	(voroMod2 < (0.96f + hmMod*0.03f)) &&
+		// 	((terSampOrig) < ((worldSin*0.3f+0.3f)+voroJut*singleton->conVals[E_CONST_DIV_VAL])  ); // + (0.2f*(1.0-abs(terNorm.z)))
+			
+		// //}
+			
+			
+		if ((voroHash%4) == 1) {
+			isRock = (terSampVoro <= 0.2f);
+		}
+		else {
+			isRock = (terSampVoro <= 0.5f) &&
+			(voroMod2 < (0.85f + hmSinZO*0.1f)) &&
+			((terSampOrig) < (0.3f+voroJut*singleton->conVals[E_CONST_DIV_VAL])); // + (0.2f*(1.0-abs(terNorm.z)))
+			
+		}
 		
 		//+hmMod
 		
+		vec3 randOff = vec3(10.5232f,20.323842,33.0221);
+		
 		//
 		
-		bool isTer = ((terSampOrig+hmMod) < 0.0f); //(terSampOrig - voroMod1*rockMod*8.0f)
+		
+		
+		float finalMod = 0.0f;
+		
+		bool isTer = ((terSampOrig) < (hmSinZO*0.4f*clampfZO(terNorm.z)) ); //(terSampOrig - voroMod1*rockMod*8.0f)
 		
 		if (isRock) {
 			finalMat = TEX_EARTH;
-			voxelBuffer->voxelList[VLIndex].normId = 0;//worldClosestCenter.x*3 + worldClosestCenter.y*7 + worldClosestCenter.z*11;
+			finalNormId = 0;//worldClosestCenter.x*3 + worldClosestCenter.y*7 + worldClosestCenter.z*11;
 		}
 		else {
-			if (isTer) {
-				finalMat = TEX_EARTH;
-				voxelBuffer->voxelList[VLIndex].normId = 0;
-			}
-			else {
-				
-			}
+			
 		}
+		
+		if (isTer) {
+			finalMat = TEX_EARTH;
+			finalNormId = 0;
+		}
+		else {
+			
+		}
+		
+		
+		
+		
+		
+		
 		
 		if (finalMat == TEX_NULL) {
 			if ((terNorm.z > 0.5f)
@@ -1359,32 +1391,84 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
 				// 	((worldPos.y%2) == 0)
 				// )
 			) { //&&(sin(hmSamp*18.0f) > 0.0f)
-				int grassOff = rand2D(fWorldPos)*clampfZO((terNorm.z-0.5f)*2.0f)*8.0f;
-				float terSampGrass = sampLinear(pos, ivec3(0,0,-grassOff));
+				randVal = rand2D(worldPos);
 				
-				if ((terSampGrass-(hmMod+1.0f)*0.15) <= 0.0f) {
+				int grassOff = randVal*clampfZO((terNorm.z-0.5f)*2.0f + hmSin)*8.0f;
+				float terSampGrass = sampLinear(&pos, vec3(0,0,-grassOff));
+				
+				if (
+					(
+						(terSampGrass+voroMod2*0.1f-(-hmSin*0.25f+1.0f)*0.25)
+						<= 0.0f	
+					) &&
+					(
+						(1.0f-hmSinZO) > 0.25f
+					)
+				) {
 					isGrass = true;
+					finalMod = abs(rand2D(worldPos+randOff));//clampfZO()*255.0f;
 					finalMat = TEX_GRASS;
-					voxelBuffer->voxelList[VLIndex].normId = 0;
+					finalNormId = 0;
 				}
 			}
 		}
 		
 		
-		// for (i = 0; i < basePD->objectOrder.size(); i++) {
-		// 	curInd = basePD->objectOrder[i].v0;
-		// 	curObj = &(basePD->tempObjects[curInd]);
-			
-			
-		// 	if (fWorldPosCell.distance(curObj->data[E_OSD_CENTER]) <= curObj->data[E_OSD_RADIUS].x) {
-		// 		finalMat = TEX_NULL;
-		// 		voxelBuffer->voxelList[VLIndex].normId = 0;
-		// 	}
-			
-			
-		// }
 		
 		
+		
+		
+		
+		
+		float primRes;
+		
+		for (i = 0; i < gph->objectOrder.size(); i++) {
+			curInd = gph->objectOrder[i].v0;
+			curObj = &(gph->tempObjects[curInd]);
+			
+			
+			
+			if (curObj->objType == E_PTT_BLD) {
+				
+				
+				primRes = primDis(worldPosCell, curObj);
+				
+				if (primRes <= 0.0f) {
+					
+					if (curObj->addType == E_BRUSH_ADD) {
+						finalMat = TEX_BRICK;
+						finalNormId = 1;
+					}
+					else {
+						finalMat = TEX_NULL;
+						finalNormId = 0;
+					}
+					
+					finalMod = 0;
+					
+					
+				}
+			}
+			
+			
+			
+			// if (worldPosCell.distance(curObj->data[E_OSD_CENTER]) <= curObj->data[E_OSD_RADIUS].x) {
+			// 	finalMat = TEX_NULL;
+			// 	finalNormId = 0;
+			// }			
+			
+		}
+		
+		
+		
+		if (finalMat == TEX_EARTH) {
+			finalMod = 
+				//hmSinZO
+				hmSinZO*0.2f +
+				fVoroHash*0.1f +
+				worldSin*0.7f
+				;
+		}
 		
 		bool isSolid = (finalMat != TEX_NULL);
 		
@@ -1392,15 +1476,16 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
 		
 		
 		//bool isSolid = (terSamp >= 0.5f);
-		
+		voxelBuffer->voxelList[VLIndex].normId = finalNormId;
 		
 		if (isSolid) {
+			
 			voxelBuffer->setFlag(octPtr, E_OCT_SOLID);
 			
 			// x = base tex, y = variant
 			//floor(curTex.x*256.0*255.0) + floor(curTex.y*255.0);
 			
-			voxelBuffer->voxelList[VLIndex].matId = finalMat;
+			voxelBuffer->voxelList[VLIndex].matId = finalMat*256 + clampfZO(finalMod)*255.0f;
 		}
 		
 		

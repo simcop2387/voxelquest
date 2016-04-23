@@ -10,6 +10,7 @@ uniform vec2 bufferDim;
 uniform vec3 cameraPos;
 uniform vec2 hvMult;
 uniform int totRad;
+uniform bool lastPass;
 uniform mat4 modelviewInverse;
 
 
@@ -77,8 +78,12 @@ void main() {
     // int radh = int(hvRad.x);
     // int radv = int(hvRad.y);
     
+    
+    float INVALID = 99999.0;
+    
     float mipLevel;
-    float bestDis = 99999.0;
+    float bestBox = INVALID;
+    float bestDis = INVALID;
     float testDis = 0.0;
     
     vec4 absSamp = vec4(0.0);
@@ -122,6 +127,7 @@ void main() {
                 camDis = distance(cameraPos.xyz,samp.xyz);
                 testDis = boxVal.x+camDis;
                 if (testDis < bestDis) {
+                    bestBox = boxVal.x;
                     bestDis = testDis;
                     bestSamp0 = samp;
                     bestSamp1 = texture2D(Texture1,curCoord);
@@ -133,8 +139,11 @@ void main() {
 
     }
     
-      
-
+    
+    if (lastPass&&(bestBox != INVALID)) {
+        bestSamp0.xyz = ro + rd*bestBox;
+    }
+    
 
     FragColor0 = bestSamp0;
     FragColor1 = bestSamp1;

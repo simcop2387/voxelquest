@@ -57,6 +57,12 @@ void main() {
     vec2 curCoord = vec2(0.0);
     vec2 offVal = vec2(0.0);
     
+    float baseDis = distance(cameraPos,tex0.xyz);
+    
+    if (dot(tex0.xyz,oneVec.xyz) == 0.0) {
+        baseDis = 99999.0;   
+    }
+    
     
     for (j = -totRad; j <= totRad; j++ ) {
         for (i = -totRad; i <= totRad; i++ ) {
@@ -82,6 +88,15 @@ void main() {
             }           
 
         }
+    }
+    
+    
+    if (abs(bestDis-baseDis) > 2.0) {
+        
+    }
+    else {
+        bestSamp0 = tex0;
+        bestSamp1 = tex1;
     }
       
 

@@ -1863,7 +1863,7 @@ FILL_GROUPS_RETURN:
 		int curPD;
 		intPair curId;
 		
-		float maxStackDis = 8.0f;
+		float maxStackDis = singleton->conVals[E_CONST_MAX_STACK_DIS];
 		
 		FIVector4 tempFIV;
 		
@@ -1918,9 +1918,9 @@ FILL_GROUPS_RETURN:
 		int numPasses = 1;
 		
 		
-		if (dirtyStack) {
-			cout << "dirtyStack\n";
-		}
+		// if (dirtyStack) {
+		// 	cout << "dirtyStack\n";
+		// }
 		
 		
 		if (doUpdate) {

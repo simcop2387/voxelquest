@@ -205,6 +205,8 @@ void GameChunk::fillVBO ()
 		int j;
 		int k;
 		
+		int curSize;
+		
 		GamePageHolder* curHolder;
 		
 		
@@ -238,8 +240,14 @@ void GameChunk::fillVBO ()
 					else {
 						if (curHolder->listGenerated) {
 							
+							curSize = curHolder->vertexVec.size();
+							
 							for (k = curHolder->begMip[j]; k < curHolder->endMip[j]; k++) {
-								vboWrapper[j].vi->vertexVec.push_back(curHolder->vertexVec[k]);
+								
+								if (k < curSize) {
+									vboWrapper[j].vi->vertexVec.push_back(curHolder->vertexVec[k]);
+								}
+								
 							}
 							
 							// curHolder->vertexVec.clear();
@@ -265,6 +273,9 @@ void GameChunk::fillVBO ()
 			
 			
 			vboWrapper[j].clearVecs(false);
+			
+			singleton->wsBufferInvalid = true;
+			singleton->forceGetPD = true;
 			
 			
 		}

@@ -190,6 +190,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		hitGUI = false;
 		guiDirty = true;
 		
+		gammaVal = 0.5f;
 		
 		lastMouseOrigX = 0.0f;
 		lastMouseOrigY = 0.0f;
@@ -412,8 +413,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		paddingInCells = PADDING_IN_CELLS;
 		
 		cellsPerHolder = CELLS_PER_HOLDER;
-		holdersPerChunk = 4;
-		chunksPerBlock = 8;
+		holdersPerChunk = HOLDERS_PER_CHUNK;
+		chunksPerBlock = CHUNKS_PER_BLOCK;
 		holdersPerWorld = newPitch;
 		
 		
@@ -1424,6 +1425,58 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 
+	}
+void Singleton::listVoices ()
+                          {
+		// // Declare local identifiers:
+		// HRESULT                        hr = S_OK;
+		// CComPtr<ISpObjectToken>        cpVoiceToken;
+		// CComPtr<IEnumSpObjectTokens>   cpEnum;
+		// CComPtr<ISpVoice>              cpVoice;
+		// ULONG                          ulCount = 0;
+
+		// // Create the SAPI voice.
+		// hr = cpVoice.CoCreateInstance(CLSID_SpVoice);
+
+		// if (SUCCEEDED (hr))
+		// {
+		//    // Enumerate the available voices.
+		//    hr = SpEnumTokens(SPCAT_VOICES, NULL, NULL, &cpEnum;);
+		// }
+
+		// if (SUCCEEDED (hr))
+		// {
+		//    // Get the number of voices.
+		//    hr = cpEnum->GetCount(&ulCount;);
+		// }
+
+		// // Obtain a list of available voice tokens, set
+		// // the voice to the token, and call Speak.
+		// while (SUCCEEDED(hr) && ulCount--)
+		// {
+		//    cpVoiceToken.Release();
+
+		//    if (SUCCEEDED (hr))
+		//    {
+		//       hr = cpEnum->Next(1, &cpVoiceToken;, NULL);
+		//    }
+
+		//    if (SUCCEEDED (hr))
+		//    {
+		//       hr = cpVoice->SetVoice(cpVoiceToken);
+		//    }
+
+		//    if (SUCCEEDED (hr))
+		//    {
+		//       hr = cpVoice->Speak( L"How are you?", SPF_DEFAULT, NULL );
+		//    }
+
+		// }
+
+		// if (SUCCEEDED (hr))
+		// {
+		//    // Do more stuff here.
+		// }
 	}
 bool Singleton::speak (string speechString)
                                         {
@@ -2540,6 +2593,9 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 			FOV = mixf(5.0f,120.0f,curValue);
 			focalLength = 1.0f / tan(FOV / 2.0f);
 			
+		}
+		else if (comp->uid.compare("$options.graphics.gammaVal") == 0) {
+			gammaVal = curValue;
 		}
 		else if (comp->uid.compare("$options.graphics.sphereMapPrec") == 0) {
 			sphereMapPrec = mixf(0.0f,200.0f,curValue);
@@ -4421,7 +4477,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 		int tempType = E_ENTTYPE_NPC;
 		
 		
-		
+		string speakString = "";
 		
 		GamePageHolder* curHolder;
 		
@@ -4459,6 +4515,13 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				switch (key) {
 					
+					case 'g':
+						// cout << "Enter input to speak:\n>";
+						// getline(cin, speakString);
+						// speak(speakString);
+					
+						beginFieldInput("",E_FC_SPEAK);
+					break;
 					case 'd':
 						toggleSetting(E_BS_DEBUG_VIEW);
 					break;
@@ -4618,6 +4681,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						saveExternalJSON();
 						saveGUIValues();
 						gem->saveCurrentPose();
+						speak("Done Saving.");
 						//cout << "Use s key in web editor to save\n";
 						break;
 
@@ -4768,27 +4832,35 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 					case 'g':
 					
-						mouseState++;
 
 						
-						if (mouseState == E_MOUSE_STATE_PICKING) {
+						if (mouseState == E_MOUSE_STATE_MOVE) {
 							
 							mouseState = E_MOUSE_STATE_BRUSH;
-							
-							if (earthMod == E_PTT_WAT) {
-								mouseState = 0;
-								earthMod = E_PTT_TER;
-							}
-							else {
-								earthMod = E_PTT_WAT;
-							}
+							earthMod = E_PTT_TER;
 							
 						}
-						
+						else {
+							
+							earthMod++;
+							
+							if (earthMod == E_PTT_EMP) {
+								mouseState = E_MOUSE_STATE_MOVE;
+							}
+							
+							// if (earthMod == E_PTT_WAT) {
+							// 	mouseState = E_MOUSE_STATE_MOVE;
+							// 	earthMod = E_PTT_TER;
+							// }
+							// else {
+							// 	earthMod = E_PTT_WAT;
+							// }
+							
+						}
 
 						
 						
-						cout << mouseStateStrings[mouseState] << "\n";
+						//cout << mouseStateStrings[mouseState] << "\n";
 
 
 						wsBufferInvalid = true;
@@ -4836,7 +4908,9 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 					case 'o':
 						//targetTimeOfDay = 1.0f-targetTimeOfDay;
-						sphereMapOn = !sphereMapOn;
+						//sphereMapOn = !sphereMapOn;
+						
+						listVoices();
 						
 						break;
 
@@ -4856,6 +4930,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						break;
 						
 					case 'y':
+						
 						// throw
 					break;
 					case 'T':
@@ -4865,7 +4940,6 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 						
 						toggleSetting(E_BS_RENDER_VOXELS);
-						
 						
 					break;
 					// case 'o':
@@ -7568,7 +7642,9 @@ void Singleton::endFieldInput (bool success)
 				case E_FC_LOADORG:
 					gem->loadOrgFromMenu(currentFieldString);					
 				break;
-				
+				case E_FC_SPEAK:
+					speak(currentFieldString);
+				break;
 			}
 		}
 		
@@ -8077,7 +8153,7 @@ bool Singleton::saveFileString (string fileName, string * source)
 
 		outfile.close();
 
-		doTraceND("Save Successful");
+		cout << "Save Successful";
 
 		return true;
 	}
@@ -8394,11 +8470,17 @@ void Singleton::frameUpdate (bool doFrameRender)
 						
 						
 						if (currentTick < 4) {
-							cameraGetPosNoShake()->setFXYZ(2048.0,2048.0,0.0);
+							cameraGetPosNoShake()->setFXYZ(3192.0,3192.0,0.0);
 							camLerpPos.copyFrom(cameraGetPosNoShake());
 						}
 						
 						if (currentTick == 4) {
+							
+							// modXYZ.setFXYZRef(&lookAtVec,2048.0f);
+							// moveCamera(&modXYZ);
+							// modXYZ.setFXYZRef(&origin);
+							// cameraGetPosNoShake()->copyFrom(&camLerpPos);
+							
 							setCameraToElevation();
 							
 							gamePhysics = new GamePhysics();

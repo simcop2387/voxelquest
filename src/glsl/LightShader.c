@@ -14,6 +14,7 @@ uniform sampler3D Texture4;
 // shadowMapFBO
 uniform sampler2D Texture5;
 
+uniform float gammaVal;
 uniform vec3 brushCol;
 uniform vec4 brushPos;
 uniform vec3 lightPos;
@@ -34,6 +35,7 @@ uniform vec3 lightVec;
 
 uniform mat4 modelviewInverse;
 uniform mat4 lightSpaceMatrix;
+uniform mat4 pmMatrix;
 
 ^INCLUDE:MATERIALS^
 
@@ -127,7 +129,7 @@ vec3 hsv2rgb(vec3 c)
 }
 
 
-vec3 getModCol(float lightRes, vec3 normVec) {
+vec3 getModCol(float lightRes, vec3 normVec, vec3 rd) {
   
   
   float facingCam = (dot(normVec,lookAtVec) + 1.0)/2.0;
@@ -135,16 +137,90 @@ vec3 getModCol(float lightRes, vec3 normVec) {
   // modColor = hsv2rgb(vec3(
   //  mix(0.75, 0.4, modVal)
   //  ,1.0,1.0))*modVal;
-  vec3 modColor = vec3(0.0,0.65,1.0)*modVal;
+  vec3 modColor = vec3(0.0,0.65,1.0)*modVal*1.5;
   
   modVal = pow(lightRes,10.0)*(1.0-facingCam);
   // modColor += hsv2rgb(vec3(
   //  mix(0.0, 0.12, modVal)
   //  ,mix(0.75,1.0,1.0-modVal),1.0))*modVal;
-  modColor += vec3(1.0,0.5,0.0)*modVal;
+  modColor += (vec3(1.0,0.4,0.0)*modVal + modVal*modVal)*0.5;
   
+  modColor += clamp(dot(normVec,rd)+0.75, 0.0,1.0)*vec3(0.65,0.0,1.0)*0.4;
   
   return modColor;
+}
+
+float calcShadowSS(vec3 begWorldPos, vec3 normVec) {
+  
+  
+  float rayDis = 0.5;
+  int numShadSteps = 32;
+  
+  
+  
+  vec2 offsetCoord = vec2(0.0);
+  vec2 curTC = vec2(2.0);
+  
+  vec4 curRayPos = vec4(0.0);
+  vec4 curWorldPos = vec4(0.0);
+  
+  int i;
+  float fi;
+  
+  
+  float fNumShadSteps = float(numShadSteps);
+  
+  float lerpVal = 0.0;
+  float hitCount = 0.0;
+  float totCount = 0.0;
+  
+  vec4 transPos = vec4(0.0);
+  vec3 projCoords = vec3(0.0);
+  
+  vec4 begPosWS = vec4(begWorldPos.xyz,0.0);
+  vec4 endPosWS = vec4(begWorldPos.xyz,0.0);
+  
+  endPosWS.xyz += -lightVec.xyz*rayDis;
+  
+  begPosWS.w = distance(cameraPos.xyz,begPosWS.xyz);
+  endPosWS.w = distance(cameraPos.xyz,endPosWS.xyz);
+  
+  float bias = clamp((dot(normVec, lightVec)+1.0)*0.5,0.0,1.0);
+  float newBias = mix(-0.1, 0.1, bias);
+  
+  for (i = 0; i < numShadSteps; i++) {
+    fi = float(i);
+    lerpVal = fi/fNumShadSteps;
+    
+    curRayPos = mix(begPosWS, endPosWS, lerpVal);
+    
+    transPos = pmMatrix*vec4(curRayPos.xyz,1.0);
+    projCoords = transPos.xyz / transPos.w;
+    
+    if ((abs(projCoords.x) < 1.0) && (abs(projCoords.y) < 1.0)) {
+      projCoords = projCoords * 0.5 + 0.5;
+      
+      curTC = projCoords.xy;
+      
+      
+      curWorldPos.xyz = texture(Texture0,curTC).xyz;
+      curWorldPos.w = distance(cameraPos.xyz,curWorldPos.xyz);
+      
+      
+      if (curWorldPos.w < (curRayPos.w+newBias)) {
+        hitCount += 1.0;
+      }
+      
+      
+    }
+    totCount += 1.0;
+    
+    
+  }
+  
+  return 1.0-clamp(hitCount/totCount,0.0,1.0);
+  
+  
 }
 
 float calcAO(vec2 texc, vec3 worldPosition, vec3 normVec) {
@@ -267,8 +343,9 @@ float getGrid(vec3 worldPosition) {
   return gridVal0;
 }
 
-float calcShadow(vec4 worldPos, vec4 worldPosInLightSpace, vec3 normVec)
-{
+
+
+float calcShadow(vec4 worldPos, vec4 worldPosInLightSpace, vec3 normVec) {
     // perform perspective divide
     vec3 projCoords = worldPosInLightSpace.xyz / worldPosInLightSpace.w;
     // Transform to [0,1] range
@@ -314,15 +391,55 @@ float calcShadow(vec4 worldPos, vec4 worldPosInLightSpace, vec3 normVec)
     return clamp(1.0-shadow,0.0,1.0);
 }
 
+vec3 doGamma(vec3 t, float gv) {
+  vec3 oneVec = vec3(1.0);
+  vec3 twoVec = vec3(2.0);
+  vec3 tInv = (oneVec-t);
+  
+  float p0 = 0.0;
+  float p1 = gv;
+  float p2 = 1.0;
+  
+  
+  return 
+    tInv*tInv*p0 +
+    twoVec*tInv*t*p1 +
+    t*t*p2;
+  
+  // x = 
+  //   (1 - t) * (1 - t) * p[0].x +
+  //   2 * (1 - t) * t * p[1].x +
+  //   t * t * p[2].x;
+  // y = (1 - t) * (1 - t) * p[0].y + 2 * (1 - t) * t * p[1].y + t * t * p[2].y;
+}
+
 void main() {
 
   //globBool = false;
 
   vec4 oneVec = vec4(1.0);
-  
-  
-
   vec2 TexCoord0 = gl_FragCoord.xy/(bufferDim.xy);
+  
+  
+  
+  
+  vec2 borderCoords = abs(TexCoord0.xy*2.0-1.0);
+  borderCoords *= bufferDim.xy;
+  vec2 border = bufferDim.xy-64.0;
+  if (
+    (borderCoords.x > border.x) ||
+    (borderCoords.y > border.y)
+  ) {
+    FragColor0 = vec4(
+      0.0,0.0,0.0,1.0
+    );
+    return;
+  }
+  
+  
+  
+  
+  
   vec3 ro = vec3(0.0);
   vec3 rd = vec3(0.0);
   getRay(TexCoord0,ro,rd);
@@ -351,8 +468,10 @@ void main() {
   vec4 shadowSamp = vec4(0.0);
   vec4 screenPos = vec4(0.0);
 
-  float lightVal = clamp(dot(tex1.xyz,-lightVec.xyz),0.0,1.0);
-  float aoVal = calcAO(TexCoord0, tex0.xyz, tex1.xyz);
+  float lightValOrig = clamp(dot(tex1.xyz,-lightVec.xyz),0.0,1.0);
+  float lightValOrigN = clamp(dot(tex1.xyz,lightVec.xyz),0.0,1.0);
+  float lightVal;
+  float aoVal = 0.0;
   vec3 finalCol;
 
   vec3 fogCol = vec3(TexCoord0.y,0.8,1.0);
@@ -360,6 +479,7 @@ void main() {
   
   float fogDis = clamp((distance(cameraPos,tex0.xyz)*2.0-32.0)/clipDist.y,0.0,1.0);
   float shadowVal = 0.0;
+  float shadowVal2 = 0.0;
   
   vec4 matVals = vec4(0.0);
 
@@ -373,28 +493,51 @@ void main() {
   }
   else {
     
+    aoVal = calcAO(TexCoord0, tex0.xyz, tex1.xyz);
+    //aoVal = sqrt(aoVal);
+    
     worldPosInLightSpace = lightSpaceMatrix*vec4(tex0.xyz,1.0);
     shadowVal = calcShadow(tex0, worldPosInLightSpace, tex1.xyz);
-    lightVal *= shadowVal;
+    shadowVal2 = calcShadowSS(tex0.xyz, tex1.xyz);
+    shadowVal *= shadowVal2;
+    lightVal = lightValOrig*shadowVal;
     
     lightRes = 
       clamp(mix(
-        (aoVal)*0.25 + lightVal*0.1,lightVal,lightVal  
+        (aoVal)*0.25 + lightValOrigN*0.2,lightVal,lightVal  
       ),0.0,1.0) 
     ;
     
+    
     matVals = vec4(0.0,0.0,pack16(curMat));
-    finalCol = unpackColor(matVals.ba*vec2(aoVal,1.0),lightRes);
+    //matVals.b = 0.0;
+    finalCol = unpackColor(matVals.ba,lightRes); //*vec2(aoVal,1.0)
     
     oldCol = finalCol;
     
     finalCol = mix(finalCol*0.5,finalCol,aoVal);
-    
     finalCol = sqrt(finalCol);
-    
     finalCol = mix(finalCol*finalCol*finalCol,finalCol,finalCol);
     
-    finalCol += getModCol(lightRes, tex1.xyz)*0.5;//(lightVal*0.25+0.25);
+    //finalCol += vec3(1.0-shadowVal2,0.0,0.0);
+    //finalCol = vec3(shadowVal2);
+    
+    //finalCol = vec3(aoVal);
+    
+    finalCol += getModCol(lightRes, tex1.xyz, rd)*mix(0.2,0.5,lightRes);//(lightVal*0.25+0.25);
+    
+    
+    //finalCol = vec3(matVals.b);
+    
+    //finalCol = oldCol;
+    
+    //finalCol = mix(finalCol*finalCol,sqrt(finalCol),finalCol);
+    
+    //
+    
+    //finalCol += vec3(shadowVal2,0.0,0.0);
+    
+    //finalCol = vec3(shadowVal2);
     
     // if (distance(matVals.a,TEX_GRASS) < 0.5/255.0) {
     //   finalCol *= aoVal;
@@ -414,6 +557,8 @@ void main() {
     // }
     
     //finalCol.r += shadowVal;
+    
+    //finalCol = vec3(shadowVal2);
     
     camDis = distance(cameraPos.xyz,tex0.xyz);
     
@@ -456,8 +601,11 @@ void main() {
     }
   }
   
+  finalCol.xyz = doGamma(finalCol.xyz,gammaVal);
 
   //mod(tex.xyz+0.01,1.0);
+  
+
 
   FragColor0 = vec4(
     finalCol.xyz,

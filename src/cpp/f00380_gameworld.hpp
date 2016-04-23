@@ -5459,6 +5459,7 @@ DONE_WITH_MAP:
 				singleton->bindFBO("rasterFBO", activeRaster);
 				singleton->sampleFBO("rasterFBO",0,activeRaster);
 				
+				singleton->setShaderInt("lastPass", (int)(q == (singleton->iGetConst(E_CONST_GROWPOINTSTEPS)-1)) );
 				singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 				
 				singleton->fsQuad.draw();
@@ -5500,11 +5501,17 @@ DONE_WITH_MAP:
 		if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {
 			lastUnitPos.setFW(((int)singleton->curBrushRad));
 			singleton->setShaderfVec4("brushPos", &(lastUnitPos));
-			if (singleton->earthMod == E_PTT_TER) {
-				singleton->setShaderVec3("brushCol", 1.0f,0.0f,0.0f);
-			}
-			else {
-				singleton->setShaderVec3("brushCol", 0.0f,0.0f,1.0f);
+			
+			switch (singleton->earthMod) {
+				case E_PTT_TER:
+					singleton->setShaderVec3("brushCol", 1.0f,0.0f,0.0f);
+				break;
+				case E_PTT_WAT:
+					singleton->setShaderVec3("brushCol", 0.0f,0.0f,1.0f);
+				break;
+				case E_PTT_BLD:
+					singleton->setShaderVec3("brushCol", 0.0f,1.0f,0.0f);
+				break;
 			}
 			
 		}
@@ -5533,7 +5540,7 @@ DONE_WITH_MAP:
 		*/
 		
 		
-		
+		singleton->setShaderFloat("gammaVal", singleton->gammaVal);
 		singleton->setShaderFloat("cellsPerChunk",singleton->cellsPerChunk);
 		singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
 		singleton->setShaderInt("testOn3", (int)(singleton->settings[E_BS_TEST_3]));
@@ -5554,6 +5561,7 @@ DONE_WITH_MAP:
 		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
 		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
 		singleton->setShaderMatrix4x4("lightSpaceMatrix",singleton->lightSpaceMatrix.get(),1);
+		singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
 		
 		singleton->fsQuad.draw();
 

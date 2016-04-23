@@ -23,6 +23,10 @@ public:
 		int ty = 0;
 		
 		switch (z) {
+			case 2:
+				tx = 4;
+				ty = 2;
+			break;
 			case 4:
 				tx = 8;
 				ty = 8;
