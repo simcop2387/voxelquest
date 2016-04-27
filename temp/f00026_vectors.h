@@ -28,6 +28,23 @@ float* toFloatPtr(char* baseAdr) {
 	return floatPtr;
 }
 
+int iSign(int num) {
+	if (num < 0) {
+		return -1;
+	}
+	else {
+		return 1;
+	}
+}
+
+float fSign(float num) {
+	if (num < 0.0f) {
+		return -1.0f;
+	}
+	else {
+		return 1.0f;
+	}
+}
 
 int intDiv(int v, int s) {
 	float fv = v;
@@ -4075,146 +4092,86 @@ struct OctNode {
 const static uint CUBE_DATA_INVALID = 0xCCCCCCCC;
 const static int CUBE_DATA_SIZE = CELLS_PER_HOLDER*CELLS_PER_HOLDER*CELLS_PER_HOLDER;
 const static int CUBE_WRAP_ENTRIES = 4;
-const static int CUBE_WRAP_SIZE = VOXELS_PER_CELL*VOXELS_PER_CELL*3*CUBE_WRAP_ENTRIES;
+//const static int CUBE_WRAP_SIZE = VOXELS_PER_CELL*VOXELS_PER_CELL*3*CUBE_WRAP_ENTRIES;
 const static uint CUBE_WRAP_INVALID = 1024;
 
 // slice 0: yz
 // slice 1: xz
 // slice 2: xy
 
-struct CubeWrap {
+// struct CubeWrap {
 	
-	// data layout:
-	// yz plane - x up
-	// xz plane - y up
-	// xy plane - z up
+// 	// data layout:
+// 	// yz plane - x up
+// 	// xz plane - y up
+// 	// xy plane - z up
 	
-	// offset 0: min depth
-	// offset 1: max depth
+// 	// offset 0: min depth
+// 	// offset 1: max depth
 	
-	uint data[CUBE_WRAP_SIZE];
+// 	uint data[CUBE_WRAP_SIZE];
 	
-	void insertValue(ivec3* loc, uint flags) { //, vec3* val) {
-		int indYZ = (loc->y + loc->z*VOXELS_PER_CELL + 0*VOXELS_PER_CELL*VOXELS_PER_CELL)*CUBE_WRAP_ENTRIES;
-		int indXZ = (loc->x + loc->z*VOXELS_PER_CELL + 1*VOXELS_PER_CELL*VOXELS_PER_CELL)*CUBE_WRAP_ENTRIES;
-		int indXY = (loc->x + loc->y*VOXELS_PER_CELL + 2*VOXELS_PER_CELL*VOXELS_PER_CELL)*CUBE_WRAP_ENTRIES;
+// 	void insertValue(ivec3* loc, uint flags) { //, vec3* val) {
+// 		int indYZ = (loc->y + loc->z*VOXELS_PER_CELL + 0*VOXELS_PER_CELL*VOXELS_PER_CELL)*CUBE_WRAP_ENTRIES;
+// 		int indXZ = (loc->x + loc->z*VOXELS_PER_CELL + 1*VOXELS_PER_CELL*VOXELS_PER_CELL)*CUBE_WRAP_ENTRIES;
+// 		int indXY = (loc->x + loc->y*VOXELS_PER_CELL + 2*VOXELS_PER_CELL*VOXELS_PER_CELL)*CUBE_WRAP_ENTRIES;
 		
-		int voxMax = VOXELS_PER_CELL-1;
-		int voxMin = 0;
+// 		int voxMax = VOXELS_PER_CELL-1;
+// 		int voxMin = 0;
 		
-		if ((flags&E_OCT_XP) > 0) { // air x plus
-			if (
-				(loc->x < data[indYZ+1])
-				// || (data[indYZ+1] == CUBE_WRAP_INVALID)
-			) { // max
-				data[indYZ+1] = loc->x;
-			}
+// 		if ((flags&E_OCT_XP) > 0) { // air x plus
+// 			if (
+// 				(loc->x < data[indYZ+1])
+// 				// || (data[indYZ+1] == CUBE_WRAP_INVALID)
+// 			) { // max
+// 				data[indYZ+1] = loc->x;
+// 			}
 			
-		}
-		if ((flags&E_OCT_XM) > 0) { // air x minus
-			if (
-				(loc->x > data[indYZ+0])
-				// || (data[indYZ+0] == CUBE_WRAP_INVALID)
-			) { // min
-				data[indYZ+0] = loc->x;
-			}
-		}
+// 		}
+// 		if ((flags&E_OCT_XM) > 0) { // air x minus
+// 			if (
+// 				(loc->x > data[indYZ+0])
+// 				// || (data[indYZ+0] == CUBE_WRAP_INVALID)
+// 			) { // min
+// 				data[indYZ+0] = loc->x;
+// 			}
+// 		}
 		
 		
-		if ((flags&E_OCT_YP) > 0) { // air y plus
-			if (
-				(loc->y < data[indXZ+1])
-				// || (data[indXZ+1] == CUBE_WRAP_INVALID)
-			) { // max
-				data[indXZ+1] = loc->y;
-			}
-		}
-		if ((flags&E_OCT_YM) > 0) { // air y minus
-			if (
-				(loc->y > data[indXZ+0])
-				// || (data[indXZ+0] == CUBE_WRAP_INVALID)
-			) { // min
-				data[indXZ+0] = loc->y;
-			}
-		}
+// 		if ((flags&E_OCT_YP) > 0) { // air y plus
+// 			if (
+// 				(loc->y < data[indXZ+1])
+// 				// || (data[indXZ+1] == CUBE_WRAP_INVALID)
+// 			) { // max
+// 				data[indXZ+1] = loc->y;
+// 			}
+// 		}
+// 		if ((flags&E_OCT_YM) > 0) { // air y minus
+// 			if (
+// 				(loc->y > data[indXZ+0])
+// 				// || (data[indXZ+0] == CUBE_WRAP_INVALID)
+// 			) { // min
+// 				data[indXZ+0] = loc->y;
+// 			}
+// 		}
 		
 		
-		if ((flags&E_OCT_ZP) > 0) { // air z plus
-			if (
-				(loc->z < data[indXY+1])
-				// || (data[indXY+1] == CUBE_WRAP_INVALID)
-			) { // max
-				data[indXY+1] = loc->z;
-			}
-		}
-		if ((flags&E_OCT_ZM) > 0) { // air z minus
-			if (
-				(loc->z > data[indXY+0])
-				// || (data[indXY+0] == CUBE_WRAP_INVALID)
-			) { // min
-				data[indXY+0] = loc->z;
-			}
-		}
-		
-		
-		
-		
-		
-		
-		
-		
-		// if ((flags&E_OCT_XP) > 0) { // air x plus
-		// 	if (loc->x > data[indYZ+0]) { // min
-		// 		data[indYZ+0] = loc->x;
-		// 	}
-		// 	if (loc->x < data[indYZ+1]) { // max
-		// 		data[indYZ+1] = loc->x;
-		// 	}
-		// }
-		// if ((flags&E_OCT_XM) > 0) { // air x minus
-		// 	if (loc->x > data[indYZ+0]) { // min
-		// 		data[indYZ+0] = loc->x;
-		// 	}
-		// 	if (loc->x < data[indYZ+1]) { // max
-		// 		data[indYZ+1] = loc->x;
-		// 	}
-		// }
-		
-		
-		// if ((flags&E_OCT_YP) > 0) { // air y plus
-		// 	if (loc->y > data[indXZ+0]) { // min
-		// 		data[indXZ+0] = loc->y;
-		// 	}
-		// 	if (loc->y < data[indXZ+1]) { // max
-		// 		data[indXZ+1] = loc->y;
-		// 	}
-		// }
-		// if ((flags&E_OCT_YM) > 0) { // air y minus
-		// 	if (loc->y > data[indXZ+0]) { // min
-		// 		data[indXZ+0] = loc->y;
-		// 	}
-		// 	if (loc->y < data[indXZ+1]) { // max
-		// 		data[indXZ+1] = loc->y;
-		// 	}
-		// }
-		
-		
-		// if ((flags&E_OCT_ZP) > 0) { // air z plus
-		// 	if (loc->z > data[indXY+0]) { // min
-		// 		data[indXY+0] = loc->z;
-		// 	}
-		// 	if (loc->z < data[indXY+1]) { // max
-		// 		data[indXY+1] = loc->z;
-		// 	}
-		// }
-		// if ((flags&E_OCT_ZM) > 0) { // air z minus
-		// 	if (loc->z > data[indXY+0]) { // min
-		// 		data[indXY+0] = loc->z;
-		// 	}
-		// 	if (loc->z < data[indXY+1]) { // max
-		// 		data[indXY+1] = loc->z;
-		// 	}
-		// }
+// 		if ((flags&E_OCT_ZP) > 0) { // air z plus
+// 			if (
+// 				(loc->z < data[indXY+1])
+// 				// || (data[indXY+1] == CUBE_WRAP_INVALID)
+// 			) { // max
+// 				data[indXY+1] = loc->z;
+// 			}
+// 		}
+// 		if ((flags&E_OCT_ZM) > 0) { // air z minus
+// 			if (
+// 				(loc->z > data[indXY+0])
+// 				// || (data[indXY+0] == CUBE_WRAP_INVALID)
+// 			) { // min
+// 				data[indXY+0] = loc->z;
+// 			}
+// 		}
 		
 		
 		
@@ -4223,34 +4180,94 @@ struct CubeWrap {
 		
 		
 		
-	}
+// 		// if ((flags&E_OCT_XP) > 0) { // air x plus
+// 		// 	if (loc->x > data[indYZ+0]) { // min
+// 		// 		data[indYZ+0] = loc->x;
+// 		// 	}
+// 		// 	if (loc->x < data[indYZ+1]) { // max
+// 		// 		data[indYZ+1] = loc->x;
+// 		// 	}
+// 		// }
+// 		// if ((flags&E_OCT_XM) > 0) { // air x minus
+// 		// 	if (loc->x > data[indYZ+0]) { // min
+// 		// 		data[indYZ+0] = loc->x;
+// 		// 	}
+// 		// 	if (loc->x < data[indYZ+1]) { // max
+// 		// 		data[indYZ+1] = loc->x;
+// 		// 	}
+// 		// }
+		
+		
+// 		// if ((flags&E_OCT_YP) > 0) { // air y plus
+// 		// 	if (loc->y > data[indXZ+0]) { // min
+// 		// 		data[indXZ+0] = loc->y;
+// 		// 	}
+// 		// 	if (loc->y < data[indXZ+1]) { // max
+// 		// 		data[indXZ+1] = loc->y;
+// 		// 	}
+// 		// }
+// 		// if ((flags&E_OCT_YM) > 0) { // air y minus
+// 		// 	if (loc->y > data[indXZ+0]) { // min
+// 		// 		data[indXZ+0] = loc->y;
+// 		// 	}
+// 		// 	if (loc->y < data[indXZ+1]) { // max
+// 		// 		data[indXZ+1] = loc->y;
+// 		// 	}
+// 		// }
+		
+		
+// 		// if ((flags&E_OCT_ZP) > 0) { // air z plus
+// 		// 	if (loc->z > data[indXY+0]) { // min
+// 		// 		data[indXY+0] = loc->z;
+// 		// 	}
+// 		// 	if (loc->z < data[indXY+1]) { // max
+// 		// 		data[indXY+1] = loc->z;
+// 		// 	}
+// 		// }
+// 		// if ((flags&E_OCT_ZM) > 0) { // air z minus
+// 		// 	if (loc->z > data[indXY+0]) { // min
+// 		// 		data[indXY+0] = loc->z;
+// 		// 	}
+// 		// 	if (loc->z < data[indXY+1]) { // max
+// 		// 		data[indXY+1] = loc->z;
+// 		// 	}
+// 		// }
+		
+		
+		
+		
+		
+		
+		
+		
+// 	}
 	
-	void init() {
-		int i;
-		int j;
-		int k;
+// 	void init() {
+// 		int i;
+// 		int j;
+// 		int k;
 		
-		int ind;
+// 		int ind;
 		
-		for (k = 0; k < 3; k++) {
+// 		for (k = 0; k < 3; k++) {
 			
-			for (j = 0; j < VOXELS_PER_CELL; j++) {
-				for (i = 0; i < VOXELS_PER_CELL; i++) {
+// 			for (j = 0; j < VOXELS_PER_CELL; j++) {
+// 				for (i = 0; i < VOXELS_PER_CELL; i++) {
 					
-					ind = (k*VOXELS_PER_CELL*VOXELS_PER_CELL + j*VOXELS_PER_CELL + i)*CUBE_WRAP_ENTRIES;
+// 					ind = (k*VOXELS_PER_CELL*VOXELS_PER_CELL + j*VOXELS_PER_CELL + i)*CUBE_WRAP_ENTRIES;
 					
-					data[ind+0] = 0;
-					data[ind+1] = VOXELS_PER_CELL-1;
-					data[ind+2] = 0;
-					data[ind+3] = 0;
+// 					data[ind+0] = 0;
+// 					data[ind+1] = VOXELS_PER_CELL-1;
+// 					data[ind+2] = 0;
+// 					data[ind+3] = 0;
 					
-				}
-			}
-		}
-	}
-};
+// 				}
+// 			}
+// 		}
+// 	}
+// };
 
-typedef CubeWrap* CubeWrapPtr;
+// typedef CubeWrap* CubeWrapPtr;
 
 struct PaddedDataEntry {
 	float terVal;
@@ -4789,6 +4806,170 @@ inline float sdBox( vec3 _p, vec3 b ) {
 	
 	return res;
 }
+
+float getBrick( vec3 uvwCoords) {
+		
+		vec3 temp3 = uvwCoords*0.5f;
+		temp3.doFract();
+		temp3 *= 2.0f;
+		
+		float mv1 = 0.0f;
+		float mv2 = 0.0f;
+		
+		if (temp3.y < 1.0f) {
+			mv1 = 1.0f;
+		}
+		if (temp3.z < 1.0f) {
+			mv2 = 1.0f;
+		}
+		
+		//float mv1 = float(mod(uvwCoords.y,2.0f) < 1.0f);
+		//float mv2 = float(mod(uvwCoords.z,2.0f) < 1.0f);
+		
+		
+		vec3 res = uvwCoords + vec3(0.5f*(mv1+mv2),0.0f,0.0f);
+		res.doFract();
+		
+		res = (res-0.5f);
+		res.doAbs();
+		res *= 2.0f;
+		
+		return max(max(res.x,res.y),res.z);
+}
+
+
+inline vec3 getUVW(
+		vec3 _pos,
+		ObjectStruct* curObj,
+		
+		//vec3 centerPos, 
+		//vec4 box_dim,
+		vec3 uvwScale,
+		float angModBase,
+		bool mirrored
+) {
+		
+		float globIntersect = 999.0f;
+		
+		vec3 centerPos = curObj->data[E_OSD_CENTER];
+		vec3 centerOffset = _pos - centerPos;
+		vec3 innerBoxSize = curObj->data[E_OSD_RADIUS];
+		vec3 box_power = curObj->data[E_OSD_CORNERDIS];
+		float cornerRad = box_power.z;
+		float wallThickness	 = curObj->data[E_OSD_THICKNESS].x;
+		vec3 centerOffsetAbs = centerOffset;
+		centerOffsetAbs.doAbs();
+		
+		
+		vec3 newOffset = centerOffsetAbs-innerBoxSize;
+		newOffset.doMax(vec3(0.0));
+		
+		// vec3 newOffsetAbs = newOffset;
+		// newOffsetAbs.doAbs();
+		
+		
+		
+		vec3 minCorner = centerPos-(innerBoxSize+cornerRad);
+		vec3 pos = (_pos-minCorner)*uvwScale;
+		
+
+		
+		vec3 uvwCoords = pos;
+						
+		vec3 newNorm1 = newOffset;
+		newNorm1.z = 0.0f;
+		newNorm1.normalize();
+		
+		if (centerOffset.x < 0.0f) {
+			newNorm1.x *= -1.0f;
+		}
+		if (centerOffset.y < 0.0f) {
+			newNorm1.y *= -1.0f;
+		}
+		
+		vec3 newNorm2;
+		newNorm2 = vec3(
+			newNorm1.length(),
+			newOffset.z,
+			0.0f
+		);
+		
+		newNorm2.normalize();
+		
+		
+		vec3 centerOffsetNorm = centerOffset/innerBoxSize;
+		centerOffsetNorm.doAbs();
+		
+		// y side
+		if (newNorm1.x == 0.0f) {
+				uvwCoords.x = pos.x;
+				uvwCoords.y = pos.z;
+				
+		}
+		
+		// x side
+		if (newNorm1.y == 0.0f) {
+				uvwCoords.x = pos.y;
+				uvwCoords.y = pos.z;
+				
+		}
+		
+		float curPhi = atan2(newNorm1.y, newNorm1.x);
+		float curThe = atan2(newNorm2.y, newNorm2.x);
+		
+		float angMod = 
+				(angModBase*2.0f/M_PI) *
+				(max(floor(sqrt(cornerRad*cornerRad*2.0f)),1.0f));
+		
+		
+		// side corner
+		if (newNorm1.x*newNorm1.y != 0.0f) {
+				uvwCoords.x = curPhi*angMod;
+				uvwCoords.y = pos.z;
+		}
+		
+		// top corner
+		if (newNorm2.x*newNorm2.y != 0.0f) {
+				uvwCoords.y = curThe*angMod;
+		}
+		
+		// top
+		if (newNorm2.x == 0.0f) {
+				if (centerOffsetNorm.x > centerOffsetNorm.y) {
+						uvwCoords.x = pos.y;
+						uvwCoords.y = pos.x;
+						
+						if (centerOffset.x > 0.0f) {
+								uvwCoords.y *= -1.0f;
+								
+								uvwCoords.y += 0.5f;
+						}
+				}
+				else {
+						uvwCoords.x = pos.x;
+						uvwCoords.y = pos.y;
+						
+						if (centerOffset.y > 0.0f) {
+								uvwCoords.y *= -1.0f;
+								
+								uvwCoords.y += 0.5f;
+								
+						}
+				}
+				
+				globIntersect = abs(centerOffsetNorm.x - centerOffsetNorm.y);
+				
+		}
+		
+		
+		uvwCoords.z = 0.0;
+		
+		return uvwCoords;//vec4(uvwCoords,newNorm2.x);
+}
+
+
+
+
 
 inline float primDis(
 	vec3 pos,

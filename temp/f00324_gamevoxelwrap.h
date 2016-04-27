@@ -86,7 +86,7 @@ void GameVoxelWrap::fillVec ()
 		
 		float tempData[16];
 		
-		CubeWrap* curCW;
+		//CubeWrap* curCW;
 		
 		int tempInd;
 		int VLIndex;
@@ -1178,18 +1178,18 @@ void GameVoxelWrap::getVoro (vec3 * worldPos, vec3 * worldClosestCenter, vec3 * 
 		
 		vec3 testPos;
 		float testDis;
-		vec3 variance = vec3(0.0f,0.0f,0.4f);
+		vec3 variance = vec3(0.4f);
 		
 		
 		vec3 bestPos = VORO_OFFSETS[0] + randPN(fWorldCellPos+VORO_OFFSETS[0])*variance;
 		vec3 nextBestPos = bestPos;
 		
-		float bestDis = fWorldPos.distance2(bestPos,4.0f);
+		float bestDis = fWorldPos.distance(bestPos);
 		float nextBestDis = 999999.0f;
 		
 		for (i = 1; i < 27; i++) {
 			testPos = VORO_OFFSETS[i] + randPN(fWorldCellPos+VORO_OFFSETS[i])*variance;
-			testDis = fWorldPos.distance2(testPos,4.0f);
+			testDis = fWorldPos.distance(testPos);
 			
 			if (testDis < bestDis) {
 				nextBestDis = bestDis;
@@ -1421,6 +1421,11 @@ void GameVoxelWrap::calcVoxel (ivec3 * _pos, int octPtr, int VLIndex)
 		
 		
 		float primRes;
+		int bestInd = -1;
+		float bestRes = 999999.0f;
+		vec3 uvwCoords;
+		vec3 uvwTemp;
+		float brickRes = 0.0f;
 		
 		for (i = 0; i < gph->objectOrder.size(); i++) {
 			curInd = gph->objectOrder[i].v0;
@@ -1435,14 +1440,19 @@ void GameVoxelWrap::calcVoxel (ivec3 * _pos, int octPtr, int VLIndex)
 				
 				if (primRes <= 0.0f) {
 					
-					if (curObj->addType == E_BRUSH_ADD) {
-						finalMat = TEX_BRICK;
-						finalNormId = 1;
+					if (primRes < bestRes) {
+						bestRes = primRes;
+						bestInd = i;
 					}
-					else {
-						finalMat = TEX_NULL;
-						finalNormId = 0;
-					}
+					
+					// if (curObj->addType == E_BRUSH_ADD) {
+					// 	finalMat = TEX_BRICK;
+					// 	finalNormId = 1;
+					// }
+					// else {
+					// 	finalMat = TEX_NULL;
+					// 	finalNormId = 0;
+					// }
 					
 					finalMod = 0;
 					
@@ -1455,8 +1465,39 @@ void GameVoxelWrap::calcVoxel (ivec3 * _pos, int octPtr, int VLIndex)
 			// if (worldPosCell.distance(curObj->data[E_OSD_CENTER]) <= curObj->data[E_OSD_RADIUS].x) {
 			// 	finalMat = TEX_NULL;
 			// 	finalNormId = 0;
-			// }			
+			// }
 			
+		}
+		
+		if (bestInd != -1) {
+			i = bestInd;
+			curInd = gph->objectOrder[i].v0;
+			curObj = &(gph->tempObjects[curInd]);
+			
+			uvwCoords = getUVW(worldPosCell,curObj,vec3(1.0f),1.0f,false);
+			uvwCoords.z = bestRes;
+			brickRes = getBrick(uvwCoords*vec3(0.5f,1.0f,0.5f));
+			
+			// uvwTemp = uvwCoords;
+			// uvwTemp.doFract();
+			// finalMod = uvwTemp.z;
+			
+			if (
+					(brickRes > 0.75f)
+			) {
+				if (bestRes < -0.5f) {
+					finalMat = TEX_PLASTER;
+					finalNormId = 1;
+				}
+				else {
+					// finalMat = TEX_NULL;
+				}
+					
+			}
+			else {
+				finalMat = TEX_BRICK;
+				finalNormId = 2;
+			}
 		}
 		
 		

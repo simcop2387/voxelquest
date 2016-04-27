@@ -1834,7 +1834,7 @@ public:
 		
 		bool skipPrim =			
 			(singleton->gameFluid[E_FID_BIG]->curGeomCount == 0) &&
-			(singleton->placingGeom == false);
+			(singleton->settings[E_BS_PLACING_GEOM] == false);
 		
 		
 		bool doPrim = !doTer;
@@ -1980,7 +1980,7 @@ public:
 		);
 		singleton->setShaderInt("testOn", (int)(singleton->settings[E_BS_TEST_1]));
 		singleton->setShaderInt("skipPrim", (int)(skipPrim));
-		singleton->setShaderInt("placingGeom", (int)(singleton->placingGeom));
+		singleton->setShaderInt("placingGeom", (int)(singleton->settings[E_BS_PLACING_GEOM]));
 		
 		
 		
@@ -2024,9 +2024,7 @@ public:
 		
 		tempVec1.copyFrom(&(singleton->geomPoints[0]));
 		tempVec1.addXYZRef(&(singleton->geomOrigOffset));
-		
 		tempVec2.setFXYZW(0.0f,-99.0f,0.0f,0.0f);
-		
 		singleton->setShaderfVec4("paramFetch1", &tempVec1 );
 		singleton->setShaderfVec4("paramFetch2", &tempVec2 );
 		singleton->setShaderArrayfVec4("paramArrGeom", singleton->paramArrGeom, E_PRIMTEMP_LENGTH);
@@ -3070,7 +3068,7 @@ public:
 			
 			
 		
-		// 	// if (singleton->placingGeom) {
+		// 	// if (singleton->settings[E_BS_PLACING_GEOM]) {
 				
 				
 		// 	// 	singleton->setShaderVec3("matVal", 255, 0, 0);
@@ -5415,7 +5413,45 @@ DONE_WITH_MAP:
 			singleton->unbindFBO();
 			singleton->unbindShader();
 			
-			activeRaster = 1 - activeRaster;	
+			activeRaster = 1 - activeRaster;
+			
+			
+			
+			
+			
+			
+			
+			
+			singleton->bindShader("BasicPrimShader");
+			singleton->bindFBO("rasterLowFBO");
+			
+			if (singleton->settings[E_BS_PLACING_GEOM]) {
+				
+				
+				
+				singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+				singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+				singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+				singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+				singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+				singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
+				tempVec1.copyFrom(&(singleton->geomPoints[0]));
+				tempVec1.addXYZRef(&(singleton->geomOrigOffset));
+				tempVec2.setFXYZW(0.0f,-99.0f,0.0f,0.0f);
+				singleton->setShaderfVec4("paramFetch1", &tempVec1 );
+				singleton->setShaderfVec4("paramFetch2", &tempVec2 );
+				singleton->setShaderArrayfVec4("paramArrGeom", singleton->paramArrGeom, E_PRIMTEMP_LENGTH);
+				singleton->zoCube.draw();
+			}
+			
+			
+			
+			singleton->unbindFBO();
+			singleton->unbindShader();
+			
+			
+			
+			
 		}
 		
 		
@@ -5476,16 +5512,23 @@ DONE_WITH_MAP:
 			singleton->bindShader("NearestShader");
 			singleton->bindFBO("rasterFBO", activeRaster);
 			singleton->sampleFBO("rasterFBO",0,activeRaster);
+			singleton->sampleFBO("rasterLowFBO",2);
 			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 			singleton->setShaderInt("totRad",singleton->iGetConst(E_CONST_FILLNEARESTRAD));
 			singleton->fsQuad.draw();
+			singleton->unsampleFBO("rasterLowFBO",2);
 			singleton->unsampleFBO("rasterFBO",0,activeRaster);
 			singleton->unbindFBO();
 			singleton->unbindShader();
 			activeRaster = 1 - activeRaster;
 			
 		}
+		
+		
+		
+		
+		
 		
 		singleton->copyFBO("rasterFBO"+i__s(activeRaster), "solidTargFBO");
 		

@@ -42,7 +42,7 @@ const static int MAX_SPLASHES = 8;
 const static int MAX_EXPLODES = 8;
 
 //const static bool DO_CONNECT = true;
-const static bool DO_SHADER_DUMP = false;
+const static bool DO_SHADER_DUMP = true;
 bool EDIT_POSE = false;
 
 // warning: changing this changes the size of saved poses
@@ -77,6 +77,7 @@ const static int SHADOW_MAP_RES = 2048;
 
 const static int DEF_SCALE_FACTOR = 1;
 const static int RENDER_SCALE_FACTOR = 8;
+const static int RASTER_LOW_SCALE_FACTOR = 4;
 const static bool SINGLE_THREADED = false;
 
 int TOT_POINT_COUNT = 0;
@@ -84,7 +85,7 @@ int TOT_POINT_COUNT = 0;
 
 
 const static bool DO_CACHE = false;
-const static int NUM_MIP_LEVELS = 1;
+const static int NUM_MIP_LEVELS = 3;
 const static int NUM_MIP_LEVELS_WITH_FIRST = NUM_MIP_LEVELS+1;
 const static bool DO_AO = false;
 const static bool DO_MIP = true;
@@ -508,7 +509,7 @@ bool TRACE_ON = false;
 
 
 
-float fract(float val) {
+inline float fract(float val) {
 	return (val - floor(val));
 }
 

@@ -319,7 +319,7 @@ public:
 		//changeCount = 0;
 		
 		readyToRender = true;
-		singleton->forceShadowUpdate = 5;
+		singleton->forceShadowUpdate = 32;
 		
 		//cout << "fillVBO b\n";
 		

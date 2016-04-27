@@ -3249,9 +3249,9 @@ public:
 			os.data[E_OSD_CORNERDIS] = vec3(2.0f,2.0f,outerRad);
 			float innerRad = radius - outerRad;
 			os.data[E_OSD_RADIUS] = vec3(innerRad);
-			os.data[E_OSD_THICKNESS] = vec3(1.0f,0.0f,0.0f);
+			os.data[E_OSD_THICKNESS] = vec3(2.0f,0.0f,0.0f);
 			
-			vec3 totBounds = os.data[E_OSD_RADIUS] + outerRad;
+			vec3 totBounds = innerRad + outerRad;
 			
 			os.data[E_OSD_VISMIN] = -totBounds;
 			os.data[E_OSD_VISMAX] = totBounds;
@@ -3290,11 +3290,13 @@ public:
 			holderPosMin.copyFrom( fPixelWorldCoordsBase );
 			holderPosMin.addXYZ(-newRadius,-newRadius,-newRadius);
 			holderPosMin.intDivXYZ(cellsPerHolder);
+			holderPosMin.addXYZ(-1.0f);
+			
 			
 			holderPosMax.copyFrom( fPixelWorldCoordsBase );
 			holderPosMax.addXYZ(newRadius,newRadius,newRadius);
 			holderPosMax.intDivXYZ(cellsPerHolder);
-			
+			holderPosMax.addXYZ(1.0f);
 			
 			
 			ivec3 minHP = holderPosMin.getIVec3();
@@ -3330,11 +3332,13 @@ public:
 			chunkPosMin.copyFrom( fPixelWorldCoordsBase );
 			chunkPosMin.addXYZ(-newRadius,-newRadius,-newRadius);
 			chunkPosMin.intDivXYZ(singleton->cellsPerChunk);
+			chunkPosMin.addXYZ(-1.0f);
+			
 			
 			chunkPosMax.copyFrom( fPixelWorldCoordsBase );
 			chunkPosMax.addXYZ(newRadius,newRadius,newRadius);
 			chunkPosMax.intDivXYZ(singleton->cellsPerChunk);
-			
+			chunkPosMax.addXYZ(1.0f);
 			
 			minHP = chunkPosMin.getIVec3();
 			maxHP = chunkPosMax.getIVec3();

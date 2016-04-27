@@ -148,7 +148,6 @@ public:
   bool lastPersp;
   bool (isInteractiveEnt) [E_CT_LENGTH];
   bool inputOn;
-  bool placingGeom;
   bool isMacro;
   bool cavesOn;
   bool bakeParamsOn;
@@ -389,6 +388,7 @@ public:
   FIVector4 mapFreqs;
   FIVector4 mapAmps;
   FIVector4 * mouseMoving;
+  FIVector4 rasterLowDim;
   FIVector4 bufferDim;
   FIVector4 bufferDimTarg;
   FIVector4 bufferDimHalf;
@@ -412,6 +412,7 @@ public:
   std::vector <RotationInfo> rotMatStack;
   std::vector <DynObject *> dynObjects;
   VBOWrapper fsQuad;
+  VBOWrapper zoCube;
   float floorHeightInCells;
   float roofHeightInCells;
   float wallRadInCells;

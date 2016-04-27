@@ -131,7 +131,6 @@ public:
 	bool lastPersp;
 	bool isInteractiveEnt[E_CT_LENGTH];
 	bool inputOn;
-	bool placingGeom;
 	bool isMacro;
 	bool cavesOn;
 	bool bakeParamsOn;
@@ -433,6 +432,7 @@ public:
 	FIVector4 mapAmps;
 	FIVector4 *mouseMoving;
 	
+	FIVector4 rasterLowDim;
 	FIVector4 bufferDim;
 	FIVector4 bufferDimTarg;
 	FIVector4 bufferDimHalf;
@@ -475,6 +475,7 @@ public:
 	// PathHolder splitPathHolder;
 
 	VBOWrapper fsQuad;
+	VBOWrapper zoCube;
 	
 	
 
@@ -747,6 +748,21 @@ public:
 		fsQuad.updateNew();
 		
 		
+		zoCube.vboBox(
+			0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f,
+			ALL_FACES,
+			ZERO_FLOATS,
+			4
+		);
+		zoCube.init(
+			2,
+			GL_STATIC_DRAW
+		);
+		zoCube.updateNew();
+		
+		
+		
 		colVecs[0].setFXYZ(255,0,0);
 		colVecs[1].setFXYZ(0,255,0);
 		colVecs[2].setFXYZ(0,0,255);
@@ -940,7 +956,6 @@ public:
 		rotOn = false;
 		markerFound = false;
 		doPageRender = true;
-		placingGeom = false;
 		
 		
 		
@@ -1237,6 +1252,7 @@ public:
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 
+		settings[E_BS_PLACING_GEOM] = false;
 		settings[E_BS_DEBUG_VIEW] = false;
 		settings[E_BS_VSYNC] = true;
 		settings[E_BS_RENDER_OCT_BOUNDS] = false;
@@ -1465,6 +1481,7 @@ public:
 		
 
 		bufferDim.setIXY(defaultWinW, defaultWinH);
+		rasterLowDim.copyIntDiv(&bufferDim,RASTER_LOW_SCALE_FACTOR);
 		bufferDimTarg.setIXY(defaultWinW, defaultWinH);
 		
 		bufferDimHalf.setIXY(defaultWinW / 2, defaultWinH / 2);
@@ -1699,6 +1716,7 @@ public:
 		shaderStrings.push_back("OctShader");
 		shaderStrings.push_back("RasterShader");
 		shaderStrings.push_back("HolderShader");
+		shaderStrings.push_back("BasicPrimShader");
 		shaderStrings.push_back("ShadowMapShader");
 		shaderStrings.push_back("GridShader");
 		shaderStrings.push_back("GeomShader");
@@ -1906,6 +1924,8 @@ public:
 		
 		fboMap["rasterFBO0"].init(2, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
 		fboMap["rasterFBO1"].init(2, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
+		
+		fboMap["rasterLowFBO"].init(2, rasterLowDim.getIX(), rasterLowDim.getIY(), 4, true, GL_NEAREST);
 		
 		fboMap["rasterPosFBO"].init(1, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);//, GL_REPEAT);
 		fboMap["rasterSourceFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);//, GL_REPEAT);
@@ -2921,7 +2941,7 @@ public:
 
 	void toggleDDMenu(int x, int y, bool toggled) {
 		
-		if (placingGeom||gem->combatMode()) {
+		if (settings[E_BS_PLACING_GEOM]||gem->combatMode()) {
 			return;
 		}
 		
@@ -5680,8 +5700,8 @@ DISPATCH_EVENT_END:
 					break;
 					
 					case '`':
-						placingGeom = !placingGeom;
-						if (placingGeom) {
+						toggleSetting(E_BS_PLACING_GEOM);
+						if (settings[E_BS_PLACING_GEOM]) {
 							resetGeom();
 						}
 						else {
@@ -6499,6 +6519,17 @@ DISPATCH_EVENT_END:
 							signedFloor(yv2),
 							signedFloor(curPrimMod)
 						);
+					
+						// geomOrigOffset.setFXYZ(
+						// 	-signedFloor(
+						// 		cos(xrotrad)*yv2 + -sin(xrotrad)*xv2
+						// 	),
+						// 	-signedFloor(
+						// 		sin(xrotrad)*yv2 + cos(xrotrad)*xv2
+						// 	),
+						// 	signedFloor(curPrimMod)
+						// );
+					
 					break;
 					case E_GEOM_POINTS_CORNER:
 					
@@ -6632,7 +6663,7 @@ DISPATCH_EVENT_END:
 			
 			
 
-			if ( settings[E_BS_PLACING_PATTERN]||placingGeom||RT_TRANSFORM||settings[E_BS_EDIT_POSE]||settings[E_BS_PATH_FINDING_TEST]||(mouseState != E_MOUSE_STATE_MOVE)) {
+			if ( settings[E_BS_PLACING_PATTERN]||settings[E_BS_PLACING_GEOM]||RT_TRANSFORM||settings[E_BS_EDIT_POSE]||settings[E_BS_PATH_FINDING_TEST]||(mouseState != E_MOUSE_STATE_MOVE)) {
 			//if (true) {
 				getPixData(&mouseMovePD, x, y, false, false);
 				getPixData(&mouseMoveOPD, x, y, true, true);
@@ -6673,7 +6704,7 @@ DISPATCH_EVENT_END:
 				
 			}
 			
-			if (placingGeom) {
+			if (settings[E_BS_PLACING_GEOM]) {
 				updateCurGeom(x, y);
 			}
 			else {
@@ -6950,7 +6981,7 @@ DISPATCH_EVENT_END:
 			else {
 				if (lbClicked) {
 					
-					if (placingGeom) {
+					if (settings[E_BS_PLACING_GEOM]) {
 						geomStep++;
 						curPrimMod = 0.0f;
 						
@@ -6982,7 +7013,7 @@ DISPATCH_EVENT_END:
 							
 							
 							
-							placingGeom = false;
+							settings[E_BS_PLACING_GEOM] = false;
 							
 							
 							
@@ -7254,7 +7285,7 @@ DISPATCH_EVENT_END:
 			
 			
 			
-			if (placingGeom) {
+			if (settings[E_BS_PLACING_GEOM]) {
 				
 				if ((wheelDeltaInt != 0)) {
 					if ((button == 7) || (button == 8)) {
@@ -9664,7 +9695,7 @@ DISPATCH_EVENT_END:
 		
 		
 		
-		if (!placingGeom) {
+		if (!settings[E_BS_PLACING_GEOM]) {
 			if (abs(globWheelDelta) > 0.001f) {
 				if (gem->getCurActor() != NULL) {
 					subjectDelta -= globWheelDelta;

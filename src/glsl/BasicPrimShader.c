@@ -1,0 +1,342 @@
+#version 330
+//#extension GL_EXT_frag_depth : enable
+
+uniform float heightOfNearPlane;
+uniform float FOV;
+uniform vec2 clipDist;
+uniform vec2 bufferDim;
+uniform vec3 cameraPos;
+
+uniform mat4 pmMatrix;
+
+uniform vec4 paramFetch1;
+uniform vec4 paramFetch2;
+
+uniform vec4 paramArrGeom[24];
+
+^INCLUDE:MATERIALS^
+
+const int E_PRIMTEMP_VISMIN = 0;
+const int E_PRIMTEMP_VISMAX = 1;
+const int E_PRIMTEMP_BOUNDSMIN = 2;
+const int E_PRIMTEMP_BOUNDSMAX = 3;
+const int E_PRIMTEMP_CORNERDIS = 4; //E_PRIMTEMP_CORNERDISTHICKNESSPOWER
+const int E_PRIMTEMP_MATPARAMS = 5;
+const int E_PRIMTEMP_LENGTH = 6;
+
+$
+
+layout(location = 0) in vec4 vposition;
+layout(location = 1) in vec4 data0;
+
+out vec4 worldPos;
+out vec4 vdata0;
+
+out vec4 texelRes1;
+out vec4 texelRes2;
+out vec4 pdVisMin;
+out vec4 pdVisMax;
+out vec4 pdBoundsMin;
+out vec4 pdBoundsMax;
+out vec4 pdCornerDis;
+out vec4 pdMatParmas;
+out vec4 boxDim;
+out vec2 boxPower;
+out vec3 boxCenterPoint;
+
+void getPrimVals() { //int _ptInd
+		
+		texelRes1 = paramFetch1;
+		texelRes2 = paramFetch2;
+		
+		//int ptInd = _ptInd;
+		//int primReadOffset = ptInd*E_PRIMTEMP_LENGTH;
+		
+		
+//		if (ptInd == -1) {
+				
+				
+				pdVisMin = paramArrGeom[E_PRIMTEMP_VISMIN];
+				pdVisMax = paramArrGeom[E_PRIMTEMP_VISMAX];
+				pdBoundsMin = paramArrGeom[E_PRIMTEMP_BOUNDSMIN];
+				pdBoundsMax = paramArrGeom[E_PRIMTEMP_BOUNDSMAX];
+				pdCornerDis = paramArrGeom[E_PRIMTEMP_CORNERDIS];
+				pdMatParmas = paramArrGeom[E_PRIMTEMP_MATPARAMS];
+				
+				
+		// }
+		// else {
+		// 		pdVisMin = primTemp[primReadOffset + E_PRIMTEMP_VISMIN];
+		// 		pdVisMax = primTemp[primReadOffset + E_PRIMTEMP_VISMAX];
+		// 		pdBoundsMin = primTemp[primReadOffset + E_PRIMTEMP_BOUNDSMIN];
+		// 		pdBoundsMax = primTemp[primReadOffset + E_PRIMTEMP_BOUNDSMAX];
+		// 		pdCornerDis = primTemp[primReadOffset + E_PRIMTEMP_CORNERDIS];
+		// 		pdMatParmas = primTemp[primReadOffset + E_PRIMTEMP_MATPARAMS];
+		// }
+		
+		boxPower = pdCornerDis.zw;
+		boxDim = vec4(
+				(
+						(pdBoundsMax.xyz-pdCornerDis.x) -
+						(pdBoundsMin.xyz+pdCornerDis.x)
+				)*0.5,
+				pdCornerDis.x
+		);
+		boxCenterPoint = vec3(
+				(texelRes1.xyz + pdBoundsMin.xyz) +
+				(texelRes1.xyz + pdBoundsMax.xyz)
+		)*0.5;
+}
+
+
+void main() {
+	
+	getPrimVals();
+	
+	worldPos = vec4(
+		mix(
+			(texelRes1.xyz + pdVisMin.xyz),
+			(texelRes1.xyz + pdVisMax.xyz),
+			vposition.xyz	
+		),
+		1.0
+	);
+	vdata0 = data0;
+	vdata0.w = floor(vdata0.w+1.0); // *65281.0 + 0.1)/65280.0;
+	vec4 screenPos = pmMatrix*worldPos;
+	worldPos.w = vposition.w;
+	gl_Position = screenPos;
+	
+	
+	
+	
+}
+
+
+
+
+$
+
+in vec4 worldPos;
+in vec4 vdata0;
+
+in vec4 texelRes1;
+in vec4 texelRes2;
+in vec4 pdVisMin;
+in vec4 pdVisMax;
+in vec4 pdBoundsMin;
+in vec4 pdBoundsMax;
+in vec4 pdCornerDis;
+in vec4 pdMatParmas;
+in vec4 boxDim;
+in vec2 boxPower;
+in vec3 boxCenterPoint;
+
+layout(location = 0) out vec4 FragColor0;
+layout(location = 1) out vec4 FragColor1;
+
+const int NUM_RAY_STEPS = 64;
+
+float sdBox( vec3 p, vec3 b )
+{
+	vec3 d = abs(p) - b;
+	return min(max(d.x,max(d.y,d.z)),0.0) + length(max(d,0.0));
+}
+
+
+float opI( float d1, float d2 )
+{
+		return max(d1,d2);
+}
+
+vec3 udRoundBox( vec3 vectorFromCenter, vec4 box_dim, vec2 box_power, float wallThickness )
+{
+		vec3 absVecFromCenter = abs(vectorFromCenter);
+		
+		vec3 newP = abs(max( absVecFromCenter-(box_dim.xyz), vec3(0.0) ));
+		
+		newP.xy = pow(newP.xy, box_power.xx );
+		newP.x = pow( newP.x + newP.y, 1.0/box_power.x );
+		
+		newP.xz = pow(newP.xz, box_power.yy );
+		newP.x = pow( newP.x + newP.z, 1.0/box_power.y );
+		
+		return vec3(
+				(newP.x-box_dim.w),
+				( (box_dim.w-wallThickness)-newP.x ),
+				(newP.x-(box_dim.w-wallThickness))
+		);
+}
+
+vec2 aabbIntersect(vec3 rayOrig, vec3 rayDir, vec3 minv, vec3 maxv) {
+		float t0;
+		float t1;
+		
+		vec3 invR = 1.0 / rayDir;
+		vec3 tbot = invR * (minv-rayOrig);
+		vec3 ttop = invR * (maxv-rayOrig);
+		vec3 tmin = min(ttop, tbot);
+		vec3 tmax = max(ttop, tbot);
+		vec2 t = max(tmin.xx, tmin.yz);
+		t0 = max(t.x, t.y);
+		t = min(tmax.xx, tmax.yz);
+		t1 = min(t.x, t.y);
+		return vec2(t0,t1); // if (t0 <= t1) { did hit } else { did not hit }
+}
+
+
+float mapPrim(vec3 pos) {
+	
+	
+	vec3 visCenterPoint = vec3(
+			(texelRes1.xyz + pdVisMin.xyz) +
+			(texelRes1.xyz + pdVisMax.xyz)
+	)*0.5;
+	
+	vec3 visDim = (pdVisMax.xyz - pdVisMin.xyz)*0.5;
+	
+	float visBoxDis = sdBox(pos-visCenterPoint, visDim);
+	
+	vec3 boxRes1;
+	
+	boxRes1.xyz = udRoundBox(
+		pos-boxCenterPoint,
+		boxDim,
+		boxPower,
+		pdCornerDis.y
+	);
+	
+	return opI(
+		max(boxRes1.x,boxRes1.y) * 0.5,
+		visBoxDis
+	);
+	
+}
+
+vec3 normPrim( vec3 pos )
+{
+		vec3 eps = vec3( 0.0, 0.0, 0.0 );
+		eps.x = 0.1;
+		
+		vec3 nor = vec3(
+				mapPrim(pos+eps.xyy) - mapPrim(pos-eps.xyy),
+				mapPrim(pos+eps.yxy) - mapPrim(pos-eps.yxy),
+				mapPrim(pos+eps.yyx) - mapPrim(pos-eps.yyx) );
+		return normalize(nor);
+}
+
+vec4 castPrim(
+		vec3 ro,
+		vec3 rd,
+		float minT,
+		float maxT,
+		int numSteps
+) {
+		int p = 0;
+		float fNumSteps = float(numSteps);
+		
+		float res = 0.0;
+		float t;
+		float fp;
+		
+		vec3 pos;
+		
+		float MIN_PREC = 0.1;
+		
+		t = minT;
+		for( p = 0; p < numSteps; p++ ) {
+				
+				fp = float(p)/fNumSteps;
+				
+				pos = ro+rd*t;
+				
+				res = mapPrim( pos );
+				if (
+						(res < MIN_PREC ) ||
+						(t>maxT)
+				) {
+						break;
+				}
+				
+				t += res;
+		}
+		
+		
+		if (res < MIN_PREC ) {
+			return vec4(normPrim(pos),t);
+		}
+		else {
+			return vec4(-1.0f);
+		}
+		
+}
+
+
+
+void main() {
+	
+	vec2 curTex = vec2(TEX_EARTH,0.0);
+	float curMat = floor(curTex.x*256.0*255.0) + floor(curTex.y*255.0);
+
+	vec3 ro = cameraPos.xyz;
+	vec3 rd = normalize(worldPos.xyz-cameraPos.xyz);
+
+	vec3 minVisBox = texelRes1.xyz+pdVisMin.xyz;
+	vec3 maxVisBox = texelRes1.xyz+pdVisMax.xyz;
+	
+	vec2 hitBox = aabbIntersect(
+			ro,
+			rd,
+			minVisBox,
+			maxVisBox
+	);
+
+	vec4 primRes = castPrim(ro,rd,hitBox.x,hitBox.y,NUM_RAY_STEPS);
+	
+	if (primRes.w < 0.0) {
+		discard;
+	}
+	
+	vec3 newPos = ro+rd*primRes.w;
+
+	
+
+	// float myDepth = primRes.w/clipDist.y;
+	// //gl_FragDepthEXT = myDepth;
+
+	// // cameraSpacePosition.z += bias;
+	// // vec4 clipPos = projMat * vec4(cameraSpacePosition, 1.0);
+	// // float ndcDepth = clipPos.z / clipPos.w;
+	// // gl_FragDepth = ((gl_DepthRange.diff * ndcDepth) +
+	// //     gl_DepthRange.near + gl_DepthRange.far) / 2.0;
+	
+	// gl_FragDepth = myDepth;
+
+	// FragColor0 = vec4(newPos,worldPos.w);
+	// FragColor1 = vec4(primRes.xyz,curMat);
+	
+	//newPos.xyz = worldPos.xyz;
+	
+	//newPos.z += -0.1;
+	
+	vec4 clipPos = pmMatrix * vec4(newPos.xyz, 1.0);
+	float ndcDepth = clipPos.z / clipPos.w;
+	gl_FragDepth = ((gl_DepthRange.diff * ndcDepth) +
+	    gl_DepthRange.near + gl_DepthRange.far) / 2.0;
+	
+	// float myDepth = hitBox.x/clipDist.y;
+	// gl_FragDepth = myDepth;
+	
+	FragColor0 = vec4(newPos,1.0);
+	FragColor1 = vec4(primRes.xyz,curMat);
+
+}
+
+
+
+
+
+
+
+
+

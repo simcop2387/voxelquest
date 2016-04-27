@@ -104,6 +104,7 @@ struct Vector3
     Vector3&    operator*=(const float scale);          // scale and update this object
     Vector3&    operator*=(const Vector3& rhs);         // product each element and update this object
     Vector3     operator/(const float scale) const;     // inverse scale
+    Vector3     operator/(const Vector3& rhs) const;     // inverse scale
     Vector3&    operator/=(const float scale);          // scale and update this object
     bool        operator==(const Vector3& rhs) const;   // exact compare, no epsilon
     bool        operator!=(const Vector3& rhs) const;   // exact compare, no epsilon
@@ -343,6 +344,10 @@ inline Vector3& Vector3::operator*=(const Vector3& rhs) {
 
 inline Vector3 Vector3::operator/(const float a) const {
     return Vector3(x/a, y/a, z/a);
+}
+
+inline Vector3 Vector3::operator/(const Vector3& rhs) const {
+    return Vector3(x/rhs.x, y/rhs.y, z/rhs.z);
 }
 
 inline Vector3& Vector3::operator/=(const float a) {
@@ -2127,4 +2132,5 @@ Matrix4& Matrix4::rotateZ(float angle)
 }
 
 typedef Vector3 vec3;
+typedef Vector2 vec2;
 

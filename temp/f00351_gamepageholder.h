@@ -9,19 +9,19 @@ void GamePageHolder::reset (bool destroyCache)
 		vertexVec.shrink_to_fit();
 		unbindPD();
 		//isDirty = false;
+		hasData = true;
+		wasGenerated = false;
 		wasStacked = false;
 		hasCache = false;
-		hasData = true;
-		hasPath = true;
 		holderFlags = E_CD_UNKNOWN;
 		listEmpty = true;
 		listGenerated = false;
 		readyToRender = false;
+		hasPath = true;
 		pathsInvalid = true;
 		idealPathsInvalid = true;
 		pathsReady = false;
 		idealPathsReady = false;
-		wasGenerated = false;
 		lockWrite = false;
 		
 		if (destroyCache) {
@@ -181,9 +181,10 @@ void GamePageHolder::gatherObjects ()
 							
 							for (q = 0; q < curChunk->localObjects.size(); q++) {
 								curObj = &(curChunk->localObjects[q]);
-								cenDif = gphCen-curObj->data[E_OSD_CENTER];
+								cenDif = gphCen - curObj->data[E_OSD_CENTER];
 								cenDif.doAbs();
 								radAdd = curObj->data[E_OSD_RADIUS] + gphRad;
+								radAdd += 1.0f;
 								
 								if (
 									(cenDif.x <= radAdd.x) &&
@@ -1650,7 +1651,7 @@ void GamePageHolder::genCellData ()
 				primRes = primDis(fWorldPosCell,curObj);
 				
 				if (
-					primRes <= 0.0f
+					primRes <= 0.5f
 					//fWorldPosCell.distance(curObj->data[E_OSD_CENTER]) <= curObj->data[E_OSD_RADIUS].x
 				) {
 										

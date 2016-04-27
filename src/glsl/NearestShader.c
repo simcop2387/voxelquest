@@ -1,7 +1,12 @@
 #version 330
 
+// rasterFBO
 uniform sampler2D Texture0;
 uniform sampler2D Texture1;
+
+// rasterLowFBO
+uniform sampler2D Texture2;
+uniform sampler2D Texture3;
 
 uniform vec2 bufferDim;
 uniform vec3 cameraPos;
@@ -37,8 +42,10 @@ void main() {
 
     vec2 TexCoord0 = gl_FragCoord.xy/(bufferDim.xy);
     vec4 tex0 = texture(Texture0,TexCoord0.xy);
-    vec4 tex1 = texture(Texture1,TexCoord0.xy);    
+    vec4 tex1 = texture(Texture1,TexCoord0.xy);
     
+    vec4 tex2 = texture(Texture2,TexCoord0.xy);
+    vec4 tex3 = texture(Texture3,TexCoord0.xy);
     
     int i;
     int j;
@@ -98,7 +105,22 @@ void main() {
         bestSamp0 = tex0;
         bestSamp1 = tex1;
     }
-      
+    
+    
+
+    if (dot(tex2.xyz,oneVec.xyz) == 0.0) {
+        
+    }
+    else {
+        if (
+            distance(tex2.xyz,cameraPos.xyz) <
+            distance(bestSamp0.xyz,cameraPos.xyz) 
+        ) {
+            bestSamp0 = tex2;
+            bestSamp1 = tex3;
+        }
+    }
+
 
 
     FragColor0 = bestSamp0;

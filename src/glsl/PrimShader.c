@@ -60,7 +60,7 @@ uniform vec4 splashArr[8];
 uniform int numExplodes;
 uniform vec4 explodeArr[8];
 
-uniform vec4 paramArrGeom[20];
+uniform vec4 paramArrGeom[24];
 
 
 uniform sampler3D Texture0; // E_PL_TERRAIN
@@ -896,14 +896,11 @@ vec4 getUVW(
 		globIntersect = 999.0;
 		
 		vec3 minCorner = centerPos-(box_dim.xyz+box_dim.w);
-		vec3 pos = (myWP-minCorner)*uvwScale.xyz;// /(box_dim.xyz+box_dim.w); //
+		vec3 pos = (myWP-minCorner)*uvwScale.xyz;
 		
 		vec3 centerOffset = myWP-centerPos;
 		vec3 innerBoxSize = box_dim.xyz;
 		float cornerRad = box_dim.w;
-		
-		//vec3 totBoxSize = innerBoxSize+cornerRad;
-		//vec3 pos = pPos*(floor(totBoxSize*16.0)/16.0)/totBoxSize;
 		
 		vec3 uvwCoords = pos.xyz;
 		
@@ -913,9 +910,6 @@ vec4 getUVW(
 		vec3 newOffset = max(abs(centerOffset)-innerBoxSize,0.0);
 		vec2 newNorm1 = normalize(newOffset.xy)*sign(centerOffset.xy);
 		vec2 newNorm2 = normalize(vec2(length(newOffset.xy), newOffset.z));
-		
-		
-		//vec3 innerBoxSizeFloored = floor(innerBoxSize*8.0)/8.0;
 		
 		vec3 centerOffsetNorm = abs(centerOffset/innerBoxSize);
 		
@@ -935,19 +929,8 @@ vec4 getUVW(
 				//uvwCoords.x *= innerBoxSizeFloored.y;
 		}
 		
-		
-		
 		float curPhi = atan(newNorm1.y, newNorm1.x);
 		float curThe = atan(newNorm2.y, newNorm2.x);
-		
-		// if (mirrored) {
-		//     if (centerOffset.y < 0.0) {
-		//         curPhi *= -1.0;
-		//     }
-		//     if (centerOffset.z < 0.0) {
-		//         curPhi *= -1.0;
-		//     }
-		// }
 		
 		float angMod = 
 				(uvwScale.w*2.0/M_PI) *
@@ -962,7 +945,6 @@ vec4 getUVW(
 		
 		// top corner
 		if (newNorm2.x*newNorm2.y != 0.0) {
-				//uvwCoords.x = curPhi*cornerRad;
 				uvwCoords.y = curThe*angMod;
 		}
 		
@@ -992,14 +974,10 @@ vec4 getUVW(
 				
 				globIntersect = abs(centerOffsetNorm.x - centerOffsetNorm.y);
 				
-				
-				
 		}
 		
 		
-		uvwCoords.z = 0.0;//length(max(abs(centerOffset)-box_dim.xyz,0.0));
-		
-		//uvwCoords.z = length(centerOffset);
+		uvwCoords.z = 0.0;
 		
 		return vec4(uvwCoords,newNorm2.x);
 }

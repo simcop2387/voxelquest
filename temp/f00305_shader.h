@@ -391,7 +391,7 @@ void Shader::init (string shaderName, bool doBake, map <string, string> * includ
 
 					if (DO_SHADER_DUMP) {
 						localString = fragStr;
-						if (_shaderFile.compare("../src/glsl/PrimShader.c") == 0) {
+						if (_shaderFile.compare("../src/glsl/BasicPrimShader.c") == 0) {
 							globString = fragStr;
 						}
 					}
