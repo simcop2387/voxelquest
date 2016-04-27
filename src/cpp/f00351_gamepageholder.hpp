@@ -292,9 +292,13 @@ public:
 		vec3 cenDif;
 		vec3 radAdd;
 		
+		vec3 visCen;
+		vec3 visRad;
+		
 		float fPadding = singleton->paddingInCells;
 		
 		ObjectStruct* curObj;
+		FIVector4* baseGeom;
 		
 		gphRad += fPadding;
 		
@@ -313,9 +317,11 @@ public:
 							
 							for (q = 0; q < curChunk->localObjects.size(); q++) {
 								curObj = &(curChunk->localObjects[q]);
-								cenDif = gphCen - curObj->data[E_OSD_CENTER];
+								baseGeom = singleton->getGeomRef(curObj->templateId,0);
+								getVisCenRad(curObj,baseGeom,visCen,visRad);
+								cenDif = gphCen - visCen;
 								cenDif.doAbs();
-								radAdd = curObj->data[E_OSD_RADIUS] + gphRad;
+								radAdd = visRad + gphRad;
 								radAdd += 1.0f;
 								
 								if (
@@ -1820,6 +1826,11 @@ FIRST_FILL_DONE:
 		float primRes;
 		vec3 halfOff = vec3(0.5f);
 		
+		int curMat;
+		int objType;
+		
+		FIVector4* baseGeom;
+		
 		for (p = 0; p < cdo4; p++) {
 			
 			kk = p/(cellsPerHolder*cellsPerHolder);
@@ -1833,24 +1844,30 @@ FIRST_FILL_DONE:
 			for (r = 0; r < objectOrder.size(); r++) {
 				curInd = objectOrder[r].v0;
 				curObj = &(tempObjects[curInd]);
+				baseGeom = singleton->getGeomRef(curObj->templateId,0);
 				
-				primRes = primDis(fWorldPosCell,curObj);
+				primRes = primDis(fWorldPosCell,curObj,baseGeom);
 				
 				if (
 					primRes <= 0.5f
 					//fWorldPosCell.distance(curObj->data[E_OSD_CENTER]) <= curObj->data[E_OSD_RADIUS].x
 				) {
-										
-					switch (curObj->addType) {
-						case E_BRUSH_MOVE:
-							
-						break;
-						case E_BRUSH_ADD:
-							cellData[ind+curObj->objType] = FLUID_UNIT_MAX;
-						break;
-						case E_BRUSH_SUB:
-							cellData[ind+curObj->objType] = FLUID_UNIT_MIN;
-						break;
+					
+					curMat = baseGeom[E_PRIMTEMP_MATPARAMS].getIX();
+					
+					if (curMat == TEX_EARTH) {
+						objType = E_PTT_TER;
+					}
+					else {
+						objType = E_PTT_BLD;
+					}
+					
+					if (curMat == TEX_NULL) {
+						cellData[ind+E_PTT_TER] = FLUID_UNIT_MIN;
+						cellData[ind+E_PTT_BLD] = FLUID_UNIT_MIN;
+					}
+					else {
+						cellData[ind+objType] = FLUID_UNIT_MAX;
 					}
 					
 				}

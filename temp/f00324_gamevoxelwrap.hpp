@@ -1495,17 +1495,18 @@ public:
 		vec3 uvwCoords;
 		vec3 uvwTemp;
 		float brickRes = 0.0f;
+		FIVector4* baseGeom;
 		
 		for (i = 0; i < gph->objectOrder.size(); i++) {
 			curInd = gph->objectOrder[i].v0;
 			curObj = &(gph->tempObjects[curInd]);
+			baseGeom = singleton->getGeomRef(curObj->templateId,0);
 			
 			
-			
-			if (curObj->objType == E_PTT_BLD) {
+			if (baseGeom[E_PRIMTEMP_MATPARAMS].getIX() != TEX_EARTH) {//curObj->objType == E_PTT_BLD) {
 				
 				
-				primRes = primDis(worldPosCell, curObj);
+				primRes = primDis(worldPosCell, curObj, baseGeom);
 				
 				if (primRes <= 0.0f) {
 					
@@ -1542,8 +1543,9 @@ public:
 			i = bestInd;
 			curInd = gph->objectOrder[i].v0;
 			curObj = &(gph->tempObjects[curInd]);
+			baseGeom = singleton->getGeomRef(curObj->templateId,0);
 			
-			uvwCoords = getUVW(worldPosCell,curObj,vec3(1.0f),1.0f,false);
+			uvwCoords = getUVW(worldPosCell,curObj,baseGeom,vec3(1.0f),1.0f,false);
 			uvwCoords.z = bestRes;
 			brickRes = getBrick(uvwCoords*vec3(0.5f,1.0f,0.5f));
 			

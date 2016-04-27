@@ -2397,7 +2397,7 @@ public:
 								
 								if (singleton->settings[E_BS_DESTROY_TERRAIN]) {
 									tempVec1.setBTV(geWeapon->getCenterPoint(E_BDG_CENTER));
-									singleton->gameFluid[E_FID_BIG]->pushExplodeBullet(true,&tempVec1,0,4.0f);
+									//singleton->gameFluid[E_FID_BIG]->pushExplodeBullet(true,&tempVec1,0,4.0f);
 								}
 								
 								

@@ -1305,34 +1305,6 @@ enum E_GEOM_PARAMS {
 	E_GP_LENGTH
 };
 
-enum E_PRIMTEMP {
-	E_PRIMTEMP_VISMIN,
-	E_PRIMTEMP_VISMAX,
-	E_PRIMTEMP_BOUNDSMIN,
-	E_PRIMTEMP_BOUNDSMAX,
-	E_PRIMTEMP_CORNERDIS, //E_PRIMTEMP_CORNERDISTHICKNESSPOWER
-	E_PRIMTEMP_MATPARAMS,
-	E_PRIMTEMP_LENGTH
-};
-
-const static int FLOATS_PER_TEMPLATE = ((int)E_PRIMTEMP_LENGTH)*4;
-const static float defaultTemplate[FLOATS_PER_TEMPLATE] = {
-	-2.0,-2.0,-2.0, 0.0,
-	 2.0, 2.0, 2.0, 0.0,
-	-2.0,-2.0,-2.0, 0.0,
-	 2.0, 2.0, 2.0, 0.0,
-	 1.0, 1.0, 1.0, 1.0,
-	 0.0, 0.0, 0.0, 0.0
-};
-
-string primTempStrings[] = {
-	"visMin",
-	"visMax",
-	"boundsMin",
-	"boundsMax",
-	"cornerDis",
-	"matParams"
-};
 
 
 

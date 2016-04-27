@@ -125,6 +125,9 @@ public:
   PatternStruct (patterns) [E_PAT_LENGTH*4];
   TBOWrapper limbTBO;
   float (limbTBOData) [MAX_LIMB_DATA_IN_BYTES];
+  std::vector <ObjectStruct> tempPrimList;
+  TBOWrapper primTBO;
+  float (primTBOData) [MAX_PRIM_DATA_IN_BYTES];
   bool (settings) [E_BS_LENGTH];
   bool fpsTest;
   bool commandOn;
@@ -337,6 +340,7 @@ public:
   float fxVolume;
   float * paramArr;
   float * paramArrGeom;
+  float * primArr;
   float * splashArr;
   float * explodeArr;
   float * voroArr;
@@ -413,6 +417,7 @@ public:
   std::vector <DynObject *> dynObjects;
   VBOWrapper fsQuad;
   VBOWrapper zoCube;
+  VBOWrapper zoCubes;
   float floorHeightInCells;
   float roofHeightInCells;
   float wallRadInCells;
@@ -531,6 +536,7 @@ public:
   void drawBoxRad (btVector3 v0, btVector3 v1);
   void drawBox (FIVector4 * v0, FIVector4 * v1, int faceFlag = 2);
   void getMaterialString ();
+  void updatePrimTBOData ();
   bool getPrimTemplateString ();
   void refreshIncludeMap ();
   void doShaderRefresh (bool doBake);
@@ -612,6 +618,7 @@ public:
   void processInput (unsigned char key, bool keyDown, int x, int y);
   void getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj);
   float getMinGeom (int baseIndex);
+  FIVector4 * getGeomRef (int templateId, int enumVal);
   void setFXYZWGeom (int baseIndex, FIVector4 * baseVec);
   void setFXYGeom (int baseIndex, float xv, float yv);
   void setFXGeom (int baseIndex, float xv);
@@ -1240,7 +1247,6 @@ public:
   float F_UNIT_MAX;
   float F_UNIT_MIN;
   std::vector <FluidStruct> fsVec;
-  std::vector <ModUnitStruct> modStack;
   int * fluidIds;
   int * idealCellIds;
   FluidPlane fluidPlane;
@@ -1249,7 +1255,6 @@ public:
   bool readyForTermination;
   bool fluidReading;
   bool proceedingToRead;
-  bool modifiedUnit;
   bool modifiedGeom;
   bool readyForTBOUpdate;
   bool firstVPUpdate;
@@ -1303,18 +1308,16 @@ public:
   GameFluid ();
   void init (Singleton * _singleton, int _mainId);
   void flushActionStack ();
-  void pushExplodeBullet (bool isReq, FIVector4 * newPos, int waterBulletOn, float newRad);
-  void pushModifyUnit (bool isReq, FIVector4 * mp, int buttonNum, int earthMod, int curBrushRad);
-  void pushPlaceTemplate (bool isReq, FIVector4 * newPos, int pt);
+  void pushPlaceTemplate (bool isReq, FIVector4 * newPos, int pt, int orientation);
   bool addPrimObj (FIVector4 * pos, int tempId, int uid);
-  void addGeom (FIVector4 * newPos, int templateId);
+  void flushAllGeom ();
+  void addGeom (FIVector4 * newPos, int templateId, int orientation);
   void fetchGeom ();
   void setupPrimTexture ();
   bool anyThreadsRunning ();
   void flushStacks ();
   bool updateAll ();
   void copyPrimTexture (int ox, int oy, int oz, int dim, uint * * myData);
-  void fillAllGeom ();
   void updateTBOData (bool firstTime, bool reloadTemplates);
   void terminateCycle ();
   void beginFluidRead (FIVector4 * _campPosVPDump);
@@ -1336,13 +1339,11 @@ public:
   void writeFluidData ();
   void prereadFluidData ();
   void readFluidData ();
-  void applyMods ();
   bool passesCheck (int n);
   bool updateFluidData ();
   bool findStableRegions (int startInd, int newId);
   bool floodFillId (int startInd, int newId);
   bool inBounds (int i, int j, int k);
-  void modifyUnit (FIVector4 * fPixelWorldCoordsBase, int brushAction, int modType, int radius);
   void roundBox (FIVector4 * absVecFromCenter, FIVector4 * innerBoxRad, FIVector4 * cornerDisThicknessPower, bool & isInObj, bool & isInside);
   void clearAllGeom ();
   void clearInsideValues ();
@@ -1350,7 +1351,6 @@ public:
   void resetDirtyRegion ();
   void shrinkDirtyRegion ();
   void maxDirtyRegion ();
-  void applyUnitModification (FIVector4 * fPixelWorldCoordsBase, int brushAction, int modType, int radius);
 };
 #undef LZZ_INLINE
 #endif
@@ -2294,6 +2294,7 @@ public:
   void toggleVis (GameEnt * se);
   void ensureBlocks ();
   void drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * maxc, bool copyToTex, bool forceFinish, bool getVoro = false, bool getBlockHolders = false);
+  void updatePrimArr ();
   void updateLimbTBOData (bool showLimbs);
   void drawPrim (bool doSphereMap, bool doTer, bool doPoly);
   void drawOrg (GameOrg * curOrg, bool drawAll);

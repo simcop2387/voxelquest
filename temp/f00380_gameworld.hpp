@@ -1569,6 +1569,52 @@ public:
 		
 	}
 
+	void updatePrimArr() {
+		int i;
+		int j;
+		
+		ObjectStruct* curObj;
+		FIVector4* baseGeom;
+		for (i = 0; i < singleton->tempPrimList.size(); i++) {
+			curObj = &(singleton->tempPrimList[i]);
+			//baseGeom = singleton->getGeomRef(curObj->templateId,0);
+			
+			singleton->primArr[i*8 + 0] = curObj->offset.x;
+			singleton->primArr[i*8 + 1] = curObj->offset.y;
+			singleton->primArr[i*8 + 2] = curObj->offset.z;
+			singleton->primArr[i*8 + 3] = curObj->templateId;
+			
+			singleton->primArr[i*8 + 4] = 0;
+			singleton->primArr[i*8 + 5] = 0;
+			singleton->primArr[i*8 + 6] = 0;
+			singleton->primArr[i*8 + 7] = 0;
+			
+		}
+		
+		i = singleton->tempPrimList.size();
+		
+		if (singleton->settings[E_BS_PLACING_GEOM]) {
+			tempVec1.copyFrom(&(singleton->geomPoints[0]));
+			tempVec1.addXYZRef(&(singleton->geomOrigOffset));
+			tempVec1.setFW(singleton->curPrimTemplate);
+			tempVec2.setFXYZW(0.0f,0.0f,0.0f,0.0f);
+			
+			singleton->primArr[i*8 + 0] = tempVec1[0];
+			singleton->primArr[i*8 + 1] = tempVec1[1];
+			singleton->primArr[i*8 + 2] = tempVec1[2];
+			singleton->primArr[i*8 + 3] = tempVec1[3];
+			
+			singleton->primArr[i*8 + 4] = 0;
+			singleton->primArr[i*8 + 5] = 0;
+			singleton->primArr[i*8 + 6] = 0;
+			singleton->primArr[i*8 + 7] = 0;
+			
+		}
+		
+	}
+
+
+
 	void updateLimbTBOData(bool showLimbs) {
 		int i;
 		int j;
@@ -5352,6 +5398,11 @@ DONE_WITH_MAP:
 
 		int q;
 
+		int numCubes = singleton->tempPrimList.size();
+		if (singleton->settings[E_BS_PLACING_GEOM]) {
+			numCubes++;
+		}
+
 		glEnable(GL_DEPTH_TEST);
 		
 		if (!DO_POINTS) {
@@ -5425,9 +5476,14 @@ DONE_WITH_MAP:
 			singleton->bindShader("BasicPrimShader");
 			singleton->bindFBO("rasterLowFBO");
 			
-			if (singleton->settings[E_BS_PLACING_GEOM]) {
+			if (numCubes > 0) {
 				
-				
+				singleton->setShaderTBO(
+					0,
+					singleton->limbTBO.tbo_tex,
+					singleton->limbTBO.tbo_buf,
+					true
+				);
 				
 				singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
 				singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
@@ -5435,13 +5491,15 @@ DONE_WITH_MAP:
 				singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 				singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 				singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
-				tempVec1.copyFrom(&(singleton->geomPoints[0]));
-				tempVec1.addXYZRef(&(singleton->geomOrigOffset));
-				tempVec2.setFXYZW(0.0f,-99.0f,0.0f,0.0f);
-				singleton->setShaderfVec4("paramFetch1", &tempVec1 );
-				singleton->setShaderfVec4("paramFetch2", &tempVec2 );
-				singleton->setShaderArrayfVec4("paramArrGeom", singleton->paramArrGeom, E_PRIMTEMP_LENGTH);
-				singleton->zoCube.draw();
+				
+				// singleton->setShaderfVec4("paramFetch1", &tempVec1 );
+				// singleton->setShaderfVec4("paramFetch2", &tempVec2 );
+				singleton->setShaderFloat("primArrLength",numCubes);
+				updatePrimArr();
+				singleton->setShaderArrayfVec4("primArr", singleton->primArr, numCubes*2);
+				singleton->zoCubes.drawCubes(numCubes);
+				
+				singleton->setShaderTBO(0,0,0,true);
 			}
 			
 			

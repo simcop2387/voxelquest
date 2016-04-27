@@ -130,6 +130,23 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		);
 		zoCube.updateNew();
 		
+		float tempData[16];
+		
+		for (i = 0; i < MAX_ZO_CUBES; i++) {
+			tempData[0] = i;
+			zoCubes.vboBox(
+				0.0f, 0.0f, 0.0f,
+				0.0f, 1.0f,
+				ALL_FACES,
+				tempData,
+				4
+			);
+		}
+		zoCubes.init(
+			2,
+			GL_STATIC_DRAW
+		);
+		zoCubes.updateNew();
 		
 		
 		colVecs[0].setFXYZ(255,0,0);
@@ -282,7 +299,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		imageHM1->getTextureId(GL_NEAREST);
 		cloudImage->getTextureId(GL_LINEAR);
 
-		
+		primTBO.init(true, primTBOData, NULL, MAX_PRIM_DATA_IN_BYTES);
 		limbTBO.init(true, limbTBOData, NULL, MAX_LIMB_DATA_IN_BYTES);
 		
 		numLights = MAX_LIGHTS;//min(MAX_LIGHTS,E_OBJ_LENGTH-E_OBJ_LIGHT0);
@@ -770,6 +787,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		paramArr = new float[4096];
 		paramArrGeom = new float[128];
+		primArr = new float[MAX_ZO_CUBES*4*2];
 		splashArr = new float[MAX_SPLASHES*4];
 		explodeArr = new float[MAX_EXPLODES*4];
 		voroArr = new float[27 * 4];
@@ -3161,6 +3179,27 @@ void Singleton::getMaterialString ()
 		}
 		
 	}
+void Singleton::updatePrimTBOData ()
+                                 {
+		
+		
+		int i;
+		int j;
+		int dataInd = 0;
+		
+		for (i = 0; i < primTemplateStack.size(); i++) {
+			dataInd = i*4;
+			
+			for (j = 0; j < 4; j++) {
+				primTBOData[dataInd+j] = primTemplateStack[i][j];
+			}
+			
+		}
+		
+		primTBO.update(primTBOData,NULL,dataInd*4);
+		
+		
+	}
 bool Singleton::getPrimTemplateString ()
                                      {
 		
@@ -3258,6 +3297,8 @@ bool Singleton::getPrimTemplateString ()
 		//cout << resString << "\n";
 		
 		includeMap["primTemplates"] = resString;
+		
+		updatePrimTBOData();
 		
 		return true;
 	}
@@ -4570,8 +4611,13 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						gw->clearAllHolders();
 					break;
 					case 'v':
-						toggleSetting(E_BS_VSYNC);
-						myDynBuffer->setVsync(settings[E_BS_VSYNC]);
+						//toggleSetting(E_BS_VSYNC);
+						//myDynBuffer->setVsync(settings[E_BS_VSYNC]);
+						
+						stopAllThreads();
+						getPrimTemplateString();
+						
+						speak("Reload primitive templates");
 					break;
 					case 'f':
 						speak("start FPS timer");
@@ -4584,6 +4630,14 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					default:
 						speak("cancel command");
 					break;
+					
+					// enter
+					case 13:
+						speak("flush geometry");
+						gameFluid[E_FID_BIG]->flushAllGeom();
+						//gameFluid[E_FID_BIG]->flushStacks();
+					break;
+					
 				}
 				
 				//cout << "command end\n";	
@@ -5242,6 +5296,10 @@ float Singleton::getMinGeom (int baseIndex)
 			paramArrGeom[newIndex + 2]
 		);
 		
+	}
+FIVector4 * Singleton::getGeomRef (int templateId, int enumVal)
+                                                           {
+		return &(primTemplateStack[templateId*E_PRIMTEMP_LENGTH+enumVal]);
 	}
 void Singleton::setFXYZWGeom (int baseIndex, FIVector4 * baseVec)
                                                              {
@@ -5967,7 +6025,9 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 								
 								//dont add geom twice
 								//gameFluid[E_FID_SML]->pushPlaceTemplate(true, &newPos, curPrimTemplate);
-								gameFluid[E_FID_BIG]->pushPlaceTemplate(true, &newPos, curPrimTemplate);
+								gameFluid[E_FID_BIG]->pushPlaceTemplate(true, &newPos, curPrimTemplate, 0);
+								gameFluid[E_FID_BIG]->flushStacks();
+								
 								resetGeom();
 							}
 							
@@ -6201,7 +6261,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 						
 						if (abClicked) {
 							//gameFluid[E_FID_SML]->pushModifyUnit(true, &mouseUpPD, buttonInt, earthMod, curBrushRad);
-							gameFluid[E_FID_BIG]->pushModifyUnit(true, &mouseUpPD, buttonInt, earthMod, curBrushRad);
+							//gameFluid[E_FID_BIG]->pushModifyUnit(true, &mouseUpPD, buttonInt, earthMod, curBrushRad);
 							gameFluid[E_FID_BIG]->flushStacks();
 							forceGetPD = true;
 						}
@@ -6764,7 +6824,7 @@ void Singleton::explodeBullet (BaseObj * ge)
 		
 		
 		//gameFluid[E_FID_SML]->pushExplodeBullet(true,&newPos,boolToInt(settings[E_BS_WATER_BULLET]));
-		gameFluid[E_FID_BIG]->pushExplodeBullet(true,&newPos,boolToInt(settings[E_BS_WATER_BULLET]),explodeRad);
+		//gameFluid[E_FID_BIG]->pushExplodeBullet(true,&newPos,boolToInt(settings[E_BS_WATER_BULLET]),explodeRad);
 		
 		explodeStack.push_back(ExplodeStruct());
 		

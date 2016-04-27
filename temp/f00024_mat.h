@@ -88,6 +88,7 @@ struct Vector3
     bool        normalize();                            //
     float       dot(const Vector3& vec) const;          // dot product
     Vector3     cross(const Vector3& vec) const;        // cross product
+    Vector2     xy();
     void        doMax(const Vector3& vec);        // cross product
     bool        equal(const Vector3& vec, float e) const; // compare with epsilon
 
@@ -139,6 +140,8 @@ struct Vector4
     Vector4&    normalize();                            //
     float       dot(const Vector4& vec) const;          // dot product
     bool        equal(const Vector4& vec, float e) const; // compare with epsilon
+    Vector3     xyz();
+    
 
     // operators
     Vector4     operator-() const;                      // unary operator (negate)
@@ -456,6 +459,10 @@ inline Vector3 Vector3::cross(const Vector3& rhs) const {
     return Vector3(y*rhs.z - z*rhs.y, z*rhs.x - x*rhs.z, x*rhs.y - y*rhs.x);
 }
 
+inline Vector2 Vector3::xy() {
+    return Vector2(x,y);
+}
+
 inline void Vector3::doMax(const Vector3& rhs) {
     x = max(rhs.x,x);
     y = max(rhs.y,y);
@@ -482,6 +489,11 @@ inline std::ostream& operator<<(std::ostream& os, const Vector3& vec) {
 ///////////////////////////////////////////////////////////////////////////////
 // inline functions for Vector4
 ///////////////////////////////////////////////////////////////////////////////
+
+inline Vector3 Vector4::xyz() {
+    return Vector3(x,y,z);
+}
+
 inline Vector4 Vector4::operator-() const {
     return Vector4(-x, -y, -z, -w);
 }
@@ -2131,6 +2143,7 @@ Matrix4& Matrix4::rotateZ(float angle)
     return *this;
 }
 
+typedef Vector4 vec4;
 typedef Vector3 vec3;
 typedef Vector2 vec2;
 

@@ -12,6 +12,7 @@ bool ND_TRACE_OFF = false;
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT "27015"
 
+const static int MAX_PRIM_DATA_IN_BYTES = 32*1024*1024;
 const static int MAX_LIMB_DATA_IN_BYTES = 65536;
 
 const static bool POLYS_FOR_CELLS = false;
@@ -31,6 +32,7 @@ const static bool DO_RANDOMIZE = false;
 const static int MAX_PRIM_IDS = 16;
 const static int MAX_PRIMTEST = 8;
 
+const static int MAX_ZO_CUBES = 64;
 const static int MAX_DEPTH_PEELS = 4;
 
 double STEP_TIME_IN_SEC;

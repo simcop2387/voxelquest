@@ -356,6 +356,18 @@ public:
 		return btVector3(fv4.x,fv4.y,fv4.z);
 	}
 	
+	void setVec3(vec3 v) {
+		
+		fv4.x = v.x;
+		fv4.y = v.y;
+		fv4.z = v.z;
+		
+		iv4.x = fv4.x;
+		iv4.y = fv4.y;
+		iv4.z = fv4.z;
+		
+	}
+	
 	vec3 getVec3() {
 		return vec3(fv4.x,fv4.y,fv4.z);
 	}
@@ -1490,12 +1502,8 @@ struct RotationInfo {
 	FIVector4 axisAngle;
 };
 
-struct ModUnitStruct {
-	FIVector4 basePos;
-	int brushAction;
-	int modType;
-	int radius;
-};
+
+
 
 
 
@@ -3451,6 +3459,18 @@ public:
 		glBindVertexArray(0);
 	}
 	
+	void drawCubes(int numCubes) {
+		
+		if (!hasInit) {
+			cout << "NOT INIT!\n";
+			return;
+		}
+		
+		glBindVertexArray(vao);
+		glDrawElements(GL_TRIANGLES, numCubes*24, GL_UNSIGNED_INT, 0); //sizeOfID
+		glBindVertexArray(0);
+	}
+	
 	void drawPoints() {
 		
 		if (!hasInit) {
@@ -3934,6 +3954,7 @@ public:
 	
 	bool isFloat;
 	
+	
 	TBOWrapper() {
 		
 	}
@@ -4043,11 +4064,7 @@ public:
 
 
 
-struct PushModStruct
-{
-	int actionType;
-	FIVector4 data[4];
-};
+
 
 
 
@@ -4401,22 +4418,45 @@ struct VoxelBuffer {
 	
 };
 
-enum E_OBJECT_STRUCT_DATA {
-	E_OSD_CENTER,
-	E_OSD_RADIUS,
-	E_OSD_VISMIN,
-	E_OSD_VISMAX,
-	E_OSD_CORNERDIS,
-	E_OSD_THICKNESS,
-	E_OSD_MATPARAMS,
-	E_OSD_LENGTH
+
+struct PushModStruct
+{
+	int actionType;
+	FIVector4 data[4];
 };
+
+struct ModUnitStruct {
+	FIVector4 basePos;
+	int brushAction;
+	int modType;
+	int radius;
+};
+
+// enum E_OBJECT_STRUCT_DATA {
+// 	// E_OSD_CENTER,
+// 	// E_OSD_RADIUS,
+// 	E_OSD_OFFSET,
+// 	E_OSD_BOUNDSMIN,
+// 	E_OSD_BOUNDSMAX,
+// 	E_OSD_VISMIN,
+// 	E_OSD_VISMAX,
+// 	E_OSD_CORNERDISTHICKNESS,
+// 	E_OSD_POWERVALS,//THICKNESS,
+// 	E_OSD_MATPARAMS,
+// 	E_OSD_LENGTH
+// };
 
 struct ObjectStruct {
 	int64_t globalId;
-	int objType;
-	int addType;
-	vec3 data[E_OSD_LENGTH];
+	// int objType;
+	// int addType;
+	int templateId;
+	int orientation;
+	vec3 offset;
+	
+	
+	
+	//vec4 data[E_PRIMTEMP_LENGTH];
 	
 };
 
@@ -4786,6 +4826,36 @@ vec3 BASE_NORMALS[64];
 
 
 
+enum E_PRIMTEMP {
+	E_PRIMTEMP_VISMIN,
+	E_PRIMTEMP_VISMAX,
+	E_PRIMTEMP_BOUNDSMIN,
+	E_PRIMTEMP_BOUNDSMAX,
+	E_PRIMTEMP_CORNERDIS, //x: cornerDis, y: wallThickness, z: powerXY, w: powerZ
+	E_PRIMTEMP_MATPARAMS, //x: material
+	E_PRIMTEMP_LENGTH
+};
+
+const static int FLOATS_PER_TEMPLATE = ((int)E_PRIMTEMP_LENGTH)*4;
+const static float defaultTemplate[FLOATS_PER_TEMPLATE] = {
+	-2.0,-2.0,-2.0, 0.0,
+	 2.0, 2.0, 2.0, 0.0,
+	-2.0,-2.0,-2.0, 0.0,
+	 2.0, 2.0, 2.0, 0.0,
+	 1.0, 1.0, 1.0, 1.0,
+	 0.0, 0.0, 0.0, 0.0
+};
+
+string primTempStrings[] = {
+	"visMin",
+	"visMax",
+	"boundsMin",
+	"boundsMax",
+	"cornerDis",
+	"matParams"
+};
+
+
 
 inline float opI( float d1, float d2 ) {
 		return max(d1,d2);
@@ -4838,12 +4908,47 @@ float getBrick( vec3 uvwCoords) {
 }
 
 
+inline void getBoundsCenRad(
+	ObjectStruct* curObj,
+	FIVector4* baseGeom,
+	vec3 &visCen,
+	vec3 &visRad
+) {
+	
+	
+	vec3 vmin = baseGeom[E_PRIMTEMP_BOUNDSMIN].getVec3();
+	vec3 vmax = baseGeom[E_PRIMTEMP_BOUNDSMAX].getVec3();
+	
+	visCen = (vmax+vmin)*0.5f;
+	visRad = (vmax-vmin)*0.5f;
+	
+	visCen += curObj->offset;
+	
+}
+
+void getVisCenRad(
+	ObjectStruct* curObj,
+	FIVector4* baseGeom,
+	vec3 &visCen,
+	vec3 &visRad
+) {
+	
+	
+	vec3 vmin = baseGeom[E_PRIMTEMP_VISMIN].getVec3();
+	vec3 vmax = baseGeom[E_PRIMTEMP_VISMAX].getVec3();
+	
+	visCen = (vmax+vmin)*0.5f;
+	visRad = (vmax-vmin)*0.5f;
+	
+	visCen += curObj->offset;
+	
+}
+
 inline vec3 getUVW(
 		vec3 _pos,
 		ObjectStruct* curObj,
+		FIVector4* baseGeom,
 		
-		//vec3 centerPos, 
-		//vec4 box_dim,
 		vec3 uvwScale,
 		float angModBase,
 		bool mirrored
@@ -4851,12 +4956,16 @@ inline vec3 getUVW(
 		
 		float globIntersect = 999.0f;
 		
-		vec3 centerPos = curObj->data[E_OSD_CENTER];
+		vec3 centerPos;
+		vec3 centerRad;
+		getBoundsCenRad(curObj,baseGeom,centerPos,centerRad);
+		
+		
+		float cornerRad = baseGeom[E_PRIMTEMP_CORNERDIS].getFX();
 		vec3 centerOffset = _pos - centerPos;
-		vec3 innerBoxSize = curObj->data[E_OSD_RADIUS];
-		vec3 box_power = curObj->data[E_OSD_CORNERDIS];
-		float cornerRad = box_power.z;
-		float wallThickness	 = curObj->data[E_OSD_THICKNESS].x;
+		vec3 innerBoxSize = centerRad-cornerRad;
+		
+		float wallThickness	= baseGeom[E_PRIMTEMP_CORNERDIS].getFY();
 		vec3 centerOffsetAbs = centerOffset;
 		centerOffsetAbs.doAbs();
 		
@@ -4973,14 +5082,26 @@ inline vec3 getUVW(
 
 inline float primDis(
 	vec3 pos,
-	ObjectStruct* curObj
+	ObjectStruct* curObj,
+	FIVector4* baseGeom
 ) {
 	
-	vec3 vectorFromCenter = pos - curObj->data[E_OSD_CENTER];
-	vec3 box_dim = curObj->data[E_OSD_RADIUS];
-	vec3 box_power = curObj->data[E_OSD_CORNERDIS];
-	float cornerRad = box_power.z;
-	float wallThickness	 = curObj->data[E_OSD_THICKNESS].x;
+	vec3 centerPos;
+	vec3 centerRad;
+	vec2 box_power;
+	
+	getBoundsCenRad(curObj,baseGeom,centerPos,centerRad);
+	
+	
+	float cornerRad = baseGeom[E_PRIMTEMP_CORNERDIS].getFX();
+	float wallThickness = baseGeom[E_PRIMTEMP_CORNERDIS].getFY();
+	box_power.x = baseGeom[E_PRIMTEMP_CORNERDIS].getFZ();
+	box_power.y = baseGeom[E_PRIMTEMP_CORNERDIS].getFW();
+	
+	vec3 innerBoxSize = centerRad-cornerRad;
+	
+	vec3 vectorFromCenter = pos - centerPos;
+	
 	
 	
 	vec3 absVecFromCenter = vectorFromCenter;
@@ -4988,7 +5109,7 @@ inline float primDis(
 	
 	
 	
-	vec3 newP = absVecFromCenter-box_dim;
+	vec3 newP = absVecFromCenter-innerBoxSize;
 	newP.doMax(vec3(0.0));
 	newP.doAbs();
 	
@@ -5007,23 +5128,23 @@ inline float primDis(
 	vec3 newBoxDim;
 	
 	if (
-		(absVecFromCenter.x <= box_dim.x) &&	
-		(absVecFromCenter.y <= box_dim.y) &&
-		(absVecFromCenter.z <= box_dim.z)
+		(absVecFromCenter.x <= innerBoxSize.x) &&	
+		(absVecFromCenter.y <= innerBoxSize.y) &&
+		(absVecFromCenter.z <= innerBoxSize.z)
 	) {
 		
-		newBoxDim = box_dim-absVecFromCenter;
+		newBoxDim = innerBoxSize-absVecFromCenter;
 		
 		finalRes -= min(min(newBoxDim.x,newBoxDim.y),newBoxDim.z);
 	}
 	
 	finalRes = abs(finalRes+wallThickness*0.5f)-wallThickness*0.5f;
 	
-	vec3 boxMin = curObj->data[E_OSD_VISMIN];
-	vec3 boxMax = curObj->data[E_OSD_VISMAX];
-	vec3 boxRad = (boxMax-boxMin)*0.5f;
-	vec3 boxCen = (boxMax+boxMin)*0.5f + curObj->data[E_OSD_CENTER];
 	
+	vec3 boxRad;
+	vec3 boxCen;
+	
+	getVisCenRad(curObj,baseGeom,boxCen,boxRad);
 	
 	
 	return (

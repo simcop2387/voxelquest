@@ -53,6 +53,8 @@ public:
 	
 	
 	
+	
+	
 	//unsigned long int totTimePassedGraphics;
 	//unsigned long int totTimePassedPhysics;
 	
@@ -101,6 +103,10 @@ public:
 	
 	TBOWrapper limbTBO;
 	float limbTBOData[MAX_LIMB_DATA_IN_BYTES];
+	
+	std::vector<ObjectStruct> tempPrimList;
+	TBOWrapper primTBO;
+	float primTBOData[MAX_PRIM_DATA_IN_BYTES];
 	
 	
 	bool settings[E_BS_LENGTH];
@@ -354,6 +360,7 @@ public:
 	float fxVolume;
 	float *paramArr;
 	float *paramArrGeom;
+	float *primArr;
 	float *splashArr;
 	float *explodeArr;
 	float *voroArr;
@@ -463,6 +470,8 @@ public:
 	std::vector<DebrisStruct> debrisStack;
 	//std::vector<btRigidBody*> debrisBodies;
 	
+	
+	// must stop all threads before modifying primTemplateStack
 	std::vector<FIVector4> primTemplateStack;
 	std::vector<SphereStruct> sphereStack;
 		
@@ -477,6 +486,7 @@ public:
 	VBOWrapper fsQuad;
 	VBOWrapper zoCube;
 	
+	VBOWrapper zoCubes;
 	
 
 	float floorHeightInCells;
@@ -761,6 +771,23 @@ public:
 		);
 		zoCube.updateNew();
 		
+		float tempData[16];
+		
+		for (i = 0; i < MAX_ZO_CUBES; i++) {
+			tempData[0] = i;
+			zoCubes.vboBox(
+				0.0f, 0.0f, 0.0f,
+				0.0f, 1.0f,
+				ALL_FACES,
+				tempData,
+				4
+			);
+		}
+		zoCubes.init(
+			2,
+			GL_STATIC_DRAW
+		);
+		zoCubes.updateNew();
 		
 		
 		colVecs[0].setFXYZ(255,0,0);
@@ -913,7 +940,7 @@ public:
 		imageHM1->getTextureId(GL_NEAREST);
 		cloudImage->getTextureId(GL_LINEAR);
 
-		
+		primTBO.init(true, primTBOData, NULL, MAX_PRIM_DATA_IN_BYTES);
 		limbTBO.init(true, limbTBOData, NULL, MAX_LIMB_DATA_IN_BYTES);
 		
 		numLights = MAX_LIGHTS;//min(MAX_LIGHTS,E_OBJ_LENGTH-E_OBJ_LIGHT0);
@@ -1401,6 +1428,7 @@ public:
 		
 		paramArr = new float[4096];
 		paramArrGeom = new float[128];
+		primArr = new float[MAX_ZO_CUBES*4*2];
 		splashArr = new float[MAX_SPLASHES*4];
 		explodeArr = new float[MAX_EXPLODES*4];
 		voroArr = new float[27 * 4];
@@ -3976,6 +4004,28 @@ DISPATCH_EVENT_END:
 		
 	}
 	
+	
+	void updatePrimTBOData() {
+		
+		
+		int i;
+		int j;
+		int dataInd = 0;
+		
+		for (i = 0; i < primTemplateStack.size(); i++) {
+			dataInd = i*4;
+			
+			for (j = 0; j < 4; j++) {
+				primTBOData[dataInd+j] = primTemplateStack[i][j];
+			}
+			
+		}
+		
+		primTBO.update(primTBOData,NULL,dataInd*4);
+		
+		
+	}
+	
 	bool getPrimTemplateString() {
 		
 		primTemplateStack.clear();
@@ -4072,6 +4122,8 @@ DISPATCH_EVENT_END:
 		//cout << resString << "\n";
 		
 		includeMap["primTemplates"] = resString;
+		
+		updatePrimTBOData();
 		
 		return true;
 	}
@@ -5589,8 +5641,13 @@ DISPATCH_EVENT_END:
 						gw->clearAllHolders();
 					break;
 					case 'v':
-						toggleSetting(E_BS_VSYNC);
-						myDynBuffer->setVsync(settings[E_BS_VSYNC]);
+						//toggleSetting(E_BS_VSYNC);
+						//myDynBuffer->setVsync(settings[E_BS_VSYNC]);
+						
+						stopAllThreads();
+						getPrimTemplateString();
+						
+						speak("Reload primitive templates");
 					break;
 					case 'f':
 						speak("start FPS timer");
@@ -5603,6 +5660,14 @@ DISPATCH_EVENT_END:
 					default:
 						speak("cancel command");
 					break;
+					
+					// enter
+					case 13:
+						speak("flush geometry");
+						gameFluid[E_FID_BIG]->flushAllGeom();
+						//gameFluid[E_FID_BIG]->flushStacks();
+					break;
+					
 				}
 				
 				//cout << "command end\n";	
@@ -6270,6 +6335,10 @@ DISPATCH_EVENT_END:
 	}
 	
 	
+	
+	FIVector4* getGeomRef(int templateId, int enumVal) {
+		return &(primTemplateStack[templateId*E_PRIMTEMP_LENGTH+enumVal]);
+	}
 	
 	void setFXYZWGeom(int baseIndex, FIVector4* baseVec) {
 		int newIndex = baseIndex*4;
@@ -7007,7 +7076,9 @@ DISPATCH_EVENT_END:
 								
 								//dont add geom twice
 								//gameFluid[E_FID_SML]->pushPlaceTemplate(true, &newPos, curPrimTemplate);
-								gameFluid[E_FID_BIG]->pushPlaceTemplate(true, &newPos, curPrimTemplate);
+								gameFluid[E_FID_BIG]->pushPlaceTemplate(true, &newPos, curPrimTemplate, 0);
+								gameFluid[E_FID_BIG]->flushStacks();
+								
 								resetGeom();
 							}
 							
@@ -7241,7 +7312,7 @@ DISPATCH_EVENT_END:
 						
 						if (abClicked) {
 							//gameFluid[E_FID_SML]->pushModifyUnit(true, &mouseUpPD, buttonInt, earthMod, curBrushRad);
-							gameFluid[E_FID_BIG]->pushModifyUnit(true, &mouseUpPD, buttonInt, earthMod, curBrushRad);
+							//gameFluid[E_FID_BIG]->pushModifyUnit(true, &mouseUpPD, buttonInt, earthMod, curBrushRad);
 							gameFluid[E_FID_BIG]->flushStacks();
 							forceGetPD = true;
 						}
@@ -7888,7 +7959,7 @@ DISPATCH_EVENT_END:
 		
 		
 		//gameFluid[E_FID_SML]->pushExplodeBullet(true,&newPos,boolToInt(settings[E_BS_WATER_BULLET]));
-		gameFluid[E_FID_BIG]->pushExplodeBullet(true,&newPos,boolToInt(settings[E_BS_WATER_BULLET]),explodeRad);
+		//gameFluid[E_FID_BIG]->pushExplodeBullet(true,&newPos,boolToInt(settings[E_BS_WATER_BULLET]),explodeRad);
 		
 		explodeStack.push_back(ExplodeStruct());
 		

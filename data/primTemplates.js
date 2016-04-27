@@ -13,7 +13,7 @@
    "02_bndMin":[-8,-8,-16,0],
    "03_bndMax":[8,8,16,0],
    "04_cornerDis":[8,2,2,10],
-   "05_matParams":[0,0,0,0],
+   "05_matParams":[1,0,0,0],
    "06_comment":"tower"
    },{
    "00_visMin":[1,1,1,0],

@@ -1,6 +1,8 @@
 #version 330
 //#extension GL_EXT_frag_depth : enable
 
+uniform samplerBuffer Texture0; // primTBO
+
 uniform float heightOfNearPlane;
 uniform float FOV;
 uniform vec2 clipDist;
@@ -9,10 +11,13 @@ uniform vec3 cameraPos;
 
 uniform mat4 pmMatrix;
 
-uniform vec4 paramFetch1;
-uniform vec4 paramFetch2;
+// uniform vec4 paramFetch1;
+// uniform vec4 paramFetch2;
 
-uniform vec4 paramArrGeom[24];
+//uniform vec4 paramArrGeom[24];
+
+uniform vec4 primArr[128];
+uniform float primArrLength;
 
 ^INCLUDE:MATERIALS^
 
@@ -44,34 +49,35 @@ out vec4 boxDim;
 out vec2 boxPower;
 out vec3 boxCenterPoint;
 
-void getPrimVals() { //int _ptInd
+void getPrimVals(int _ptInd) { //
 		
-		texelRes1 = paramFetch1;
-		texelRes2 = paramFetch2;
+		// texelRes1 = paramFetch1;
+		// texelRes2 = paramFetch2;
 		
-		//int ptInd = _ptInd;
-		//int primReadOffset = ptInd*E_PRIMTEMP_LENGTH;
+		int ptInd = _ptInd;
+		int primReadOffset = ptInd*E_PRIMTEMP_LENGTH;
+		
 		
 		
 //		if (ptInd == -1) {
 				
 				
-				pdVisMin = paramArrGeom[E_PRIMTEMP_VISMIN];
-				pdVisMax = paramArrGeom[E_PRIMTEMP_VISMAX];
-				pdBoundsMin = paramArrGeom[E_PRIMTEMP_BOUNDSMIN];
-				pdBoundsMax = paramArrGeom[E_PRIMTEMP_BOUNDSMAX];
-				pdCornerDis = paramArrGeom[E_PRIMTEMP_CORNERDIS];
-				pdMatParmas = paramArrGeom[E_PRIMTEMP_MATPARAMS];
+				// pdVisMin = paramArrGeom[E_PRIMTEMP_VISMIN];
+				// pdVisMax = paramArrGeom[E_PRIMTEMP_VISMAX];
+				// pdBoundsMin = paramArrGeom[E_PRIMTEMP_BOUNDSMIN];
+				// pdBoundsMax = paramArrGeom[E_PRIMTEMP_BOUNDSMAX];
+				// pdCornerDis = paramArrGeom[E_PRIMTEMP_CORNERDIS];
+				// pdMatParmas = paramArrGeom[E_PRIMTEMP_MATPARAMS];
 				
 				
 		// }
 		// else {
-		// 		pdVisMin = primTemp[primReadOffset + E_PRIMTEMP_VISMIN];
-		// 		pdVisMax = primTemp[primReadOffset + E_PRIMTEMP_VISMAX];
-		// 		pdBoundsMin = primTemp[primReadOffset + E_PRIMTEMP_BOUNDSMIN];
-		// 		pdBoundsMax = primTemp[primReadOffset + E_PRIMTEMP_BOUNDSMAX];
-		// 		pdCornerDis = primTemp[primReadOffset + E_PRIMTEMP_CORNERDIS];
-		// 		pdMatParmas = primTemp[primReadOffset + E_PRIMTEMP_MATPARAMS];
+				pdVisMin = texelFetch(Texture0, primReadOffset + E_PRIMTEMP_VISMIN);
+				pdVisMax = texelFetch(Texture0, primReadOffset + E_PRIMTEMP_VISMAX);
+				pdBoundsMin = texelFetch(Texture0, primReadOffset + E_PRIMTEMP_BOUNDSMIN);
+				pdBoundsMax = texelFetch(Texture0, primReadOffset + E_PRIMTEMP_BOUNDSMAX);
+				pdCornerDis = texelFetch(Texture0, primReadOffset + E_PRIMTEMP_CORNERDIS);
+				pdMatParmas = texelFetch(Texture0, primReadOffset + E_PRIMTEMP_MATPARAMS);
 		// }
 		
 		boxPower = pdCornerDis.zw;
@@ -91,7 +97,16 @@ void getPrimVals() { //int _ptInd
 
 void main() {
 	
-	getPrimVals();
+	int cubeIndex = int(floor(data0.x+0.9999));
+	
+	
+	texelRes1 = primArr[cubeIndex*2+0];
+	texelRes2 = primArr[cubeIndex*2+1];
+	
+	int primArrInd = int(texelRes1.w);
+	
+	getPrimVals(primArrInd);
+	
 	
 	worldPos = vec4(
 		mix(

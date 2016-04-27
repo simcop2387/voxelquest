@@ -3,6 +3,8 @@
 #version 330
 //#extension GL_EXT_frag_depth : enable
 
+uniform samplerBuffer Texture0; // primTBO
+
 uniform float heightOfNearPlane;
 uniform float FOV;
 uniform vec2 clipDist;
@@ -11,10 +13,13 @@ uniform vec3 cameraPos;
 
 uniform mat4 pmMatrix;
 
-uniform vec4 paramFetch1;
-uniform vec4 paramFetch2;
+// uniform vec4 paramFetch1;
+// uniform vec4 paramFetch2;
 
-uniform vec4 paramArrGeom[24];
+//uniform vec4 paramArrGeom[24];
+
+uniform vec4 primArr[128];
+uniform float primArrLength;
 
 
 const float TEX_NULL=0.0/255.0;
