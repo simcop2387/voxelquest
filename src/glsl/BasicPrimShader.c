@@ -17,7 +17,7 @@ uniform mat4 pmMatrix;
 //uniform vec4 paramArrGeom[24];
 
 uniform vec4 primArr[128];
-uniform float primArrLength;
+// uniform float primArrLength;
 
 ^INCLUDE:MATERIALS^
 
@@ -97,16 +97,19 @@ void getPrimVals(int _ptInd) { //
 
 void main() {
 	
-	int cubeIndex = int(floor(data0.x+0.9999));
+	int cubeIndex = int(floor(data0.x+0.1));
 	
 	
 	texelRes1 = primArr[cubeIndex*2+0];
 	texelRes2 = primArr[cubeIndex*2+1];
 	
-	int primArrInd = int(texelRes1.w);
+	int templateId = int(texelRes1.w);
 	
-	getPrimVals(primArrInd);
+	getPrimVals(templateId);
 	
+	
+	//pdVisMin.xyz = vec3(-4.0);
+	//pdVisMax.xyz = vec3(4.0);
 	
 	worldPos = vec4(
 		mix(
@@ -293,6 +296,8 @@ void main() {
 	vec2 curTex = vec2(TEX_EARTH,0.0);
 	float curMat = floor(curTex.x*256.0*255.0) + floor(curTex.y*255.0);
 
+	vec4 primRes = vec4(0.0,0.0,1.0,0.0);
+
 	vec3 ro = cameraPos.xyz;
 	vec3 rd = normalize(worldPos.xyz-cameraPos.xyz);
 
@@ -306,7 +311,9 @@ void main() {
 			maxVisBox
 	);
 
-	vec4 primRes = castPrim(ro,rd,hitBox.x,hitBox.y,NUM_RAY_STEPS);
+	// primRes.w = hitBox.x;
+
+	primRes = castPrim(ro,rd,hitBox.x,hitBox.y,NUM_RAY_STEPS);
 	
 	if (primRes.w < 0.0) {
 		discard;

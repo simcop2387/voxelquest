@@ -18,28 +18,28 @@
 
 float hash2( float n ) { return abs( fract(sin(n)*753.5453123) ); }
 
-float flatten(
-	float res,
-	vec3 pos,
-	vec3 flatCoord,
-	float innerRad,
-	float outerRad,
-	float amount
-) {
+// float flatten(
+// 	float res,
+// 	vec3 pos,
+// 	vec3 flatCoord,
+// 	float innerRad,
+// 	float outerRad,
+// 	float amount
+// ) {
 	
-	float flatSpotDis = distance(pos.xy, flatCoord.xy);
-	float flatAmount = clamp(
-		(outerRad-flatSpotDis) / (outerRad-innerRad),
-		0.0,
-		1.0
-	);
-	float newRes = mix(res, pos.z-flatCoord.z, flatAmount*amount);
-	// float newRes = mix(res, pos.z – flatCoord.z, flatAmount);  
+// 	float flatSpotDis = distance(pos.xy, flatCoord.xy);
+// 	float flatAmount = clamp(
+// 		(outerRad-flatSpotDis) / (outerRad-innerRad),
+// 		0.0,
+// 		1.0
+// 	);
+// 	float newRes = mix(res, pos.z-flatCoord.z, flatAmount*amount);
+// 	// float newRes = mix(res, pos.z – flatCoord.z, flatAmount);  
 	
-	// return newRes;
+// 	// return newRes;
 	
-	return newRes;
-}
+// 	return newRes;
+// }
 
 
 vec3 getTerVal(vec3 pos, float camParam, bool justLand) {
@@ -124,7 +124,8 @@ vec3 getTerVal(vec3 pos, float camParam, bool justLand) {
 	vec2 newTC2 = (pos.xy+pos.z)/cellsPerWorld;
 	//sin((pos.x+pos.y+pos.z)*2.0/cellsPerWorld)
 	
-	vec2 th = getTerHeight(Texture2, newTC, newTC2, pos.z);
+	vec2 th = getTerHeight(Texture2, Texture15, newTC, newTC2, pos.z);
+	
 
 	float bumpDet = 0.0;
 	//float bumpDet2 = 0.0;
@@ -185,6 +186,8 @@ vec3 getTerVal(vec3 pos, float camParam, bool justLand) {
 	// 	);
 		
 	// }
+	
+	
 	
 	if (camDis1 > 0.0) {
 		//getTexCubic
@@ -261,23 +264,23 @@ vec3 getTerVal(vec3 pos, float camParam, bool justLand) {
 	}
 	
 	
-	float flatDiam = 4096.0*1.0;
-	vec3 centerPos = pos - opRep(pos,vec3(flatDiam));// + vec3(flatDiam)*0.5;
-	float centerH = getTerHeight2(Texture2, centerPos.xy/cellsPerWorld)+512.0;
-	centerPos.z = centerH;
+	// float flatDiam = 512.0*1.0;
+	// vec3 centerPos = pos - opRep(pos,vec3(flatDiam));// + vec3(flatDiam)*0.5;
+	// float centerH = getTerHeight2(Texture2, centerPos.xy/cellsPerWorld)+512.0;
+	// centerPos.z = centerH;
 	
-	res = flatten(
-		res,
-		pos,
-		centerPos,
-		0.0,
-		flatDiam*0.5,
-		0.8 * clamp(
-			1.0-abs(baseHeight-centerH)/1024.0,
-			0.5,
-			1.0
-		)
-	);
+	// res = flatten(
+	// 	res,
+	// 	pos,
+	// 	centerPos,
+	// 	flatDiam*0.0,
+	// 	flatDiam*0.5,
+	// 	1.0 * clamp(
+	// 		1.0-abs(baseHeight-centerH)/1024.0,
+	// 		0.5,
+	// 		1.0
+	// 	)
+	// );
 	
 	if (camDis2 > 0.0) {
 		res = opD(res,pow(1.0-samp2.r,4.0)*8.0*camDis2);

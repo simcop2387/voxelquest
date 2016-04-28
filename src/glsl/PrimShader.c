@@ -93,7 +93,7 @@ uniform sampler3D Texture13;
 //E_VW_WORLD
 uniform sampler3D Texture14;
 
-//noisefbolinear
+// imageVoro // noisefbolinear
 uniform sampler2D Texture15;
 
 // // polyFBO
@@ -3617,7 +3617,7 @@ float getGV(vec3 pos, float _res, float camDis) {
 	camDis = clamp(1.0-camDis*256.0,0.0,1.0);
 	
 	if (camDis > 0.0) {
-		lenMod = texture(Texture15, pos.xy*(1.0/8.0)).r*camDis;
+		lenMod = 0.0;//texture(Texture15, pos.xy*(1.0/8.0)).r*camDis;
 	}
 	
 	

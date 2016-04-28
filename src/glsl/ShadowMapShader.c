@@ -45,7 +45,7 @@ void main() {
 	//fragDep = 1.0;
 	//gl_Position = worldToScreen(worldPos,fragDep);
 	
-	gl_PointSize = 2.0;
+	gl_PointSize = 5.0;
 	
 	vec4 screenPos = lightSpaceMatrix*worldPos;
 	

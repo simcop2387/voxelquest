@@ -17,7 +17,7 @@ float getTerHeight2(sampler2D mySampler, vec2 newTC) { // , float camDis
 	return bilin(mySampler, newTC.xy*mapFreqs.x, mp2, mp).r*heightMapMaxInCells;
 }
 
-vec2 getTerHeight(sampler2D mySampler, vec2 newTC, vec2 newTC2, float zval) { // , float camDis
+vec2 getTerHeight(sampler2D mySampler, sampler2D voroSampler, vec2 newTC, vec2 newTC2, float zval) { // , float camDis
 
 	
 
@@ -39,9 +39,17 @@ vec2 getTerHeight(sampler2D mySampler, vec2 newTC, vec2 newTC2, float zval) { //
 
 	float dotVal = dot(texHM,mapAmps);
 	
+	vec2 mpv = vec2(1.0/1024.0);
+	vec2 mpv2 = vec2(1024.0);
 	
+	float vheight = bilin(voroSampler, newTC.xy, mpv2, mpv).r;
+	float vheight2 = bilin(voroSampler, newTC.xy*8.0, mpv2, mpv).r;
 	
+	vheight = mix(0.3,0.9,vheight) + vheight2*0.05;
 	
+	if (dotVal > vheight) {
+		dotVal = vheight;
+	}
 	
 	//dotVal = mix(dotVal,min(dotVal,0.6),0.25);
 	

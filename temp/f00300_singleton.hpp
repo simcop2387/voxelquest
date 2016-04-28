@@ -494,7 +494,7 @@ public:
 	float wallRadInCells;
 
 	
-
+	Image *imageVoro;
 	Image *imageHM0;
 	Image *imageHM1;
 	Image *cloudImage;
@@ -931,11 +931,13 @@ public:
 		guiSaveLoc = "..\\data\\saves\\save0\\compMap.txt";
 
 		//invItems = loadBMP("..\\data\\invitems.bmp");
+		imageVoro = loadBMP("..\\data\\voro.bmp");
 		imageHM0 = loadBMP("..\\data\\hm0.bmp");
 		imageHM1 = loadBMP("..\\data\\hm1.bmp");
 		cloudImage = loadBMP("..\\data\\clouds.bmp");
 
 		//invItems->getTextureId(GL_NEAREST);
+		imageVoro->getTextureId(GL_NEAREST);
 		imageHM0->getTextureId(GL_NEAREST);
 		imageHM1->getTextureId(GL_NEAREST);
 		cloudImage->getTextureId(GL_LINEAR);
@@ -4005,6 +4007,50 @@ DISPATCH_EVENT_END:
 	}
 	
 	
+	void updatePrimArr() {
+		int i;
+		int j;
+		
+		ObjectStruct* curObj;
+		FIVector4* baseGeom;
+		for (i = 0; i < tempPrimList.size(); i++) {
+			curObj = &(tempPrimList[i]);
+			//baseGeom = getGeomRef(curObj->templateId,0);
+			
+			primArr[i*8 + 0] = curObj->offset.x;
+			primArr[i*8 + 1] = curObj->offset.y;
+			primArr[i*8 + 2] = curObj->offset.z;
+			primArr[i*8 + 3] = curObj->templateId;
+			
+			primArr[i*8 + 4] = 0;
+			primArr[i*8 + 5] = 0;
+			primArr[i*8 + 6] = 0;
+			primArr[i*8 + 7] = 0;
+			
+		}
+		
+		i = tempPrimList.size();
+		
+		if (settings[E_BS_PLACING_GEOM]) {
+			tempVec1.copyFrom(&(geomPoints[0]));
+			tempVec1.addXYZRef(&(geomOrigOffset));
+			tempVec1.setFW(curPrimTemplate);
+			tempVec2.setFXYZW(0.0f,0.0f,0.0f,0.0f);
+			
+			primArr[i*8 + 0] = tempVec1[0];
+			primArr[i*8 + 1] = tempVec1[1];
+			primArr[i*8 + 2] = tempVec1[2];
+			primArr[i*8 + 3] = tempVec1[3];
+			
+			primArr[i*8 + 4] = 0;
+			primArr[i*8 + 5] = 0;
+			primArr[i*8 + 6] = 0;
+			primArr[i*8 + 7] = 0;
+			
+		}
+		
+	}
+	
 	void updatePrimTBOData() {
 		
 		
@@ -4021,7 +4067,7 @@ DISPATCH_EVENT_END:
 			
 		}
 		
-		primTBO.update(primTBOData,NULL,dataInd*4);
+		primTBO.update(primTBOData,NULL,primTemplateStack.size()*4);
 		
 		
 	}
@@ -4123,7 +4169,9 @@ DISPATCH_EVENT_END:
 		
 		includeMap["primTemplates"] = resString;
 		
+		
 		updatePrimTBOData();
+		
 		
 		return true;
 	}
@@ -6645,6 +6693,9 @@ DISPATCH_EVENT_END:
 			
 		}
 		
+		updatePrimArr();
+		
+		//updatePrimTBOData();
 		
 	}
 	

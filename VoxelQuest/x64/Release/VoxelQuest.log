@@ -1,4 +1,4 @@
-﻿Build started 4/27/2016 11:59:50 AM.
+﻿Build started 4/28/2016 9:36:13 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -365,12 +365,12 @@
          
          cellsPerNodeXY: 16
          cellsPerNodeZ: 8
-         holdersPerBlock: 64
-         cellsPerBlock: 256
-         terDataBufPitchScaledXY 16
+         holdersPerBlock: 128
+         cellsPerBlock: 512
+         terDataBufPitchScaledXY 32
          cellsPerHolder: 4
          cellsPerWorld: 32768
-         blocksPerWorld: 128
+         blocksPerWorld: 64
          MAX_UNIFORMS: 65536
          
          
@@ -1026,4 +1026,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:07:42.42
+Time Elapsed 00:01:53.39

@@ -99,11 +99,11 @@ const static int MAX_HOLDER_LOAD_COUNT = 512;
 //const static int RASTER_HOLDER_RAD = 8;
 
 const static int VOXELS_PER_CELL = 16;
-const static int CELLS_PER_HOLDER = 4;
-const static int HOLDERS_PER_CHUNK = 2;
+const static int CELLS_PER_HOLDER = 8;
+const static int HOLDERS_PER_CHUNK = 4;
 const static int CHUNKS_PER_BLOCK = 32;
 
-const static int HOLDER_MOD = 4; // HOLDER_MOD*CELLS_PER_HOLDER should == 16
+const static int HOLDER_MOD = 2; // HOLDER_MOD*CELLS_PER_HOLDER should == 16
 
 
 const static int PADDING_IN_CELLS = 1;

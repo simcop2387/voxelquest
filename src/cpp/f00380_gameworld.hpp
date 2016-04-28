@@ -1509,9 +1509,13 @@ public:
 			singleton->setShaderTexture3D(13, singleton->volumeWrappers[E_VW_VORO]->volId);
 		}
 		
+		
+		
 		// if (!getBlockHolders) {
 		// 	singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
 		// }
+		
+		singleton->setShaderTexture(15, singleton->imageVoro->tid);
 		
 		singleton->setShaderfVec3("bufferDim", &(curVW->terGenDim) );
 		
@@ -1535,6 +1539,7 @@ public:
 		
 		singleton->fsQuad.draw();
 		
+		singleton->setShaderTexture(15, 0);
 		// if (!getBlockHolders) {
 		// 	singleton->setShaderTexture3D(14, 0);
 		// }
@@ -1569,49 +1574,7 @@ public:
 		
 	}
 
-	void updatePrimArr() {
-		int i;
-		int j;
-		
-		ObjectStruct* curObj;
-		FIVector4* baseGeom;
-		for (i = 0; i < singleton->tempPrimList.size(); i++) {
-			curObj = &(singleton->tempPrimList[i]);
-			//baseGeom = singleton->getGeomRef(curObj->templateId,0);
-			
-			singleton->primArr[i*8 + 0] = curObj->offset.x;
-			singleton->primArr[i*8 + 1] = curObj->offset.y;
-			singleton->primArr[i*8 + 2] = curObj->offset.z;
-			singleton->primArr[i*8 + 3] = curObj->templateId;
-			
-			singleton->primArr[i*8 + 4] = 0;
-			singleton->primArr[i*8 + 5] = 0;
-			singleton->primArr[i*8 + 6] = 0;
-			singleton->primArr[i*8 + 7] = 0;
-			
-		}
-		
-		i = singleton->tempPrimList.size();
-		
-		if (singleton->settings[E_BS_PLACING_GEOM]) {
-			tempVec1.copyFrom(&(singleton->geomPoints[0]));
-			tempVec1.addXYZRef(&(singleton->geomOrigOffset));
-			tempVec1.setFW(singleton->curPrimTemplate);
-			tempVec2.setFXYZW(0.0f,0.0f,0.0f,0.0f);
-			
-			singleton->primArr[i*8 + 0] = tempVec1[0];
-			singleton->primArr[i*8 + 1] = tempVec1[1];
-			singleton->primArr[i*8 + 2] = tempVec1[2];
-			singleton->primArr[i*8 + 3] = tempVec1[3];
-			
-			singleton->primArr[i*8 + 4] = 0;
-			singleton->primArr[i*8 + 5] = 0;
-			singleton->primArr[i*8 + 6] = 0;
-			singleton->primArr[i*8 + 7] = 0;
-			
-		}
-		
-	}
+	
 
 
 
@@ -1982,7 +1945,10 @@ public:
 		
 		singleton->setShaderTexture3D(13, singleton->volumeWrappers[E_VW_VORO]->volId);
 		//singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
-		singleton->sampleFBO("noiseFBOLinear", 15);
+		
+		
+		//singleton->sampleFBO("noiseFBOLinear", 15);
+		singleton->setShaderTexture(15, singleton->imageVoro->tid);
 		
 		// if (!doPoly) {
 		// 	singleton->sampleFBO(polyFBOStrings[NUM_POLY_STRINGS],14);
@@ -2122,7 +2088,8 @@ public:
 		// }
 		
 		
-		singleton->unsampleFBO("noiseFBOLinear", 15);
+		//singleton->unsampleFBO("noiseFBOLinear", 15);
+		singleton->setShaderTexture(15, 0);
 		//singleton->setShaderTexture3D(14, 0);
 		singleton->setShaderTexture3D(13, 0);
 		
@@ -5211,6 +5178,7 @@ DONE_WITH_MAP:
 		singleton->sampleFBO("hmFBO", 1); //Linear
 		singleton->sampleFBO("cityFBO", 2);
 		singleton->sampleFBO("hmFBOLinear",3);
+		singleton->setShaderTexture(4, singleton->imageVoro->tid);
 		//singleton->sampleFBO("frontFaceMapFBO",4);
 
 		
@@ -5240,6 +5208,7 @@ DONE_WITH_MAP:
 		//singleton->drawFSQuad();
 
 		
+		singleton->setShaderTexture(4, 0);
 		//singleton->unsampleFBO("frontFaceMapFBO",4);
 		singleton->unsampleFBO("hmFBOLinear",3);
 		singleton->unsampleFBO("cityFBO", 2);
@@ -5470,8 +5439,8 @@ DONE_WITH_MAP:
 			
 			
 			
-			
-			
+			glEnable(GL_CULL_FACE);
+			glCullFace(GL_FRONT);
 			
 			singleton->bindShader("BasicPrimShader");
 			singleton->bindFBO("rasterLowFBO");
@@ -5480,8 +5449,8 @@ DONE_WITH_MAP:
 				
 				singleton->setShaderTBO(
 					0,
-					singleton->limbTBO.tbo_tex,
-					singleton->limbTBO.tbo_buf,
+					singleton->primTBO.tbo_tex,
+					singleton->primTBO.tbo_buf,
 					true
 				);
 				
@@ -5494,8 +5463,8 @@ DONE_WITH_MAP:
 				
 				// singleton->setShaderfVec4("paramFetch1", &tempVec1 );
 				// singleton->setShaderfVec4("paramFetch2", &tempVec2 );
-				singleton->setShaderFloat("primArrLength",numCubes);
-				updatePrimArr();
+				// singleton->setShaderFloat("primArrLength",numCubes);
+				
 				singleton->setShaderArrayfVec4("primArr", singleton->primArr, numCubes*2);
 				singleton->zoCubes.drawCubes(numCubes);
 				
@@ -5508,9 +5477,10 @@ DONE_WITH_MAP:
 			singleton->unbindShader();
 			
 			
-			
-			
+			glCullFace(GL_BACK);
+			glDisable(GL_CULL_FACE);
 		}
+		
 		
 		
 		if (!DO_POINTS) {

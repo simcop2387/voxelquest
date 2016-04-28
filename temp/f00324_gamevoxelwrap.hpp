@@ -228,7 +228,7 @@ public:
 				jj = (q-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
 				ii = q-(kk*voxelsPerHolderPad*voxelsPerHolderPad + jj*voxelsPerHolderPad);
 				
-				if (voxelBuffer->getFlag(q,E_OCT_SURFACE)) {
+				if (voxelBuffer->getFlag(q,E_OCT_SURFACE)) { //(true){//
 					
 					voxOffset.x = ii;
 					voxOffset.y = jj;
@@ -691,10 +691,12 @@ public:
 		voxelBuffer = &(basePD->voxelBuffer);
 		voxelBuffer->clearAllNodes();
 		
-		while( findNextCoord(&voxResult) ) {
-			floodFill(voxResult);
-			//goto DONE_WITH_IT;
-		}
+		findNextCoord(&voxResult);
+		
+		// while( findNextCoord(&voxResult) ) {
+		// 	floodFill(voxResult);
+		// 	//goto DONE_WITH_IT;
+		// }
 		
 		DONE_WITH_IT:
 		
@@ -835,57 +837,60 @@ public:
 											voxResult->set(
 												curVoxel.x, curVoxel.y, curVoxel.z
 											);
-											return true;
+											floodFill(*voxResult);
+											goto NEXT_FILL_STEP;
+											//return true;
 										}
 										
 									}
 								}
 								
-								for (jj = 0; jj < voxelsPerCell; jj++) {
-									for (ii = 0; ii < voxelsPerCell; ii++) {
-										for (r = 0; r < 6; r++) {
-											switch (r) {
-												case 0:
-													curVoxel.set(0, ii, jj);
-												break;
-												case 1:
-													curVoxel.set(voxelsPerCellM1, ii, jj);
-												break;
-												case 2:
-													curVoxel.set( ii, 0, jj );
-												break;
-												case 3:
-													curVoxel.set( ii, voxelsPerCellM1, jj );
-												break;
-												case 4:
-													curVoxel.set(ii,jj,0);
-												break;
-												case 5:
-													curVoxel.set(ii,jj,voxelsPerCellM1);
-												break;
-											}
+							// 	for (jj = 0; jj < voxelsPerCell; jj++) {
+							// 		for (ii = 0; ii < voxelsPerCell; ii++) {
+							// 			for (r = 0; r < 6; r++) {
+							// 				switch (r) {
+							// 					case 0:
+							// 						curVoxel.set(0, ii, jj);
+							// 					break;
+							// 					case 1:
+							// 						curVoxel.set(voxelsPerCellM1, ii, jj);
+							// 					break;
+							// 					case 2:
+							// 						curVoxel.set( ii, 0, jj );
+							// 					break;
+							// 					case 3:
+							// 						curVoxel.set( ii, voxelsPerCellM1, jj );
+							// 					break;
+							// 					case 4:
+							// 						curVoxel.set(ii,jj,0);
+							// 					break;
+							// 					case 5:
+							// 						curVoxel.set(ii,jj,voxelsPerCellM1);
+							// 					break;
+							// 				}
 											
-											//curVoxel += offsetInVoxels;
-											curVoxel += localOffset;
-											if (isSurfaceVoxel(&curVoxel,lastPtr,false)) {
-												voxResult->set(
-													curVoxel.x, curVoxel.y, curVoxel.z
-												);
-												return true;
-											}
+							// 				//curVoxel += offsetInVoxels;
+							// 				curVoxel += localOffset;
+							// 				if (isSurfaceVoxel(&curVoxel,lastPtr,false)) {
+							// 					voxResult->set(
+							// 						curVoxel.x, curVoxel.y, curVoxel.z
+							// 					);
+							// 					return true;
+							// 				}
 											
-									}
-								}
-								
-								
-								
-							}
+							// 		}
+							// 	}
+							// }
 						
 						}
 						
 								
 							
 					}
+					
+NEXT_FILL_STEP:
+					;
+					
 						
 				}
 			}
@@ -951,7 +956,6 @@ public:
 			for (q = 0; q < NUM_ORIENTATIONS; q++) {
 				tempVox = curVox + DIR_VECS_IV[q];
 				
-				
 				if (isSurfaceVoxel(&tempVox,lastPtr,true)) {
 					basePD->fillStack.push_back(tempVox);
 					voxelBuffer->setFlag(lastPtr,E_OCT_VISITED);
@@ -963,8 +967,6 @@ public:
 			
 			for (q = 0; q < NUM_ORIENTATIONS; q++) {
 				tempVox = curVox + DIR_VECS_IV[q];
-				
-				
 				
 				if (isInvSurfaceVoxel(&tempVox,curNode,lastPtr,true)) {
 					basePD->fillStack.push_back(tempVox);
@@ -1052,6 +1054,7 @@ public:
 		int tempPtr;
 		
 		bool isSurface = false;
+		bool isOnEdge = false;
 		
 		uint curSide = E_OCT_XP;
 		
@@ -1071,6 +1074,9 @@ public:
 						isSurface = true;
 					}
 				}
+				else {
+					isOnEdge = true;
+				}
 				
 				curSide *= 2;
 				
@@ -1081,7 +1087,7 @@ public:
 			voxelBuffer->setFlag(curPtr, E_OCT_SURFACE);
 		}
 		
-		return isSurface;
+		return isSurface||isOnEdge;
 	}
 
 	int getVoxelAtCoord(ivec3* pos) {

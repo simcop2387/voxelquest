@@ -4,6 +4,7 @@ uniform sampler3D Texture0; // pal fbo
 uniform sampler2D Texture1; // hmFBO
 uniform sampler2D Texture2; // cityFBO;
 uniform sampler2D Texture3; // hmFBOLinear
+uniform sampler2D Texture4; // imagevoro
 //varying vec2 TexCoord0;
 
 uniform vec4 blitCoords;
@@ -188,7 +189,7 @@ void main() {
 
     
 
-    float testHeight = getTerHeight(Texture3,newTC,newTC,0.0).y;
+    float testHeight = getTerHeight(Texture3,Texture4,newTC,newTC,0.0).y;
     float seaHeight = seaLevel;        
 
     float isAboveWater = float(testHeight > seaHeight);

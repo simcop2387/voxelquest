@@ -421,6 +421,7 @@ public:
   float floorHeightInCells;
   float roofHeightInCells;
   float wallRadInCells;
+  Image * imageVoro;
   Image * imageHM0;
   Image * imageHM1;
   Image * cloudImage;
@@ -536,6 +537,7 @@ public:
   void drawBoxRad (btVector3 v0, btVector3 v1);
   void drawBox (FIVector4 * v0, FIVector4 * v1, int faceFlag = 2);
   void getMaterialString ();
+  void updatePrimArr ();
   void updatePrimTBOData ();
   bool getPrimTemplateString ();
   void refreshIncludeMap ();
@@ -2294,7 +2296,6 @@ public:
   void toggleVis (GameEnt * se);
   void ensureBlocks ();
   void drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * maxc, bool copyToTex, bool forceFinish, bool getVoro = false, bool getBlockHolders = false);
-  void updatePrimArr ();
   void updateLimbTBOData (bool showLimbs);
   void drawPrim (bool doSphereMap, bool doTer, bool doPoly);
   void drawOrg (GameOrg * curOrg, bool drawAll);

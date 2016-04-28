@@ -98,9 +98,9 @@ const static int MAX_THREADS = 6;
 const static int MAX_HOLDER_LOAD_COUNT = 512;
 //const static int RASTER_HOLDER_RAD = 8;
 
-const static int VOXELS_PER_CELL = 16;
+const static int VOXELS_PER_CELL = 32;
 const static int CELLS_PER_HOLDER = 4;
-const static int HOLDERS_PER_CHUNK = 2;
+const static int HOLDERS_PER_CHUNK = 4;
 const static int CHUNKS_PER_BLOCK = 32;
 
 const static int HOLDER_MOD = 4; // HOLDER_MOD*CELLS_PER_HOLDER should == 16
@@ -12103,7 +12103,7 @@ public:
 		}
 		
 		glBindVertexArray(vao);
-		glDrawElements(GL_TRIANGLES, numCubes*24, GL_UNSIGNED_INT, 0); //sizeOfID
+		glDrawElements(GL_TRIANGLES, (numCubes)*36, GL_UNSIGNED_INT, 0); //sizeOfID //&(vi->indexVec[0])
 		glBindVertexArray(0);
 	}
 	
@@ -25251,6 +25251,7 @@ public:
   float floorHeightInCells;
   float roofHeightInCells;
   float wallRadInCells;
+  Image * imageVoro;
   Image * imageHM0;
   Image * imageHM1;
   Image * cloudImage;
@@ -25366,6 +25367,7 @@ public:
   void drawBoxRad (btVector3 v0, btVector3 v1);
   void drawBox (FIVector4 * v0, FIVector4 * v1, int faceFlag = 2);
   void getMaterialString ();
+  void updatePrimArr ();
   void updatePrimTBOData ();
   bool getPrimTemplateString ();
   void refreshIncludeMap ();
@@ -27124,7 +27126,6 @@ public:
   void toggleVis (GameEnt * se);
   void ensureBlocks ();
   void drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * maxc, bool copyToTex, bool forceFinish, bool getVoro = false, bool getBlockHolders = false);
-  void updatePrimArr ();
   void updateLimbTBOData (bool showLimbs);
   void drawPrim (bool doSphereMap, bool doTer, bool doPoly);
   void drawOrg (GameOrg * curOrg, bool drawAll);
@@ -27542,11 +27543,13 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		guiSaveLoc = "..\\data\\saves\\save0\\compMap.txt";
 
 		//invItems = loadBMP("..\\data\\invitems.bmp");
+		imageVoro = loadBMP("..\\data\\voro.bmp");
 		imageHM0 = loadBMP("..\\data\\hm0.bmp");
 		imageHM1 = loadBMP("..\\data\\hm1.bmp");
 		cloudImage = loadBMP("..\\data\\clouds.bmp");
 
 		//invItems->getTextureId(GL_NEAREST);
+		imageVoro->getTextureId(GL_NEAREST);
 		imageHM0->getTextureId(GL_NEAREST);
 		imageHM1->getTextureId(GL_NEAREST);
 		cloudImage->getTextureId(GL_LINEAR);
@@ -30431,6 +30434,50 @@ void Singleton::getMaterialString ()
 		}
 		
 	}
+void Singleton::updatePrimArr ()
+                             {
+		int i;
+		int j;
+		
+		ObjectStruct* curObj;
+		FIVector4* baseGeom;
+		for (i = 0; i < tempPrimList.size(); i++) {
+			curObj = &(tempPrimList[i]);
+			//baseGeom = getGeomRef(curObj->templateId,0);
+			
+			primArr[i*8 + 0] = curObj->offset.x;
+			primArr[i*8 + 1] = curObj->offset.y;
+			primArr[i*8 + 2] = curObj->offset.z;
+			primArr[i*8 + 3] = curObj->templateId;
+			
+			primArr[i*8 + 4] = 0;
+			primArr[i*8 + 5] = 0;
+			primArr[i*8 + 6] = 0;
+			primArr[i*8 + 7] = 0;
+			
+		}
+		
+		i = tempPrimList.size();
+		
+		if (settings[E_BS_PLACING_GEOM]) {
+			tempVec1.copyFrom(&(geomPoints[0]));
+			tempVec1.addXYZRef(&(geomOrigOffset));
+			tempVec1.setFW(curPrimTemplate);
+			tempVec2.setFXYZW(0.0f,0.0f,0.0f,0.0f);
+			
+			primArr[i*8 + 0] = tempVec1[0];
+			primArr[i*8 + 1] = tempVec1[1];
+			primArr[i*8 + 2] = tempVec1[2];
+			primArr[i*8 + 3] = tempVec1[3];
+			
+			primArr[i*8 + 4] = 0;
+			primArr[i*8 + 5] = 0;
+			primArr[i*8 + 6] = 0;
+			primArr[i*8 + 7] = 0;
+			
+		}
+		
+	}
 void Singleton::updatePrimTBOData ()
                                  {
 		
@@ -30448,7 +30495,7 @@ void Singleton::updatePrimTBOData ()
 			
 		}
 		
-		primTBO.update(primTBOData,NULL,dataInd*4);
+		primTBO.update(primTBOData,NULL,primTemplateStack.size()*4);
 		
 		
 	}
@@ -30550,7 +30597,9 @@ bool Singleton::getPrimTemplateString ()
 		
 		includeMap["primTemplates"] = resString;
 		
+		
 		updatePrimTBOData();
+		
 		
 		return true;
 	}
@@ -32850,6 +32899,9 @@ void Singleton::updateCurGeom (int x, int y)
 			
 		}
 		
+		updatePrimArr();
+		
+		//updatePrimTBOData();
 		
 	}
 void Singleton::mouseMove (int _x, int _y)
@@ -38285,7 +38337,7 @@ void GameVoxelWrap::fillVec ()
 				jj = (q-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
 				ii = q-(kk*voxelsPerHolderPad*voxelsPerHolderPad + jj*voxelsPerHolderPad);
 				
-				if (voxelBuffer->getFlag(q,E_OCT_SURFACE)) {
+				if (voxelBuffer->getFlag(q,E_OCT_SURFACE)) { //(true){//
 					
 					voxOffset.x = ii;
 					voxOffset.y = jj;
@@ -38748,10 +38800,12 @@ void GameVoxelWrap::process (GamePageHolder * _gph)
 		voxelBuffer = &(basePD->voxelBuffer);
 		voxelBuffer->clearAllNodes();
 		
-		while( findNextCoord(&voxResult) ) {
-			floodFill(voxResult);
-			//goto DONE_WITH_IT;
-		}
+		findNextCoord(&voxResult);
+		
+		// while( findNextCoord(&voxResult) ) {
+		// 	floodFill(voxResult);
+		// 	//goto DONE_WITH_IT;
+		// }
 		
 		DONE_WITH_IT:
 		
@@ -38884,57 +38938,60 @@ bool GameVoxelWrap::findNextCoord (ivec3 * voxResult)
 											voxResult->set(
 												curVoxel.x, curVoxel.y, curVoxel.z
 											);
-											return true;
+											floodFill(*voxResult);
+											goto NEXT_FILL_STEP;
+											//return true;
 										}
 										
 									}
 								}
 								
-								for (jj = 0; jj < voxelsPerCell; jj++) {
-									for (ii = 0; ii < voxelsPerCell; ii++) {
-										for (r = 0; r < 6; r++) {
-											switch (r) {
-												case 0:
-													curVoxel.set(0, ii, jj);
-												break;
-												case 1:
-													curVoxel.set(voxelsPerCellM1, ii, jj);
-												break;
-												case 2:
-													curVoxel.set( ii, 0, jj );
-												break;
-												case 3:
-													curVoxel.set( ii, voxelsPerCellM1, jj );
-												break;
-												case 4:
-													curVoxel.set(ii,jj,0);
-												break;
-												case 5:
-													curVoxel.set(ii,jj,voxelsPerCellM1);
-												break;
-											}
+							// 	for (jj = 0; jj < voxelsPerCell; jj++) {
+							// 		for (ii = 0; ii < voxelsPerCell; ii++) {
+							// 			for (r = 0; r < 6; r++) {
+							// 				switch (r) {
+							// 					case 0:
+							// 						curVoxel.set(0, ii, jj);
+							// 					break;
+							// 					case 1:
+							// 						curVoxel.set(voxelsPerCellM1, ii, jj);
+							// 					break;
+							// 					case 2:
+							// 						curVoxel.set( ii, 0, jj );
+							// 					break;
+							// 					case 3:
+							// 						curVoxel.set( ii, voxelsPerCellM1, jj );
+							// 					break;
+							// 					case 4:
+							// 						curVoxel.set(ii,jj,0);
+							// 					break;
+							// 					case 5:
+							// 						curVoxel.set(ii,jj,voxelsPerCellM1);
+							// 					break;
+							// 				}
 											
-											//curVoxel += offsetInVoxels;
-											curVoxel += localOffset;
-											if (isSurfaceVoxel(&curVoxel,lastPtr,false)) {
-												voxResult->set(
-													curVoxel.x, curVoxel.y, curVoxel.z
-												);
-												return true;
-											}
+							// 				//curVoxel += offsetInVoxels;
+							// 				curVoxel += localOffset;
+							// 				if (isSurfaceVoxel(&curVoxel,lastPtr,false)) {
+							// 					voxResult->set(
+							// 						curVoxel.x, curVoxel.y, curVoxel.z
+							// 					);
+							// 					return true;
+							// 				}
 											
-									}
-								}
-								
-								
-								
-							}
+							// 		}
+							// 	}
+							// }
 						
 						}
 						
 								
 							
 					}
+					
+NEXT_FILL_STEP:
+					;
+					
 						
 				}
 			}
@@ -38999,7 +39056,6 @@ void GameVoxelWrap::floodFill (ivec3 startVox)
 			for (q = 0; q < NUM_ORIENTATIONS; q++) {
 				tempVox = curVox + DIR_VECS_IV[q];
 				
-				
 				if (isSurfaceVoxel(&tempVox,lastPtr,true)) {
 					basePD->fillStack.push_back(tempVox);
 					voxelBuffer->setFlag(lastPtr,E_OCT_VISITED);
@@ -39011,8 +39067,6 @@ void GameVoxelWrap::floodFill (ivec3 startVox)
 			
 			for (q = 0; q < NUM_ORIENTATIONS; q++) {
 				tempVox = curVox + DIR_VECS_IV[q];
-				
-				
 				
 				if (isInvSurfaceVoxel(&tempVox,curNode,lastPtr,true)) {
 					basePD->fillStack.push_back(tempVox);
@@ -39096,6 +39150,7 @@ bool GameVoxelWrap::isSurfaceVoxel (ivec3 * pos, int & curPtr, bool checkVisited
 		int tempPtr;
 		
 		bool isSurface = false;
+		bool isOnEdge = false;
 		
 		uint curSide = E_OCT_XP;
 		
@@ -39115,6 +39170,9 @@ bool GameVoxelWrap::isSurfaceVoxel (ivec3 * pos, int & curPtr, bool checkVisited
 						isSurface = true;
 					}
 				}
+				else {
+					isOnEdge = true;
+				}
 				
 				curSide *= 2;
 				
@@ -39125,7 +39183,7 @@ bool GameVoxelWrap::isSurfaceVoxel (ivec3 * pos, int & curPtr, bool checkVisited
 			voxelBuffer->setFlag(curPtr, E_OCT_SURFACE);
 		}
 		
-		return isSurface;
+		return isSurface||isOnEdge;
 	}
 int GameVoxelWrap::getVoxelAtCoord (ivec3 * pos)
                                         {
@@ -66153,9 +66211,13 @@ void GameWorld::drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * ma
 			singleton->setShaderTexture3D(13, singleton->volumeWrappers[E_VW_VORO]->volId);
 		}
 		
+		
+		
 		// if (!getBlockHolders) {
 		// 	singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
 		// }
+		
+		singleton->setShaderTexture(15, singleton->imageVoro->tid);
 		
 		singleton->setShaderfVec3("bufferDim", &(curVW->terGenDim) );
 		
@@ -66179,6 +66241,7 @@ void GameWorld::drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * ma
 		
 		singleton->fsQuad.draw();
 		
+		singleton->setShaderTexture(15, 0);
 		// if (!getBlockHolders) {
 		// 	singleton->setShaderTexture3D(14, 0);
 		// }
@@ -66209,50 +66272,6 @@ void GameWorld::drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * ma
 			else {
 				curVW->copyCharArr(fbow->pixelsChar);
 			}
-		}
-		
-	}
-void GameWorld::updatePrimArr ()
-                             {
-		int i;
-		int j;
-		
-		ObjectStruct* curObj;
-		FIVector4* baseGeom;
-		for (i = 0; i < singleton->tempPrimList.size(); i++) {
-			curObj = &(singleton->tempPrimList[i]);
-			//baseGeom = singleton->getGeomRef(curObj->templateId,0);
-			
-			singleton->primArr[i*8 + 0] = curObj->offset.x;
-			singleton->primArr[i*8 + 1] = curObj->offset.y;
-			singleton->primArr[i*8 + 2] = curObj->offset.z;
-			singleton->primArr[i*8 + 3] = curObj->templateId;
-			
-			singleton->primArr[i*8 + 4] = 0;
-			singleton->primArr[i*8 + 5] = 0;
-			singleton->primArr[i*8 + 6] = 0;
-			singleton->primArr[i*8 + 7] = 0;
-			
-		}
-		
-		i = singleton->tempPrimList.size();
-		
-		if (singleton->settings[E_BS_PLACING_GEOM]) {
-			tempVec1.copyFrom(&(singleton->geomPoints[0]));
-			tempVec1.addXYZRef(&(singleton->geomOrigOffset));
-			tempVec1.setFW(singleton->curPrimTemplate);
-			tempVec2.setFXYZW(0.0f,0.0f,0.0f,0.0f);
-			
-			singleton->primArr[i*8 + 0] = tempVec1[0];
-			singleton->primArr[i*8 + 1] = tempVec1[1];
-			singleton->primArr[i*8 + 2] = tempVec1[2];
-			singleton->primArr[i*8 + 3] = tempVec1[3];
-			
-			singleton->primArr[i*8 + 4] = 0;
-			singleton->primArr[i*8 + 5] = 0;
-			singleton->primArr[i*8 + 6] = 0;
-			singleton->primArr[i*8 + 7] = 0;
-			
 		}
 		
 	}
@@ -66624,7 +66643,10 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		singleton->setShaderTexture3D(13, singleton->volumeWrappers[E_VW_VORO]->volId);
 		//singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
-		singleton->sampleFBO("noiseFBOLinear", 15);
+		
+		
+		//singleton->sampleFBO("noiseFBOLinear", 15);
+		singleton->setShaderTexture(15, singleton->imageVoro->tid);
 		
 		// if (!doPoly) {
 		// 	singleton->sampleFBO(polyFBOStrings[NUM_POLY_STRINGS],14);
@@ -66764,7 +66786,8 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		// }
 		
 		
-		singleton->unsampleFBO("noiseFBOLinear", 15);
+		//singleton->unsampleFBO("noiseFBOLinear", 15);
+		singleton->setShaderTexture(15, 0);
 		//singleton->setShaderTexture3D(14, 0);
 		singleton->setShaderTexture3D(13, 0);
 		
@@ -69450,6 +69473,7 @@ void GameWorld::drawMap ()
 		singleton->sampleFBO("hmFBO", 1); //Linear
 		singleton->sampleFBO("cityFBO", 2);
 		singleton->sampleFBO("hmFBOLinear",3);
+		singleton->setShaderTexture(4, singleton->imageVoro->tid);
 		//singleton->sampleFBO("frontFaceMapFBO",4);
 
 		
@@ -69479,6 +69503,7 @@ void GameWorld::drawMap ()
 		//singleton->drawFSQuad();
 
 		
+		singleton->setShaderTexture(4, 0);
 		//singleton->unsampleFBO("frontFaceMapFBO",4);
 		singleton->unsampleFBO("hmFBOLinear",3);
 		singleton->unsampleFBO("cityFBO", 2);
@@ -69621,8 +69646,8 @@ void GameWorld::rasterHolders (bool doShadow)
 			
 			
 			
-			
-			
+			glEnable(GL_CULL_FACE);
+			glCullFace(GL_FRONT);
 			
 			singleton->bindShader("BasicPrimShader");
 			singleton->bindFBO("rasterLowFBO");
@@ -69631,8 +69656,8 @@ void GameWorld::rasterHolders (bool doShadow)
 				
 				singleton->setShaderTBO(
 					0,
-					singleton->limbTBO.tbo_tex,
-					singleton->limbTBO.tbo_buf,
+					singleton->primTBO.tbo_tex,
+					singleton->primTBO.tbo_buf,
 					true
 				);
 				
@@ -69645,8 +69670,8 @@ void GameWorld::rasterHolders (bool doShadow)
 				
 				// singleton->setShaderfVec4("paramFetch1", &tempVec1 );
 				// singleton->setShaderfVec4("paramFetch2", &tempVec2 );
-				singleton->setShaderFloat("primArrLength",numCubes);
-				updatePrimArr();
+				// singleton->setShaderFloat("primArrLength",numCubes);
+				
 				singleton->setShaderArrayfVec4("primArr", singleton->primArr, numCubes*2);
 				singleton->zoCubes.drawCubes(numCubes);
 				
@@ -69659,9 +69684,10 @@ void GameWorld::rasterHolders (bool doShadow)
 			singleton->unbindShader();
 			
 			
-			
-			
+			glCullFace(GL_BACK);
+			glDisable(GL_CULL_FACE);
 		}
+		
 		
 		
 		if (!DO_POINTS) {

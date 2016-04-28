@@ -31,6 +31,9 @@ uniform sampler3D Texture13;
 //E_VW_WORLD
 uniform sampler3D Texture14;
 
+//imageVoro
+uniform sampler2D Texture15;
+
 $
 
 

@@ -3467,7 +3467,7 @@ public:
 		}
 		
 		glBindVertexArray(vao);
-		glDrawElements(GL_TRIANGLES, numCubes*24, GL_UNSIGNED_INT, 0); //sizeOfID
+		glDrawElements(GL_TRIANGLES, (numCubes)*36, GL_UNSIGNED_INT, 0); //sizeOfID //&(vi->indexVec[0])
 		glBindVertexArray(0);
 	}
 	
