@@ -12,7 +12,7 @@ bool ND_TRACE_OFF = false;
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT "27015"
 
-const static int MAX_PRIM_DATA_IN_BYTES = 32*1024*1024;
+const static int MAX_PRIM_DATA_IN_BYTES = 8*1024*1024;
 const static int MAX_LIMB_DATA_IN_BYTES = 65536;
 
 const static bool POLYS_FOR_CELLS = false;
@@ -77,9 +77,9 @@ const static float ORG_SCALE_BASE = 0.5f;
 
 const static int SHADOW_MAP_RES = 2048;
 
-const static int DEF_SCALE_FACTOR = 1;
-const static int RENDER_SCALE_FACTOR = 8;
-const static int RASTER_LOW_SCALE_FACTOR = 4;
+const static int DEF_SCALE_FACTOR = 2;
+const static int RENDER_SCALE_FACTOR = 4;
+const static int RASTER_LOW_SCALE_FACTOR = 2;
 const static bool SINGLE_THREADED = false;
 
 int TOT_POINT_COUNT = 0;
@@ -98,9 +98,9 @@ const static int MAX_THREADS = 6;
 const static int MAX_HOLDER_LOAD_COUNT = 512;
 //const static int RASTER_HOLDER_RAD = 8;
 
-const static int VOXELS_PER_CELL = 32;
+const static int VOXELS_PER_CELL = 16;
 const static int CELLS_PER_HOLDER = 4;
-const static int HOLDERS_PER_CHUNK = 4;
+const static int HOLDERS_PER_CHUNK = 2;
 const static int CHUNKS_PER_BLOCK = 32;
 
 const static int HOLDER_MOD = 4; // HOLDER_MOD*CELLS_PER_HOLDER should == 16

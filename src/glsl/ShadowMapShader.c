@@ -3,7 +3,7 @@
 
 uniform vec2 clipDist;
 uniform vec2 bufferDim;
-uniform vec3 cameraPos;
+//uniform vec3 cameraPos;
 uniform vec3 lightPos;
 
 // uniform vec3 minBounds;
@@ -50,7 +50,7 @@ void main() {
 	vec4 screenPos = lightSpaceMatrix*worldPos;
 	
 	screenPos.z /= 2.0;
-		
+	
 	gl_Position = screenPos;
 	
 }

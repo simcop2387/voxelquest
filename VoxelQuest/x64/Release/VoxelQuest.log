@@ -1,4 +1,4 @@
-﻿Build started 4/28/2016 9:36:13 AM.
+﻿Build started 4/29/2016 3:25:29 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -365,12 +365,12 @@
          
          cellsPerNodeXY: 16
          cellsPerNodeZ: 8
-         holdersPerBlock: 128
-         cellsPerBlock: 512
-         terDataBufPitchScaledXY 32
+         holdersPerBlock: 64
+         cellsPerBlock: 256
+         terDataBufPitchScaledXY 16
          cellsPerHolder: 4
          cellsPerWorld: 32768
-         blocksPerWorld: 64
+         blocksPerWorld: 128
          MAX_UNIFORMS: 65536
          
          
@@ -1022,8 +1022,702 @@
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
          GL_MAX_TEXTURE_BUFFER_SIZE 134217728
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+     1>EXEC : Shader  418  ( ../src/glsl/HolderShader.c ) compile error : 0(17) : error C1311: qualifier "flat/smooth/noperspective" cannot apply to this type
+              
+     1>EXEC : Program  420  link error : Vertex info
+         -----------
+     1>0(17): error C1311: qualifier "flat/smooth/noperspective" cannot apply to this type
+                
+         SHADER_DUMP
+         Save SuccessfulShaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+     1>EXEC : Program  672  link error : Link info
+         ---------
+     1>EXEC : error : interpolation modifier mismatch for varying parameter (named vdata0) between shader stages
+                
+         SHADER_DUMP
+         Save SuccessfulShaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         
+         Number of voxels (in millions): 2.58605
+         Available pdPool: 6
+         FPS: 289.89
+         Microseconds per frame: 3449.61
+         Microseconds per million voxels: 1333.98
+         
+         cur step: E_GEOM_POINTS_OFFSET
+         curPrimTemplate 2
+         curPrimTemplate 3
+         curPrimTemplate 4
+         curPrimTemplate 5
+         curPrimTemplate 4
+         cur step: E_GEOM_POINTS_OFFSET
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+     1>EXEC : Shader  1136  ( ../src/glsl/BasicPrimShader.c ) compile error : 0(141) : error C1110: function "mapPrim" has no return statement
+              
+     1>EXEC : Program  1137  link error : Fragment info
+         -------------
+     1>0(141): error C1110: function "mapPrim" has no return statement
+                
+         SHADER_DUMP
+         Save SuccessfulShaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         curPrimTemplate 5
+         curPrimTemplate 6
+         curPrimTemplate 7
+         curPrimTemplate 8
+         curPrimTemplate 7
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         cur step: E_GEOM_POINTS_OFFSET
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         curPrimTemplate 8
+         cur step: E_GEOM_POINTS_OFFSET
+         cur step: E_GEOM_POINTS_OFFSET
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         iNumSteps:  32         
+         curPrimTemplate 9
+         cur step: E_GEOM_POINTS_OFFSET
+         cur step: E_GEOM_POINTS_OFFSET
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+     1>EXEC : Shader  3950  ( ../src/glsl/LightShader.c ) compile error : 0(268) : error C0000: syntax error, unexpected '<', expecting "::" at token "<"
+     1>0(211): error C1110: function "calcShadowSS" has no return statement
+     1>0(279): error C0000: syntax error, unexpected reserved word "return" at token "return"
+     1>0(320): error C0000: syntax error, unexpected reserved word "for" at token "for"
+     1>0(408): error C0000: syntax error, unexpected reserved word "return" at token "return"
+     1>0(428): error C0000: syntax error, unexpected "+=", expecting "::" at token "+="
+     1>0(440): error C0000: 
+     1>EXEC : Program  3951  link error : Fragment info
+         -------------
+     1>0(268): error C0000: syntax error, unexpected '<', expecting "::" at token "<"
+     1>0(211): error C1110: function "calcShadowSS" has no return statement
+     1>0(279): error C0000: syntax error, unexpected reserved word "return" at token "return"
+     1>0(320): error C0000: syntax error, unexpected reserved word "for" at token "for"
+     1>0(408): error C0000: syntax error, unexpected reserved word "return" at token "return"
+     1>0(428): error C0000: syntax error, unexpected "+=", expecting "::" at toke
+         SHADER_DUMP
+         Save SuccessfulShaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         iNumSteps:  16         
+         iNumSteps:  8         
+         iNumSteps:  16         
+         iNumSteps:  32         
+         curPrimTemplate 9
+         curPrimTemplate 8
+         curPrimTemplate 7
+         curPrimTemplate 6
+         curPrimTemplate 5
+         curPrimTemplate 4
+         curPrimTemplate 3
+         cur step: E_GEOM_POINTS_OFFSET
+         updateHolderLookat 0
+         updateHolderLookat 1
+         medianCount 1
+         medianCount 2
+         medianCount 3
+         medianCount 0
+         medianCount 1
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         medianCount 2
+         medianCount 3
+         medianCount 0
+     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
+C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -1.
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
 
-Build succeeded.
+Build FAILED.
 
-Time Elapsed 00:01:53.39
+Time Elapsed 01:19:28.86

@@ -5610,7 +5610,7 @@ DONE_WITH_MAP:
 		
 		*/
 		
-		
+		singleton->setShaderInt("gridOn", singleton->settings[E_BS_SHOW_GRID]);
 		singleton->setShaderFloat("gammaVal", singleton->gammaVal);
 		singleton->setShaderFloat("cellsPerChunk",singleton->cellsPerChunk);
 		singleton->setShaderfVec3("lightPos", &(singleton->lightPos));

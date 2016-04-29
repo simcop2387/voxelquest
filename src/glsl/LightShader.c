@@ -14,6 +14,7 @@ uniform sampler3D Texture4;
 // shadowMapFBO
 uniform sampler2D Texture5;
 
+uniform bool gridOn;
 uniform float gammaVal;
 uniform vec3 brushCol;
 uniform vec4 brushPos;
@@ -153,7 +154,7 @@ vec3 getModCol(float lightRes, vec3 normVec, vec3 rd) {
 float calcShadowSS(vec3 begWorldPos, vec3 normVec) {
   
   
-  float rayDis = 0.5;
+  float rayDis = 4.0;
   int numShadSteps = 32;
   
   
@@ -207,9 +208,11 @@ float calcShadowSS(vec3 begWorldPos, vec3 normVec) {
       curWorldPos.w = distance(cameraPos.xyz,curWorldPos.xyz);
       
       
-      if (curWorldPos.w < (curRayPos.w+newBias)) {
-        hitCount += 1.0;
-      }
+      //if (curWorldPos.w < (curRayPos.w+newBias)) {
+      //  hitCount += 1.0;
+      //}
+      
+      hitCount += clamp( ((curRayPos.w+newBias)-curWorldPos.w)*4.0, 0.0,1.0);
       
       
     }
@@ -327,17 +330,24 @@ float calcAO(vec2 texc, vec3 worldPosition, vec3 normVec) {
 //bool globBool;
 
 
-float getGrid(vec3 worldPosition) {
-  float cellSize = cellsPerChunk;
+float getGrid(vec3 worldPosition, vec3 normVec) {
+  
+  vec3 absNorm = abs(normVec);
+  
+  float cellSize = 1.0;//cellsPerChunk;
   vec3 grid0 = 
       //floor(worldPosition.xyz/cellSize);
       abs(mod(worldPosition.xyz, cellSize) - cellSize / 2.0) * 2.0;
   
-  float unitBuf = (cellSize - cellSize/32.0);
+  float unitBuf = (cellSize - cellSize/8.0);
   
-  float gridVal0 = float(
-      (grid0.x >= unitBuf) ||
-      (grid0.y >= unitBuf)
+  float gridVal0 = clamp(
+      (
+        float(grid0.x >= unitBuf)*(1.0-absNorm.x) +
+        float(grid0.y >= unitBuf)*(1.0-absNorm.y) +
+        float(grid0.z >= unitBuf)*(1.0-absNorm.z)  
+      )*(1.0-distance(cameraPos.xyz,worldPosition.xyz)/30.0)
+      , 0.0, 1.0
   );
   
   return gridVal0;
@@ -425,7 +435,7 @@ void main() {
   
   vec2 borderCoords = abs(TexCoord0.xy*2.0-1.0);
   borderCoords *= bufferDim.xy;
-  vec2 border = bufferDim.xy-64.0;
+  vec2 border = bufferDim.xy-32.0;
   if (
     (borderCoords.x > border.x) ||
     (borderCoords.y > border.y)
@@ -560,10 +570,16 @@ void main() {
     
     //finalCol = vec3(shadowVal2);
     
+    //finalCol = vec3(shadowVal2);
+    
     camDis = distance(cameraPos.xyz,tex0.xyz);
     
+    if (gridOn) {
+      finalCol += getGrid(tex0.xyz,tex1.xyz)*vec3(0.1);
+    }
+    
     finalCol = mix(
-      finalCol,//+getGrid(tex0.xyz)*vec3(1.0,0.0,1.0),//mix(finalCol*0.25,finalCol,shadowVal),
+      finalCol,//mix(finalCol*0.25,finalCol,shadowVal),
       fogCol,
       fogDis
     );
@@ -582,24 +598,29 @@ void main() {
     }
   }
   
-  vec2 boxVal;
-  vec3 boxPos;
-  float camDisBox;
+  //
   
-  if (brushPos.w == 0.0) {
+  // vec2 boxVal;
+  // vec3 boxPos;
+  // float camDisBox;
+  
+  // if (brushPos.w == 0.0) {
     
-  }
-  else {
-    boxVal = aabbIntersect(ro,rd,brushPos.xyz-brushPos.w,brushPos.xyz+brushPos.w);
-    if (boxVal.x <= boxVal.y) {
-      boxPos = ro + rd*boxVal.x;
-      camDisBox = distance(cameraPos.xyz,boxPos.xyz);
+  // }
+  // else {
+  //   boxVal = aabbIntersect(ro,rd,brushPos.xyz-brushPos.w,brushPos.xyz+brushPos.w);
+    
+    
+    
+  //   if (boxVal.x <= boxVal.y) {
+  //     boxPos = ro + rd*boxVal.x;
+  //     camDisBox = distance(cameraPos.xyz,boxPos.xyz);
       
-      if (camDisBox < camDis) {
-        finalCol = mix(finalCol,brushCol,0.5);
-      }
-    }
-  }
+  //     if (camDisBox < camDis) {
+  //       finalCol = mix(finalCol,brushCol,0.5);
+  //     }
+  //   }
+  // }
   
   finalCol.xyz = doGamma(finalCol.xyz,gammaVal);
 

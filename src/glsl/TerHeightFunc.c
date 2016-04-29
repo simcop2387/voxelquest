@@ -45,7 +45,7 @@ vec2 getTerHeight(sampler2D mySampler, sampler2D voroSampler, vec2 newTC, vec2 n
 	float vheight = bilin(voroSampler, newTC.xy, mpv2, mpv).r;
 	float vheight2 = bilin(voroSampler, newTC.xy*8.0, mpv2, mpv).r;
 	
-	vheight = mix(0.3,0.9,vheight) + vheight2*0.05;
+	vheight = clamp(mix(0.5,0.95,vheight) + vheight2*0.05,0.0,1.0);
 	
 	if (dotVal > vheight) {
 		dotVal = vheight;

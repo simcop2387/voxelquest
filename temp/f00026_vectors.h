@@ -3984,6 +3984,8 @@ public:
 	}
 	
 	void update(float* tbo_data, uint* tbo_data2, int newDataSize) {
+	
+		// important: newDataSize measured in bytes
 		
 		int tempDataSize;
 		

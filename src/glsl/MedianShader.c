@@ -80,7 +80,7 @@ void main() {
     finalRes = mix(
       v[4].rgb,
       tex0.rgb,
-      0.0//@medianStrength@ // *float(distance(tex0.rgb,v[4].rgb) > 0.5)//mixVal
+      1.0-float(distance(tex0.rgb,v[4].rgb) > 0.25)//mixVal
     );
   //}
   

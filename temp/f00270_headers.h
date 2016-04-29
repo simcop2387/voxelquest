@@ -892,6 +892,7 @@ public:
   GamePageHolder * gph;
   int lastFFSteps;
   int curPD;
+  float fVoxelsPerCell;
   int voxelsPerCell;
   int cellsPerHolder;
   int cellsPerHolderPad;

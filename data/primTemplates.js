@@ -64,16 +64,16 @@
    "05_matParams":[2,0,0,0],
    "06_comment":"roof pointed tower"
    },{
-   "00_visMin":[0.4,1,0.5,0],
-   "01_visMax":[0.4,1,1,0],
+   "00_visMin":[0.5,1,0.5,0],
+   "01_visMax":[0.5,1,1,0],
    "02_bndMin":[-8,-4,-8,0],
    "03_bndMax":[8,4,8,0],
    "04_cornerDis":[4,2,2,2],
    "05_matParams":[1,0,0,0],
    "06_comment":"portal X"
    },{
-   "00_visMin":[1,0.4,0.5,0],
-   "01_visMax":[1,0.4,1,0],
+   "00_visMin":[1,0.5,0.5,0],
+   "01_visMax":[1,0.5,1,0],
    "02_bndMin":[-4,-8,-8,0],
    "03_bndMax":[4,8,8,0],
    "04_cornerDis":[4,2,2,2],

@@ -3231,18 +3231,16 @@ void Singleton::updatePrimTBOData ()
 		
 		int i;
 		int j;
-		int dataInd = 0;
 		
 		for (i = 0; i < primTemplateStack.size(); i++) {
-			dataInd = i*4;
 			
 			for (j = 0; j < 4; j++) {
-				primTBOData[dataInd+j] = primTemplateStack[i][j];
+				primTBOData[i*4+j] = primTemplateStack[i][j];
 			}
 			
 		}
 		
-		primTBO.update(primTBOData,NULL,primTemplateStack.size()*4);
+		primTBO.update(primTBOData,NULL,primTemplateStack.size()*4*4);
 		
 		
 	}
@@ -4783,13 +4781,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 					
 					case '`':
-						toggleSetting(E_BS_PLACING_GEOM);
-						if (settings[E_BS_PLACING_GEOM]) {
-							resetGeom();
-						}
-						else {
-							
-						}
+						
 					break;
 					
 					
@@ -4953,31 +4945,39 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 					case 'g':
 					
-
-						
-						if (mouseState == E_MOUSE_STATE_MOVE) {
-							
-							mouseState = E_MOUSE_STATE_BRUSH;
-							earthMod = E_PTT_TER;
-							
+						toggleSetting(E_BS_PLACING_GEOM);
+						if (settings[E_BS_PLACING_GEOM]) {
+							resetGeom();
 						}
 						else {
 							
-							earthMod++;
-							
-							if (earthMod == E_PTT_EMP) {
-								mouseState = E_MOUSE_STATE_MOVE;
-							}
-							
-							// if (earthMod == E_PTT_WAT) {
-							// 	mouseState = E_MOUSE_STATE_MOVE;
-							// 	earthMod = E_PTT_TER;
-							// }
-							// else {
-							// 	earthMod = E_PTT_WAT;
-							// }
-							
 						}
+						
+						
+						
+						// if (mouseState == E_MOUSE_STATE_MOVE) {
+							
+						// 	mouseState = E_MOUSE_STATE_BRUSH;
+						// 	earthMod = E_PTT_TER;
+							
+						// }
+						// else {
+							
+						// 	earthMod++;
+							
+						// 	if (earthMod == E_PTT_EMP) {
+						// 		mouseState = E_MOUSE_STATE_MOVE;
+						// 	}
+							
+						// 	// if (earthMod == E_PTT_WAT) {
+						// 	// 	mouseState = E_MOUSE_STATE_MOVE;
+						// 	// 	earthMod = E_PTT_TER;
+						// 	// }
+						// 	// else {
+						// 	// 	earthMod = E_PTT_WAT;
+						// 	// }
+							
+						// }
 
 						
 						

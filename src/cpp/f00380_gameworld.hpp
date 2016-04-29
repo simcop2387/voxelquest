@@ -5355,6 +5355,55 @@ DONE_WITH_MAP:
 
 
 
+	void drawBasicPrims(bool doShadow) {
+		
+		int numCubes = singleton->tempPrimList.size();
+		if (singleton->settings[E_BS_PLACING_GEOM]) {
+			numCubes++;
+		}
+		
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_FRONT);
+		
+		singleton->bindShader("BasicPrimShader");
+		singleton->bindFBO("rasterLowFBO");
+		
+		if (numCubes > 0) {
+			
+			singleton->setShaderTBO(
+				0,
+				singleton->primTBO.tbo_tex,
+				singleton->primTBO.tbo_buf,
+				true
+			);
+			
+			singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+			singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+			singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
+			
+			// singleton->setShaderfVec4("paramFetch1", &tempVec1 );
+			// singleton->setShaderfVec4("paramFetch2", &tempVec2 );
+			// singleton->setShaderFloat("primArrLength",numCubes);
+			
+			singleton->setShaderArrayfVec4("primArr", singleton->primArr, numCubes*2);
+			singleton->zoCubes.drawCubes(numCubes);
+			
+			singleton->setShaderTBO(0,0,0,true);
+		}
+		
+		
+		
+		singleton->unbindFBO();
+		singleton->unbindShader();
+		
+		
+		glCullFace(GL_BACK);
+		glDisable(GL_CULL_FACE);
+	}
+
 
 	void rasterHolders(bool doShadow) {
 		
@@ -5367,10 +5416,7 @@ DONE_WITH_MAP:
 
 		int q;
 
-		int numCubes = singleton->tempPrimList.size();
-		if (singleton->settings[E_BS_PLACING_GEOM]) {
-			numCubes++;
-		}
+		
 
 		glEnable(GL_DEPTH_TEST);
 		
@@ -5396,8 +5442,8 @@ DONE_WITH_MAP:
 			
 			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-			singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
-			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+			singleton->setShaderfVec3("lightPos", &(singleton->lightPos)
+			//singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos()););
 			singleton->setShaderMatrix4x4("lightSpaceMatrix",singleton->lightSpaceMatrix.get(),1);
 			
 			
@@ -5436,49 +5482,9 @@ DONE_WITH_MAP:
 			activeRaster = 1 - activeRaster;
 			
 			
+			drawBasicPrims();
 			
 			
-			
-			glEnable(GL_CULL_FACE);
-			glCullFace(GL_FRONT);
-			
-			singleton->bindShader("BasicPrimShader");
-			singleton->bindFBO("rasterLowFBO");
-			
-			if (numCubes > 0) {
-				
-				singleton->setShaderTBO(
-					0,
-					singleton->primTBO.tbo_tex,
-					singleton->primTBO.tbo_buf,
-					true
-				);
-				
-				singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
-				singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
-				singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
-				singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-				singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-				singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
-				
-				// singleton->setShaderfVec4("paramFetch1", &tempVec1 );
-				// singleton->setShaderfVec4("paramFetch2", &tempVec2 );
-				// singleton->setShaderFloat("primArrLength",numCubes);
-				
-				singleton->setShaderArrayfVec4("primArr", singleton->primArr, numCubes*2);
-				singleton->zoCubes.drawCubes(numCubes);
-				
-				singleton->setShaderTBO(0,0,0,true);
-			}
-			
-			
-			
-			singleton->unbindFBO();
-			singleton->unbindShader();
-			
-			
-			glCullFace(GL_BACK);
-			glDisable(GL_CULL_FACE);
 		}
 		
 		
@@ -5610,7 +5616,7 @@ DONE_WITH_MAP:
 		
 		*/
 		
-		
+		singleton->setShaderInt("gridOn", singleton->settings[E_BS_SHOW_GRID]);
 		singleton->setShaderFloat("gammaVal", singleton->gammaVal);
 		singleton->setShaderFloat("cellsPerChunk",singleton->cellsPerChunk);
 		singleton->setShaderfVec3("lightPos", &(singleton->lightPos));

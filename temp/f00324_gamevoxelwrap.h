@@ -22,7 +22,7 @@ void GameVoxelWrap::init (Singleton * _singleton)
 		singleton = _singleton;
 		
 		voxelsPerCell = singleton->voxelsPerCell;
-		//fVoxelsPerCell = voxelsPerCell;
+		fVoxelsPerCell = voxelsPerCell;
 		cellsPerHolder = singleton->cellsPerHolder;
 		cellsPerHolderPad = singleton->cellsPerHolderPad;
 		paddingInCells = singleton->paddingInCells;
@@ -1399,7 +1399,7 @@ void GameVoxelWrap::calcVoxel (ivec3 * _pos, int octPtr, int VLIndex)
 			) { //&&(sin(hmSamp*18.0f) > 0.0f)
 				randVal = rand2D(worldPos);
 				
-				int grassOff = randVal*clampfZO((terNorm.z-0.5f)*2.0f + hmSin)*8.0f;
+				int grassOff = randVal*clampfZO((terNorm.z-0.5f)*2.0f + hmSin)*fVoxelsPerCell*0.5f;
 				float terSampGrass = sampLinear(&pos, vec3(0,0,-grassOff));
 				
 				if (

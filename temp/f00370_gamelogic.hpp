@@ -1957,7 +1957,7 @@ FILL_GROUPS_RETURN:
 			
 			// find holder to begin fill
 			if (usingHolderStack) {
-				maxLoadRad = 2;
+				maxLoadRad = 3;
 				tempFIV.setIXYZ(
 					holderStack.front().x,
 					holderStack.front().y,

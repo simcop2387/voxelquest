@@ -12,7 +12,7 @@ bool ND_TRACE_OFF = false;
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT "27015"
 
-const static int MAX_PRIM_DATA_IN_BYTES = 32*1024*1024;
+const static int MAX_PRIM_DATA_IN_BYTES = 8*1024*1024;
 const static int MAX_LIMB_DATA_IN_BYTES = 65536;
 
 const static bool POLYS_FOR_CELLS = false;
@@ -77,9 +77,9 @@ const static float ORG_SCALE_BASE = 0.5f;
 
 const static int SHADOW_MAP_RES = 2048;
 
-const static int DEF_SCALE_FACTOR = 1;
-const static int RENDER_SCALE_FACTOR = 8;
-const static int RASTER_LOW_SCALE_FACTOR = 4;
+const static int DEF_SCALE_FACTOR = 2;
+const static int RENDER_SCALE_FACTOR = 4;
+const static int RASTER_LOW_SCALE_FACTOR = 2;
 const static bool SINGLE_THREADED = false;
 
 int TOT_POINT_COUNT = 0;
@@ -98,9 +98,9 @@ const static int MAX_THREADS = 6;
 const static int MAX_HOLDER_LOAD_COUNT = 512;
 //const static int RASTER_HOLDER_RAD = 8;
 
-const static int VOXELS_PER_CELL = 32;
+const static int VOXELS_PER_CELL = 16;
 const static int CELLS_PER_HOLDER = 4;
-const static int HOLDERS_PER_CHUNK = 4;
+const static int HOLDERS_PER_CHUNK = 2;
 const static int CHUNKS_PER_BLOCK = 32;
 
 const static int HOLDER_MOD = 4; // HOLDER_MOD*CELLS_PER_HOLDER should == 16
@@ -12620,6 +12620,8 @@ public:
 	}
 	
 	void update(float* tbo_data, uint* tbo_data2, int newDataSize) {
+	
+		// important: newDataSize measured in bytes
 		
 		int tempDataSize;
 		
@@ -25722,6 +25724,7 @@ public:
   GamePageHolder * gph;
   int lastFFSteps;
   int curPD;
+  float fVoxelsPerCell;
   int voxelsPerCell;
   int cellsPerHolder;
   int cellsPerHolderPad;
@@ -30484,18 +30487,16 @@ void Singleton::updatePrimTBOData ()
 		
 		int i;
 		int j;
-		int dataInd = 0;
 		
 		for (i = 0; i < primTemplateStack.size(); i++) {
-			dataInd = i*4;
 			
 			for (j = 0; j < 4; j++) {
-				primTBOData[dataInd+j] = primTemplateStack[i][j];
+				primTBOData[i*4+j] = primTemplateStack[i][j];
 			}
 			
 		}
 		
-		primTBO.update(primTBOData,NULL,primTemplateStack.size()*4);
+		primTBO.update(primTBOData,NULL,primTemplateStack.size()*4*4);
 		
 		
 	}
@@ -32036,13 +32037,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 					
 					case '`':
-						toggleSetting(E_BS_PLACING_GEOM);
-						if (settings[E_BS_PLACING_GEOM]) {
-							resetGeom();
-						}
-						else {
-							
-						}
+						
 					break;
 					
 					
@@ -32206,31 +32201,39 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 					case 'g':
 					
-
-						
-						if (mouseState == E_MOUSE_STATE_MOVE) {
-							
-							mouseState = E_MOUSE_STATE_BRUSH;
-							earthMod = E_PTT_TER;
-							
+						toggleSetting(E_BS_PLACING_GEOM);
+						if (settings[E_BS_PLACING_GEOM]) {
+							resetGeom();
 						}
 						else {
 							
-							earthMod++;
-							
-							if (earthMod == E_PTT_EMP) {
-								mouseState = E_MOUSE_STATE_MOVE;
-							}
-							
-							// if (earthMod == E_PTT_WAT) {
-							// 	mouseState = E_MOUSE_STATE_MOVE;
-							// 	earthMod = E_PTT_TER;
-							// }
-							// else {
-							// 	earthMod = E_PTT_WAT;
-							// }
-							
 						}
+						
+						
+						
+						// if (mouseState == E_MOUSE_STATE_MOVE) {
+							
+						// 	mouseState = E_MOUSE_STATE_BRUSH;
+						// 	earthMod = E_PTT_TER;
+							
+						// }
+						// else {
+							
+						// 	earthMod++;
+							
+						// 	if (earthMod == E_PTT_EMP) {
+						// 		mouseState = E_MOUSE_STATE_MOVE;
+						// 	}
+							
+						// 	// if (earthMod == E_PTT_WAT) {
+						// 	// 	mouseState = E_MOUSE_STATE_MOVE;
+						// 	// 	earthMod = E_PTT_TER;
+						// 	// }
+						// 	// else {
+						// 	// 	earthMod = E_PTT_WAT;
+						// 	// }
+							
+						// }
 
 						
 						
@@ -38168,7 +38171,7 @@ void GameVoxelWrap::init (Singleton * _singleton)
 		singleton = _singleton;
 		
 		voxelsPerCell = singleton->voxelsPerCell;
-		//fVoxelsPerCell = voxelsPerCell;
+		fVoxelsPerCell = voxelsPerCell;
 		cellsPerHolder = singleton->cellsPerHolder;
 		cellsPerHolderPad = singleton->cellsPerHolderPad;
 		paddingInCells = singleton->paddingInCells;
@@ -39545,7 +39548,7 @@ void GameVoxelWrap::calcVoxel (ivec3 * _pos, int octPtr, int VLIndex)
 			) { //&&(sin(hmSamp*18.0f) > 0.0f)
 				randVal = rand2D(worldPos);
 				
-				int grassOff = randVal*clampfZO((terNorm.z-0.5f)*2.0f + hmSin)*8.0f;
+				int grassOff = randVal*clampfZO((terNorm.z-0.5f)*2.0f + hmSin)*fVoxelsPerCell*0.5f;
 				float terSampGrass = sampLinear(&pos, vec3(0,0,-grassOff));
 				
 				if (
@@ -61788,7 +61791,7 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 			
 			// find holder to begin fill
 			if (usingHolderStack) {
-				maxLoadRad = 2;
+				maxLoadRad = 3;
 				tempFIV.setIXYZ(
 					holderStack.front().x,
 					holderStack.front().y,
@@ -69817,7 +69820,7 @@ void GameWorld::rasterHolders (bool doShadow)
 		
 		*/
 		
-		
+		singleton->setShaderInt("gridOn", singleton->settings[E_BS_SHOW_GRID]);
 		singleton->setShaderFloat("gammaVal", singleton->gammaVal);
 		singleton->setShaderFloat("cellsPerChunk",singleton->cellsPerChunk);
 		singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
