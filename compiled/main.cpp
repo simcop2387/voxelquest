@@ -644,7 +644,7 @@ const T& HPClockMin(const T& a, const T& b)
 #endif //_WIN32
 
 #include <stdint.h>
-int64_t GLOBAL_OBJ_COUNT = 0LL;
+int64_t GLOBAL_OBJ_COUNT = 1LL;
 
 
 struct HPClockData
@@ -10099,6 +10099,10 @@ public:
 };
 
 
+
+struct PixData {
+	FIVector4 pd[3];
+};
 
 
 void hsv2rgb(materialNode* matNode) {
@@ -25033,6 +25037,9 @@ public:
   int currentTick;
   int curPattern;
   int curPatternRot;
+  int curSelPrim;
+  int limbArrPos;
+  int primArrPos;
   int cacheVersion;
   int holderLoadCount;
   int bakeTicks;
@@ -25173,6 +25180,7 @@ public:
   float * paramArr;
   float * paramArrGeom;
   float * primArr;
+  float * limbArr;
   float * splashArr;
   float * explodeArr;
   float * voroArr;
@@ -25194,6 +25202,7 @@ public:
   FIVector4 (colVecs) [16];
   FIVector4 geomOrigOffset;
   FIVector4 lastSend;
+  FIVector4 lastMouseZO;
   FIVector4 lastLightPos;
   FIVector4 lightPos;
   FIVector4 lightLookAt;
@@ -25206,13 +25215,10 @@ public:
   FIVector4 lookAtVec;
   FIVector4 lookAtVec2D;
   FIVector4 baseScrollPos;
-  FIVector4 mouseUpPD;
-  FIVector4 mouseUpOPD;
-  FIVector4 spaceUpPD;
-  FIVector4 mouseDownPD;
-  FIVector4 mouseDownOPD;
-  FIVector4 mouseMovePD;
-  FIVector4 mouseMoveOPD;
+  PixData spaceUpPixData;
+  PixData mouseUpPixData;
+  PixData mouseDownPixData;
+  PixData mouseMovePixData;
   FIVector4 tempVec1;
   FIVector4 tempVec2;
   FIVector4 tempVec3;
@@ -25386,6 +25392,7 @@ public:
   FBOWrapper * getFBOWrapper (string fboName, int offset);
   void copyFBO (string src, string dest, int num = 0);
   void copyFBO2 (string src, string dest, int num1 = 0, int num2 = 1);
+  void copyFBO3 (string src, string dest, int num1 = 0, int num2 = 1, int num3 = 2);
   void bindFBO (string fboName, int swapFlag = -1, int doClear = 1);
   void unbindFBO ();
   void bindShader (string shaderName);
@@ -25450,7 +25457,7 @@ public:
   void resetGeom ();
   void stopAllThreads ();
   void processInput (unsigned char key, bool keyDown, int x, int y);
-  void getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj);
+  void getPixData (PixData * toPixData, int _xv, int _yv, bool forceUpdate);
   float getMinGeom (int baseIndex);
   FIVector4 * getGeomRef (int templateId, int enumVal);
   void setFXYZWGeom (int baseIndex, FIVector4 * baseVec);
@@ -26481,7 +26488,7 @@ public:
   void applyNodeChanges (GameOrgNode * _curNode, float dx, float dy);
   void transformOrg (GameOrg * curOrg, GameOrgNode * tempParent);
   void resetActiveNode ();
-  bool updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS);
+  bool updateNearestOrgNode (bool setActive);
   void saveOrgFromMenu (string currentFieldString);
   void loadOrgFromMenu (string currentFieldString);
   void makeDirty ();
@@ -26971,7 +26978,7 @@ public:
   btVector3 zMask;
   GamePhysics ();
   void init (Singleton * _singleton);
-  void pickBody (FIVector4 * mouseMoveOPD);
+  void pickBody (FIVector4 * mmPD);
   void collectDebris ();
   void beginDrop ();
   void remBoxFromObj (BaseObjType _uid);
@@ -27143,8 +27150,8 @@ public:
   void initMap ();
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
+  void drawBasicPrims (bool doShadow);
   void rasterHolders (bool doShadow);
-  void rasterGrid (VBOGrid * vboGrid, bool showResults);
   void renderDebug ();
   void finalStep (bool postToScreen);
   void postProcess (bool postToScreen);
@@ -27308,7 +27315,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		initNetMasks();
 		
-		
+		limbArrPos = 0;
+		primArrPos = 0;
+		curSelPrim = 0;
 		cacheMetaJS = NULL;
 		curCLBaseDir = "e:\\vqcache";
 		curCLWorldDir = "world001";
@@ -28045,6 +28054,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		paramArr = new float[4096];
 		paramArrGeom = new float[128];
+		limbArr = new float[MAX_ZO_CUBES*4*2];
 		primArr = new float[MAX_ZO_CUBES*4*2];
 		splashArr = new float[MAX_SPLASHES*4];
 		explodeArr = new float[MAX_EXPLODES*4];
@@ -28349,6 +28359,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		shaderStrings.push_back("WaterShaderCombine");
 		shaderStrings.push_back("CopyShader");
 		shaderStrings.push_back("CopyShader2");
+		shaderStrings.push_back("CopyShader3");
 		shaderStrings.push_back("NoiseShader");
 		shaderStrings.push_back("MapBorderShader");
 		shaderStrings.push_back("BillboardShader");
@@ -28362,6 +28373,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		shaderStrings.push_back("RasterShader");
 		shaderStrings.push_back("HolderShader");
 		shaderStrings.push_back("BasicPrimShader");
+		shaderStrings.push_back("BasicLimbShader");
 		shaderStrings.push_back("ShadowMapShader");
 		shaderStrings.push_back("GridShader");
 		shaderStrings.push_back("GeomShader");
@@ -28564,16 +28576,16 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			fboMap[polyFBOStrings[i]].init(1, bufferRenderDim.getIX(), bufferRenderDim.getIY(), 4, true);
 		}
 		
+		
+		
 		fboMap["shadowMapFBO"].init(1, SHADOW_MAP_RES, SHADOW_MAP_RES, 4, true, GL_LINEAR);
+		fboMap["rasterFBO0"].init(3, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
+		fboMap["rasterFBO1"].init(3, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);		
+		fboMap["rasterLowFBO"].init(3, rasterLowDim.getIX(), rasterLowDim.getIY(), 4, true, GL_NEAREST);
+		fboMap["readFBO"].init(3, rasterLowDim.getIX(), rasterLowDim.getIY(), 4, true, GL_NEAREST);
 		
-		
-		fboMap["rasterFBO0"].init(2, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
-		fboMap["rasterFBO1"].init(2, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
-		
-		fboMap["rasterLowFBO"].init(2, rasterLowDim.getIX(), rasterLowDim.getIY(), 4, true, GL_NEAREST);
-		
-		fboMap["rasterPosFBO"].init(1, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);//, GL_REPEAT);
-		fboMap["rasterSourceFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);//, GL_REPEAT);
+		// fboMap["rasterPosFBO"].init(1, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);//, GL_REPEAT);
+		// fboMap["rasterSourceFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);//, GL_REPEAT);
 		
 		
 		
@@ -29523,7 +29535,7 @@ void Singleton::toggleDDMenu (int x, int y, bool toggled)
 		
 		if (toggled) {
 			
-			ind = mouseDownOPD.getFW();
+			ind = mouseDownPixData.pd[2].getFW();
 			
 			objTargeted = ind >= E_OBJ_LENGTH;	
 			
@@ -30453,16 +30465,19 @@ void Singleton::updatePrimArr ()
 			primArr[i*8 + 2] = curObj->offset.z;
 			primArr[i*8 + 3] = curObj->templateId;
 			
-			primArr[i*8 + 4] = 0;
+			// texelRes2
+			primArr[i*8 + 4] = curObj->globalId;
 			primArr[i*8 + 5] = 0;
 			primArr[i*8 + 6] = 0;
 			primArr[i*8 + 7] = 0;
 			
 		}
 		
-		i = tempPrimList.size();
+		
 		
 		if (settings[E_BS_PLACING_GEOM]) {
+			
+			
 			tempVec1.copyFrom(&(geomPoints[0]));
 			tempVec1.addXYZRef(&(geomOrigOffset));
 			tempVec1.setFW(curPrimTemplate);
@@ -30478,7 +30493,24 @@ void Singleton::updatePrimArr ()
 			primArr[i*8 + 6] = 0;
 			primArr[i*8 + 7] = 0;
 			
+			i++;
+			
 		}
+		
+		primArrPos = i;
+		
+		// for (j = i; j < (i+actorCount); j++) {
+		// 	primArr[i*8 + 0] = tempVec1[0];
+		// 	primArr[i*8 + 1] = tempVec1[1];
+		// 	primArr[i*8 + 2] = tempVec1[2];
+		// 	primArr[i*8 + 3] = tempVec1[3];
+			
+		// 	primArr[i*8 + 4] = 0;
+		// 	primArr[i*8 + 5] = 1;
+		// 	primArr[i*8 + 6] = 0;
+		// 	primArr[i*8 + 7] = 0;
+		// }
+		
 		
 	}
 void Singleton::updatePrimTBOData ()
@@ -30849,6 +30881,20 @@ void Singleton::copyFBO2 (string src, string dest, int num1, int num2)
 		unbindFBO();
 		unbindShader();
 	}
+void Singleton::copyFBO3 (string src, string dest, int num1, int num2, int num3)
+        {
+		bindShader("CopyShader3");
+		bindFBO(dest);
+		setShaderTexture(0, getFBOWrapper(src,num1)->color_tex);
+		setShaderTexture(1, getFBOWrapper(src,num2)->color_tex);
+		setShaderTexture(2, getFBOWrapper(src,num3)->color_tex);
+		drawFSQuad();
+		setShaderTexture(2, 0);
+		setShaderTexture(1, 0);
+		setShaderTexture(0, 0);
+		unbindFBO();
+		unbindShader();
+	}
 void Singleton::bindFBO (string fboName, int swapFlag, int doClear)
         {
 
@@ -31029,6 +31075,7 @@ void Singleton::setShaderTBO (int multitexNumber, GLuint tbo_tex, GLuint tbo_buf
 		{
 			glActiveTexture(GL_TEXTURE0 + multitexNumber);
 			glBindTexture(GL_TEXTURE_2D, tbo_tex);
+			//glBindBuffer(GL_TEXTURE_BUFFER, tboIndices);
 			if (tbo_tex != 0) {
 				if (isFloat) {
 					glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, tbo_buf);
@@ -31764,8 +31811,8 @@ void Singleton::updateCS ()
 	}
 void Singleton::getMarkerPos (int x, int y)
                                         {
-		getPixData(&spaceUpPD, x, y, true, false);
-		worldMarker.copyFrom(&spaceUpPD);
+		getPixData(&spaceUpPixData, x, y, true);
+		worldMarker.copyFrom(&spaceUpPixData.pd[0]);
 		lastCellPos.copyFrom(&(worldMarker));
 	}
 void Singleton::holderReport ()
@@ -31980,6 +32027,8 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					case '2':
 					case '3':
 					
+						speak("Place entity.");
+					
 						switch(key) {
 							case '1':
 								tempType = E_ENTTYPE_NPC;
@@ -31993,7 +32042,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 							break;
 						}
 					
-						if (settings[E_BS_UPDATE_HOLDERS]) {
+						// if (settings[E_BS_UPDATE_HOLDERS]) {
 							getMarkerPos(x, y);
 							gem->placeNewEnt(gameNetwork->isConnected,tempType,&lastCellPos);
 							
@@ -32006,11 +32055,11 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 							
 							gem->refreshTurnList();
 							
-						}
-						else {
-							cout << "Turn On Holder Update (u)\n";
-							doAlert();
-						}
+						// }
+						// else {
+						// 	cout << "Turn On Holder Update (u)\n";
+						// 	doAlert();
+						// }
 						
 					break;
 					//case '0':
@@ -32521,7 +32570,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 		
 		
 	}
-void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj)
+void Singleton::getPixData (PixData * toPixData, int _xv, int _yv, bool forceUpdate)
         {
 
 		if (
@@ -32547,45 +32596,61 @@ void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUp
 		float bufx;
 		float bufy;
 
-		if (isObj) {
-			//fbow = getFBOWrapper("geomBaseTargFBO",2);
-			fbow = getFBOWrapper("limbFBO", 0);
-		}
-		else {
-			fbow = getFBOWrapper("solidTargFBO", 0);
-		}
+		// if (isObj) {
+		// 	//fbow = getFBOWrapper("geomBaseTargFBO",2);
+		// 	fbow = getFBOWrapper("limbFBO", 0);
+		// }
+		// else {
+		// 	fbow = getFBOWrapper("solidTargFBO", 0);
+		// }
 		
+		int i;
 		
-		float srcW = fbow->width;
-		float srcH = fbow->height;
+		float srcW;
+		float srcH;
 		
 		bufx = xv/bufferDim.getFX();
 		bufy = 1.0f-yv/bufferDim.getFY();
+		
+		
+		
+		for (i = 0; i < 3; i++) {
+			
+			fbow = getFBOWrapper("readFBO", i);
+			
+			
+			srcW = fbow->width;
+			srcH = fbow->height;
+			
+			if (wsBufferInvalid || forceUpdate || forceGetPD) {
+				
+				// glFlush();
+				// glFinish();
+				//cout << "getPixData\n";
+				fbow->getPixels();
+				
+				// glFlush();
+				// glFinish();
+				
+			}
+			
+			
+			fbow->getPixelAtF(
+				&(toPixData->pd[i]), 
+				bufx*srcW,
+				bufy*srcH
+			);
 
-		if (wsBufferInvalid || forceUpdate || forceGetPD) {
-			
-			// glFlush();
-			// glFinish();
-			
-			fbow->getPixels();
-			
-			// glFlush();
-			// glFinish();
 			
 		}
-
-		// newX = clamp(xv, 0, bufx - 1);
-		// newY = clamp(yv, 0, bufy - 1);
-
-		fbow->getPixelAtF(
-			toVector, 
-			bufx*srcW,
-			bufy*srcH
-		);
-			//newX, ((bufy - 1) - newY));
-
+		
+		
 		wsBufferInvalid = false;
 		forceGetPD = false;
+		
+		
+
+		
 		
 	}
 float Singleton::getMinGeom (int baseIndex)
@@ -32752,7 +32817,7 @@ void Singleton::updateCurGeom (int x, int y)
 		int baseInd;
 		
 		if (geomStep == 0) {
-			geomPoints[geomStep].setFXYZRef(&mouseMovePD);
+			geomPoints[geomStep].setFXYZRef(&(mouseMovePixData.pd[0]));
 			geomPoints[geomStep].setFW(-1.0f);
 			geomPoints[geomStep].floorXYZ();
 			geomStep++;
@@ -32902,7 +32967,7 @@ void Singleton::updateCurGeom (int x, int y)
 			
 		}
 		
-		updatePrimArr();
+		
 		
 		//updatePrimTBOData();
 		
@@ -32937,6 +33002,12 @@ void Singleton::mouseMove (int _x, int _y)
 
 		lastMouseX = x;
 		lastMouseY = y;
+		
+		
+		float fxZO = x;
+		float fyZO = y;
+
+		lastMouseZO.setFXYZ(fxZO/bufferDim.getFX(),1.0f-fyZO/bufferDim.getFY(),0.0f);
 
 		mouseXUp = x;
 		mouseYUp = y;
@@ -32993,19 +33064,18 @@ void Singleton::mouseMove (int _x, int _y)
 
 			if ( settings[E_BS_PLACING_PATTERN]||settings[E_BS_PLACING_GEOM]||RT_TRANSFORM||settings[E_BS_EDIT_POSE]||settings[E_BS_PATH_FINDING_TEST]||(mouseState != E_MOUSE_STATE_MOVE)) {
 			//if (true) {
-				getPixData(&mouseMovePD, x, y, false, false);
-				getPixData(&mouseMoveOPD, x, y, true, true);
+				getPixData(&mouseMovePixData, x, y, false);
 			}
 			
 
-			gw->updateMouseCoords(&mouseMovePD);
+			gw->updateMouseCoords(&(mouseMovePixData.pd[0]));
 			
 			if (settings[E_BS_PATH_FINDING_TEST]) {
 				
-				if (gameLogic->getClosestPathRad(mouseMovePD.getBTV(), closestHolder) > -1) {
+				if (gameLogic->getClosestPathRad(mouseMovePixData.pd[0].getBTV(), closestHolder) > -1) {
 					
 					if (pathFindingStep < 2) {
-						gameLogic->testPath.points[pathFindingStep] = mouseMovePD.getBTV();
+						gameLogic->testPath.points[pathFindingStep] = mouseMovePixData.pd[0].getBTV();
 					}
 				}
 				
@@ -33022,7 +33092,7 @@ void Singleton::mouseMove (int _x, int _y)
 				settings[E_BS_EDIT_POSE]
 				&& (!ddVis)
 			) {
-				gem->updateNearestOrgNode(false, &mouseMovePD);
+				gem->updateNearestOrgNode(false); //, &(mouseMovePixData.pd[0])
 			}
 			else {
 				if (!ddVis) {
@@ -33037,16 +33107,6 @@ void Singleton::mouseMove (int _x, int _y)
 			}
 			else {
 				
-				// gw->findNearestEnt(
-				// 	&highlightedEnts,
-				// 	E_ET_GEOM,
-				// 	2,
-				// 	1,
-				// 	&mouseMovePD
-				// );
-				// highlightedEnt = highlightedEnts.getSelectedEnt();
-
-
 			}
 			
 
@@ -33253,26 +33313,20 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		wsBufferInvalid = true;
 		
 		if (abDown) {
-			getPixData(&mouseDownPD, x, y, true, false);
-			getPixData(&mouseDownOPD, x, y, true, true);
+			getPixData(&mouseDownPixData, x, y, true);
 		}
 		else {
-			getPixData(&mouseUpPD, x, y, true, false);
-			getPixData(&mouseUpOPD, x, y, true, true);
+			if (lbClicked) {
+				getPixData(&mouseUpPixData, x, y, true);
+				
+			}
 		}
-		
-		// if (lbDown) {
-		// 	if (gamePhysics != NULL) {
-		// 		gamePhysics->pickBody(mouseDownPD.getBTV(),mouseDownOPD.getBTV());
-		// 	}
-		// }
-		
-		
 		
 		
 		
 		
 		if (lbClicked) {
+			curSelPrim = mouseUpPixData.pd[2].getFX();
 			if (gamePhysics != NULL) {
 				gamePhysics->lastBodyPick = NULL;
 				gamePhysics->lastBodyUID = -1;
@@ -33380,7 +33434,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 								
 							}
 							else {
-								gem->endDrag(mouseUpOPD.getFW());
+								gem->endDrag(mouseUpPixData.pd[2].getFW());
 							}
 						}
 						
@@ -33402,100 +33456,6 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 							
 
 							
-							// gw->findNearestEnt(
-							// 	&selectedEnts,
-							// 	E_ET_GEOM,
-							// 	2,
-							// 	1,
-							// 	&mouseUpPD,
-							// 	true
-							// );
-							
-							// selectedEnt = selectedEnts.getSelectedEnt();
-
-							// if (
-							// 	(selectedEnt == NULL) ||
-							// 	(mouseState == E_MOUSE_STATE_PICKING) ||
-							// 	(mouseState == E_MOUSE_STATE_BRUSH)
-							// )	{
-
-							// }
-							// else {
-
-							// 	switch (selectedEnt->buildingType)
-							// 	{
-							// 	case E_CT_DOOR:
-							// 	case E_CT_WINDOW:
-									
-									
-									
-							// 		if (selectedEnt->toggled) {
-							// 			// open
-							// 			switch (selectedEnt->buildingType)
-							// 			{
-							// 				case E_CT_DOOR:
-							// 					playSoundPosAndPitch(
-							// 						"open3",
-							// 						cameraGetPosNoShake(),
-							// 						selectedEnt->getVisMinInPixelsT(),
-							// 						0.3f
-							// 					);
-							// 				break;
-							// 				case E_CT_WINDOW:
-							// 					playSoundPosAndPitch(
-							// 						"open1",
-							// 						cameraGetPosNoShake(),
-							// 						selectedEnt->getVisMinInPixelsT(),
-							// 						0.3f
-							// 					);
-							// 				break;
-							// 			}
-							// 		}
-							// 		else {
-							// 			// close
-										
-							// 			switch (selectedEnt->buildingType)
-							// 			{
-							// 				case E_CT_DOOR:
-							// 					playSoundPosAndPitch(
-							// 						"close2",
-							// 						cameraGetPosNoShake(),
-							// 						selectedEnt->getVisMinInPixelsT(),
-							// 						0.3f
-							// 					);
-							// 				break;
-							// 				case E_CT_WINDOW:
-							// 					playSoundPosAndPitch(
-							// 						"close1",
-							// 						cameraGetPosNoShake(),
-							// 						selectedEnt->getVisMinInPixelsT(),
-							// 						0.3f
-							// 					);
-							// 				break;
-							// 			}
-							// 		}
-									
-
-									
-							// 		wsBufferInvalid = true;
-							// 		break;
-
-							// 	case E_CT_LANTERN:
-							// 		selectedEnt->light->toggle();
-							// 		playSoundPosAndPitch(
-							// 			"castinet0",
-							// 			cameraGetPosNoShake(),
-							// 			selectedEnt->getVisMinInPixelsT(),
-							// 			0.3f
-							// 		);
-							// 		//gw->updateLights();
-							// 		cout << "final toggle " << selectedEnt->light->toggled << "\n";
-							// 		break;
-
-							// 	}
-
-							// }
-
 
 
 						}
@@ -33531,7 +33491,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 				&& (!ddVis)
 				
 			) {
-				findObject = !(gem->updateNearestOrgNode(true, &mouseDownPD));
+				findObject = !(gem->updateNearestOrgNode(true)); //, &(mouseDownPixData.pd[0])
 			}
 			else {
 				findObject = true;
@@ -33539,7 +33499,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 			
 			if (findObject) {
 				
-				gem->updateDragInfo(mouseDownOPD.getFW(), lbDown, wasDoubleClick[RLBN_LEFT]);
+				gem->updateDragInfo(mouseDownPixData.pd[2].getFW(), lbDown, wasDoubleClick[RLBN_LEFT]);
 				
 			}
 		}
@@ -33567,8 +33527,6 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 						}
 						
 						if (abClicked) {
-							//gameFluid[E_FID_SML]->pushModifyUnit(true, &mouseUpPD, buttonInt, earthMod, curBrushRad);
-							//gameFluid[E_FID_BIG]->pushModifyUnit(true, &mouseUpPD, buttonInt, earthMod, curBrushRad);
 							gameFluid[E_FID_BIG]->flushStacks();
 							forceGetPD = true;
 						}
@@ -33781,11 +33739,8 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				// 	camRotX
 				// );
 				
-				//getPixData(&mouseMovePD, lastMouseX, lastMouseY, false, false);
-				
 				if (bShift) {
 					deltaAng = ca->turnTowardsPointDelta(
-						// mouseMovePD.getBTV()
 						
 						ca->getCenterPoint(E_BDG_CENTER) +
 						lookAtVec.getBTV()
@@ -36250,8 +36205,10 @@ void Singleton::display (bool doFrameRender)
 				mouseMoveVec.setFXYZ(lastMouseX,lastMouseY,0.0);
 				noTravel = mouseMoveVec.distance(&mouseStart) < MAX_TRAVEL_DIS;	
 				markerFound = !noTravel;
-				getPixData(&worldMarker, lastMouseX, lastMouseY, true, false);
-			
+				
+				getMarkerPos(lastMouseX, lastMouseY);
+				//getPixData(&worldMarker, lastMouseX, lastMouseY, true);
+				
 			}
 			else {
 				markerFound = (menuList[E_FM_DDMENU]->visible)&&(gem->selObjInd < E_OBJ_LENGTH);
@@ -39333,7 +39290,7 @@ void GameVoxelWrap::getVoro (vec3 * worldPos, vec3 * worldClosestCenter, vec3 * 
 		
 		vec3 testPos;
 		float testDis;
-		vec3 variance = vec3(0.4f);
+		vec3 variance = vec3(0.5f);
 		
 		
 		vec3 bestPos = VORO_OFFSETS[0] + randPN(fWorldCellPos+VORO_OFFSETS[0])*variance;
@@ -51875,8 +51832,8 @@ void GameEntManager::resetActiveNode ()
 		}
 		
 	}
-bool GameEntManager::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
-                                                                         {
+bool GameEntManager::updateNearestOrgNode (bool setActive)
+                                                  { //, FIVector4* mousePosWS
 		// tempVec3.setFXYZRef(mousePosWS);
 		// tempVec3.addXYZRef(&(testOrg->basePosition),-1.0f);
 		
@@ -51896,7 +51853,7 @@ bool GameEntManager::updateNearestOrgNode (bool setActive, FIVector4 * mousePosW
 		highlightedLimb2 = -1;
 		highlightedLimb = -1;
 		
-		singleton->gamePhysics->pickBody(&singleton->mouseMoveOPD);
+		singleton->gamePhysics->pickBody(&singleton->mouseMovePixData.pd[2]);
 		
 		if (
 			(singleton->gamePhysics->lastBodyPick == NULL) ||
@@ -60992,7 +60949,7 @@ void GameLogic::getPath (PathInfo * pathInfo)
 		
 		
 		// current mouse position
-		// bestInd3 = getClosestPathRad(&(singleton->mouseMovePD), closestHolder3);
+		// bestInd3 = getClosestPathRad(&(singleton->mouseMovePixData.pd[0]), closestHolder3);
 		
 		
 		//drawPointAtIndex(closestHolder, bestInd, 0,128+singleton->smoothTime*127.0f,0, singleton->smoothTime);
@@ -63605,8 +63562,8 @@ void GamePhysics::init (Singleton * _singleton)
 		
 		
 	}
-void GamePhysics::pickBody (FIVector4 * mouseMoveOPD)
-                                               {
+void GamePhysics::pickBody (FIVector4 * mmPD)
+                                       {
 		
 		if (!(singleton->settings[E_BS_EDIT_POSE])) {
 			lastBodyPick = NULL;
@@ -63614,8 +63571,8 @@ void GamePhysics::pickBody (FIVector4 * mouseMoveOPD)
 			return;
 		}
 		
-		int bodyUID = mouseMoveOPD->getFW();
-		int limbUID = mouseMoveOPD->getFZ();
+		int bodyUID = mmPD->getFW();
+		int limbUID = mmPD->getFZ();
 		BaseObj* ge;
 		
 		if (
@@ -64926,6 +64883,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								resVector4 = myMatrix4*myVector4;
 								basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
 								
+								
 								ge->addAABBPoint(&(ge->aabbMinSkel), &(ge->aabbMaxSkel), basePos);
 								
 								basePos += grabber->skelOffset;
@@ -66040,6 +65998,10 @@ void GameWorld::update ()
 		
 		if (singleton->settings[E_BS_RENDER_VOXELS]) {
 			
+			
+			singleton->updatePrimArr();
+			updateLimbTBOData(true);
+			
 			if (
 				singleton->lightChanged ||
 				(singleton->forceShadowUpdate == 1) ||
@@ -66312,6 +66274,8 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 		Vector4 myVector4;
 		Vector4 resVector4;
 		
+		int limbAP = 0;
+		singleton->limbArrPos = 0;
 		
 		BaseObj* grabber;
 		
@@ -66343,6 +66307,8 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 			) {
 				
 				actorCount++;
+			
+				
 				
 				ge->clearAABB(&(ge->aabbMinVis),&(ge->aabbMaxVis));
 				for (j = 0; j < ge->bodies.size(); j++) {
@@ -66384,6 +66350,9 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getY() + buffer; dataInd++;
 				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getZ() + buffer; dataInd++;
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+				
+				// traceBTV("ge->aabbMinVis ", (ge->aabbMinVis));
+				// traceBTV("ge->aabbMaxVis ", (ge->aabbMaxVis));
 				
 				float randOff;
 				
@@ -66508,6 +66477,20 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 				singleton->limbTBOData[headerStart+3] = 0.0f;
 				
 				
+				limbAP = singleton->limbArrPos*8;
+				singleton->limbArr[limbAP + 0] = ge->getCenterPointFIV(0)->getFX(); //((ge->aabbMaxVis[0])+(ge->aabbMinVis[0]))*0.5f;
+				singleton->limbArr[limbAP + 1] = ge->getCenterPointFIV(0)->getFY();//((ge->aabbMaxVis[1])+(ge->aabbMinVis[1]))*0.5f;
+				singleton->limbArr[limbAP + 2] = ge->getCenterPointFIV(0)->getFZ();//((ge->aabbMaxVis[2])+(ge->aabbMinVis[2]))*0.5f;
+				singleton->limbArr[limbAP + 3] = headerStart/4;
+				
+				//texelRes2
+				singleton->limbArr[limbAP + 4] = 0;
+				singleton->limbArr[limbAP + 5] = 0;
+				singleton->limbArr[limbAP + 6] = 0;
+				singleton->limbArr[limbAP + 7] = 0;
+				singleton->limbArrPos++;
+				
+				
 				
 			}
 		}
@@ -66627,7 +66610,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		singleton->sampleFBO("hmFBOLinearBig",2);
 		
-		singleton->sampleFBO("rasterFBO0",3);
+		//singleton->sampleFBO("rasterFBO0",3);
 		//singleton->sampleFBO("terDepthFBO",3);
 		
 		//if (USE_SPHERE_MAP) {
@@ -66807,7 +66790,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		// }
 		singleton->unsampleFBO("geomTargFBO",5);
 		
-		singleton->unsampleFBO("rasterFBO0",3);
+		//singleton->unsampleFBO("rasterFBO0",3);
 		//singleton->unsampleFBO("terDepthFBO",3);
 		singleton->unsampleFBO("hmFBOLinearBig",2);
 		
@@ -69565,6 +69548,128 @@ void GameWorld::doBlur (string fboName, int _baseFBO)
 		singleton->unbindShader();
 		
 	}
+void GameWorld::drawBasicPrims (bool doShadow)
+                                           {
+		
+		
+		
+		
+		// int numCubes = singleton->tempPrimList.size();
+		// if (singleton->settings[E_BS_PLACING_GEOM]) {
+		// 	numCubes++;
+		// }
+		
+		// numCubes += singleton->actorCount;
+		
+		int numCubes = singleton->primArrPos;
+		
+		
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_FRONT);
+		
+		singleton->bindShader("BasicPrimShader");
+		singleton->bindFBO("rasterLowFBO");
+		
+		if (numCubes > 0) {
+			
+			singleton->setShaderTBO(
+				0,
+				singleton->primTBO.tbo_tex,
+				singleton->primTBO.tbo_buf,
+				true
+			);
+			
+			//cout << "singleton->actorCount " << singleton->actorCount << "\n";
+			
+			singleton->setShaderInt("actorCount",singleton->actorCount);
+			//singleton->setShaderInt("MAX_PRIM_IDS", min(singleton->actorCount,MAX_PRIM_IDS));
+			//singleton->setShaderInt("MAX_PRIMTEST", min(singleton->actorCount,MAX_PRIMTEST));
+			
+			singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+			singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+			singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
+			
+			singleton->setShaderArrayfVec4("primArr", singleton->primArr, numCubes*2);
+			singleton->zoCubes.drawCubes(numCubes);
+			
+			singleton->setShaderTBO(0,0,0,true);
+			
+		}
+		
+		
+		
+		singleton->unbindFBO();
+		singleton->unbindShader();
+		
+		
+		//singleton->copyFBO("rasterLowFBO","solidBaseTargFBO");
+		
+		
+		
+		numCubes = singleton->limbArrPos;
+		
+		
+		
+		if (numCubes > 0) {
+			
+			singleton->bindShader("BasicLimbShader");
+			singleton->bindFBO("rasterLowFBO",-1,0);
+			
+			singleton->setShaderTBO(
+				0,
+				singleton->limbTBO.tbo_tex,
+				singleton->limbTBO.tbo_buf,
+				true
+			);
+			
+			
+			// cout << "singleton->actorCount " << singleton->actorCount << "\n";
+			
+			singleton->setShaderInt("actorCount",singleton->actorCount);
+			singleton->setShaderInt("MAX_PRIM_IDS", min(singleton->actorCount,MAX_PRIM_IDS));
+			singleton->setShaderInt("MAX_PRIMTEST", min(singleton->actorCount,MAX_PRIMTEST));
+			
+			singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+			singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+			singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
+			
+			singleton->setShaderArrayfVec4("limbArr", singleton->limbArr, numCubes*2);
+			singleton->zoCubes.drawCubes(numCubes);
+			
+			singleton->setShaderTBO(0,0,0,true);
+		
+			singleton->unbindFBO();
+			singleton->unbindShader();
+		}
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		glCullFace(GL_BACK);
+		glDisable(GL_CULL_FACE);
+	}
 void GameWorld::rasterHolders (bool doShadow)
                                           {
 		
@@ -69577,10 +69682,8 @@ void GameWorld::rasterHolders (bool doShadow)
 
 		int q;
 
-		int numCubes = singleton->tempPrimList.size();
-		if (singleton->settings[E_BS_PLACING_GEOM]) {
-			numCubes++;
-		}
+		
+		
 
 		glEnable(GL_DEPTH_TEST);
 		
@@ -69607,7 +69710,7 @@ void GameWorld::rasterHolders (bool doShadow)
 			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 			singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
-			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+			//singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 			singleton->setShaderMatrix4x4("lightSpaceMatrix",singleton->lightSpaceMatrix.get(),1);
 			
 			
@@ -69646,49 +69749,9 @@ void GameWorld::rasterHolders (bool doShadow)
 			activeRaster = 1 - activeRaster;
 			
 			
+			drawBasicPrims(false);
 			
 			
-			
-			glEnable(GL_CULL_FACE);
-			glCullFace(GL_FRONT);
-			
-			singleton->bindShader("BasicPrimShader");
-			singleton->bindFBO("rasterLowFBO");
-			
-			if (numCubes > 0) {
-				
-				singleton->setShaderTBO(
-					0,
-					singleton->primTBO.tbo_tex,
-					singleton->primTBO.tbo_buf,
-					true
-				);
-				
-				singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
-				singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
-				singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
-				singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-				singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-				singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
-				
-				// singleton->setShaderfVec4("paramFetch1", &tempVec1 );
-				// singleton->setShaderfVec4("paramFetch2", &tempVec2 );
-				// singleton->setShaderFloat("primArrLength",numCubes);
-				
-				singleton->setShaderArrayfVec4("primArr", singleton->primArr, numCubes*2);
-				singleton->zoCubes.drawCubes(numCubes);
-				
-				singleton->setShaderTBO(0,0,0,true);
-			}
-			
-			
-			
-			singleton->unbindFBO();
-			singleton->unbindShader();
-			
-			
-			glCullFace(GL_BACK);
-			glDisable(GL_CULL_FACE);
 		}
 		
 		
@@ -69703,6 +69766,7 @@ void GameWorld::rasterHolders (bool doShadow)
 		if (doShadow) {
 			return;	
 		}
+		
 		
 		
 		
@@ -69750,12 +69814,12 @@ void GameWorld::rasterHolders (bool doShadow)
 			singleton->bindShader("NearestShader");
 			singleton->bindFBO("rasterFBO", activeRaster);
 			singleton->sampleFBO("rasterFBO",0,activeRaster);
-			singleton->sampleFBO("rasterLowFBO",2);
+			singleton->sampleFBO("rasterLowFBO",3);
 			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 			singleton->setShaderInt("totRad",singleton->iGetConst(E_CONST_FILLNEARESTRAD));
 			singleton->fsQuad.draw();
-			singleton->unsampleFBO("rasterLowFBO",2);
+			singleton->unsampleFBO("rasterLowFBO",3);
 			singleton->unsampleFBO("rasterFBO",0,activeRaster);
 			singleton->unbindFBO();
 			singleton->unbindShader();
@@ -69764,19 +69828,15 @@ void GameWorld::rasterHolders (bool doShadow)
 		}
 		
 		
-		
-		
-		
-		
-		singleton->copyFBO("rasterFBO"+i__s(activeRaster), "solidTargFBO");
+		singleton->copyFBO3("rasterFBO"+i__s(activeRaster), "readFBO");
 		
 		
 		singleton->bindShader("LightShader");
 		singleton->bindFBO("resultFBO", activeFBO);
 		singleton->sampleFBO("rasterFBO",0,activeRaster);
-		singleton->sampleFBO("debugTargFBO", 2);
-		singleton->setShaderTexture3D(4,singleton->volIdMat);
-		singleton->sampleFBO("shadowMapFBO",5);
+		singleton->sampleFBO("debugTargFBO", 3);
+		singleton->setShaderTexture3D(5,singleton->volIdMat);
+		singleton->sampleFBO("shadowMapFBO",6);
 		
 		
 		if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {
@@ -69820,6 +69880,11 @@ void GameWorld::rasterHolders (bool doShadow)
 		
 		*/
 		
+		
+		
+		singleton->setShaderFloat("curTime", singleton->curTime);
+		singleton->setShaderfVec4("readData",&(singleton->mouseUpPixData.pd[2]));
+		singleton->setShaderfVec2("mouseCoords",&(singleton->lastMouseZO));
 		singleton->setShaderInt("gridOn", singleton->settings[E_BS_SHOW_GRID]);
 		singleton->setShaderFloat("gammaVal", singleton->gammaVal);
 		singleton->setShaderFloat("cellsPerChunk",singleton->cellsPerChunk);
@@ -69846,9 +69911,9 @@ void GameWorld::rasterHolders (bool doShadow)
 		
 		singleton->fsQuad.draw();
 
-		singleton->unsampleFBO("shadowMapFBO",5);
-		singleton->setShaderTexture3D(4,0);
-		singleton->unsampleFBO("debugTargFBO", 2);
+		singleton->unsampleFBO("shadowMapFBO",6);
+		singleton->setShaderTexture3D(5,0);
+		singleton->unsampleFBO("debugTargFBO", 3);
 		singleton->unsampleFBO("rasterFBO",0,activeRaster);
 		singleton->unbindFBO();
 		
@@ -69857,55 +69922,6 @@ void GameWorld::rasterHolders (bool doShadow)
 		activeFBO = 1-activeFBO;
 		
 		
-		
-		
-	}
-void GameWorld::rasterGrid (VBOGrid * vboGrid, bool showResults)
-                                                            {
-		
-		// get view matrix
-		singleton->perspectiveOn = true;
-		singleton->getMatrixFromFBO("rasterFBO0");
-		singleton->perspectiveOn = false;
-
-
-		glEnable(GL_DEPTH_TEST);
-
-		singleton->bindShader("GridShader");
-		singleton->bindFBO("rasterFBO0");
-
-		singleton->sampleFBO("rasterPosFBO",0);
-		singleton->sampleFBO("rasterSourceFBO",1);
-
-		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
-		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
-		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-		
-		
-		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
-		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
-		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
-
-		//singleton->fsQuad.draw();
-		vboGrid->vboWrapper.draw();
-
-
-		singleton->unsampleFBO("rasterSourceFBO",1);
-		singleton->unsampleFBO("rasterPosFBO",0);
-		singleton->unbindFBO();
-		singleton->unbindShader();
-		
-		glDisable(GL_DEPTH_TEST);
-
-		
-		if (showResults) {
-			singleton->drawFBO("rasterFBO0", 0, 1.0f);
-			
-			glutSwapBuffers();
-			
-			
-		}
 		
 		
 	}
@@ -70262,8 +70278,8 @@ void GameWorld::finalStep (bool postToScreen)
 				singleton->drawFBO("resultFBO", 0, 1.0f, 1 - activeFBO);
 			}
 			else {
-				singleton->copyFBO("solidTargFBO", "rasterPosFBO");
-				singleton->copyFBO("resultFBO"+i__s(activeFBO), "rasterSourceFBO");
+				// singleton->copyFBO("solidTargFBO", "rasterPosFBO");
+				// singleton->copyFBO("resultFBO"+i__s(activeFBO), "rasterSourceFBO");
 			}
 			
 			
@@ -70642,7 +70658,7 @@ void GameWorld::postProcess (bool postToScreen)
 					].patternVals,
 					PATTERN_SIZE*PATTERN_SIZE
 				);
-				singleton->setShaderfVec3("patternTarg", &(singleton->mouseMovePD));
+				singleton->setShaderfVec3("patternTarg", &(singleton->mouseMovePixData.pd[0]));
 				
 			}
 			singleton->setShaderInt("placingPattern", singleton->settings[E_BS_PLACING_PATTERN]);

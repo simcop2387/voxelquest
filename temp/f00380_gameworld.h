@@ -850,6 +850,10 @@ void GameWorld::update ()
 		
 		if (singleton->settings[E_BS_RENDER_VOXELS]) {
 			
+			
+			singleton->updatePrimArr();
+			updateLimbTBOData(true);
+			
 			if (
 				singleton->lightChanged ||
 				(singleton->forceShadowUpdate == 1) ||
@@ -1122,6 +1126,8 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 		Vector4 myVector4;
 		Vector4 resVector4;
 		
+		int limbAP = 0;
+		singleton->limbArrPos = 0;
 		
 		BaseObj* grabber;
 		
@@ -1153,6 +1159,8 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 			) {
 				
 				actorCount++;
+			
+				
 				
 				ge->clearAABB(&(ge->aabbMinVis),&(ge->aabbMaxVis));
 				for (j = 0; j < ge->bodies.size(); j++) {
@@ -1194,6 +1202,9 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getY() + buffer; dataInd++;
 				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getZ() + buffer; dataInd++;
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+				
+				// traceBTV("ge->aabbMinVis ", (ge->aabbMinVis));
+				// traceBTV("ge->aabbMaxVis ", (ge->aabbMaxVis));
 				
 				float randOff;
 				
@@ -1318,6 +1329,20 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 				singleton->limbTBOData[headerStart+3] = 0.0f;
 				
 				
+				limbAP = singleton->limbArrPos*8;
+				singleton->limbArr[limbAP + 0] = ge->getCenterPointFIV(0)->getFX(); //((ge->aabbMaxVis[0])+(ge->aabbMinVis[0]))*0.5f;
+				singleton->limbArr[limbAP + 1] = ge->getCenterPointFIV(0)->getFY();//((ge->aabbMaxVis[1])+(ge->aabbMinVis[1]))*0.5f;
+				singleton->limbArr[limbAP + 2] = ge->getCenterPointFIV(0)->getFZ();//((ge->aabbMaxVis[2])+(ge->aabbMinVis[2]))*0.5f;
+				singleton->limbArr[limbAP + 3] = headerStart/4;
+				
+				//texelRes2
+				singleton->limbArr[limbAP + 4] = 0;
+				singleton->limbArr[limbAP + 5] = 0;
+				singleton->limbArr[limbAP + 6] = 0;
+				singleton->limbArr[limbAP + 7] = 0;
+				singleton->limbArrPos++;
+				
+				
 				
 			}
 		}
@@ -1437,7 +1462,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		singleton->sampleFBO("hmFBOLinearBig",2);
 		
-		singleton->sampleFBO("rasterFBO0",3);
+		//singleton->sampleFBO("rasterFBO0",3);
 		//singleton->sampleFBO("terDepthFBO",3);
 		
 		//if (USE_SPHERE_MAP) {
@@ -1617,7 +1642,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		// }
 		singleton->unsampleFBO("geomTargFBO",5);
 		
-		singleton->unsampleFBO("rasterFBO0",3);
+		//singleton->unsampleFBO("rasterFBO0",3);
 		//singleton->unsampleFBO("terDepthFBO",3);
 		singleton->unsampleFBO("hmFBOLinearBig",2);
 		
@@ -4375,6 +4400,128 @@ void GameWorld::doBlur (string fboName, int _baseFBO)
 		singleton->unbindShader();
 		
 	}
+void GameWorld::drawBasicPrims (bool doShadow)
+                                           {
+		
+		
+		
+		
+		// int numCubes = singleton->tempPrimList.size();
+		// if (singleton->settings[E_BS_PLACING_GEOM]) {
+		// 	numCubes++;
+		// }
+		
+		// numCubes += singleton->actorCount;
+		
+		int numCubes = singleton->primArrPos;
+		
+		
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_FRONT);
+		
+		singleton->bindShader("BasicPrimShader");
+		singleton->bindFBO("rasterLowFBO");
+		
+		if (numCubes > 0) {
+			
+			singleton->setShaderTBO(
+				0,
+				singleton->primTBO.tbo_tex,
+				singleton->primTBO.tbo_buf,
+				true
+			);
+			
+			//cout << "singleton->actorCount " << singleton->actorCount << "\n";
+			
+			singleton->setShaderInt("actorCount",singleton->actorCount);
+			//singleton->setShaderInt("MAX_PRIM_IDS", min(singleton->actorCount,MAX_PRIM_IDS));
+			//singleton->setShaderInt("MAX_PRIMTEST", min(singleton->actorCount,MAX_PRIMTEST));
+			
+			singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+			singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+			singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
+			
+			singleton->setShaderArrayfVec4("primArr", singleton->primArr, numCubes*2);
+			singleton->zoCubes.drawCubes(numCubes);
+			
+			singleton->setShaderTBO(0,0,0,true);
+			
+		}
+		
+		
+		
+		singleton->unbindFBO();
+		singleton->unbindShader();
+		
+		
+		//singleton->copyFBO("rasterLowFBO","solidBaseTargFBO");
+		
+		
+		
+		numCubes = singleton->limbArrPos;
+		
+		
+		
+		if (numCubes > 0) {
+			
+			singleton->bindShader("BasicLimbShader");
+			singleton->bindFBO("rasterLowFBO",-1,0);
+			
+			singleton->setShaderTBO(
+				0,
+				singleton->limbTBO.tbo_tex,
+				singleton->limbTBO.tbo_buf,
+				true
+			);
+			
+			
+			// cout << "singleton->actorCount " << singleton->actorCount << "\n";
+			
+			singleton->setShaderInt("actorCount",singleton->actorCount);
+			singleton->setShaderInt("MAX_PRIM_IDS", min(singleton->actorCount,MAX_PRIM_IDS));
+			singleton->setShaderInt("MAX_PRIMTEST", min(singleton->actorCount,MAX_PRIMTEST));
+			
+			singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+			singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+			singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
+			
+			singleton->setShaderArrayfVec4("limbArr", singleton->limbArr, numCubes*2);
+			singleton->zoCubes.drawCubes(numCubes);
+			
+			singleton->setShaderTBO(0,0,0,true);
+		
+			singleton->unbindFBO();
+			singleton->unbindShader();
+		}
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		glCullFace(GL_BACK);
+		glDisable(GL_CULL_FACE);
+	}
 void GameWorld::rasterHolders (bool doShadow)
                                           {
 		
@@ -4387,10 +4534,8 @@ void GameWorld::rasterHolders (bool doShadow)
 
 		int q;
 
-		int numCubes = singleton->tempPrimList.size();
-		if (singleton->settings[E_BS_PLACING_GEOM]) {
-			numCubes++;
-		}
+		
+		
 
 		glEnable(GL_DEPTH_TEST);
 		
@@ -4417,7 +4562,7 @@ void GameWorld::rasterHolders (bool doShadow)
 			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 			singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
-			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+			//singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 			singleton->setShaderMatrix4x4("lightSpaceMatrix",singleton->lightSpaceMatrix.get(),1);
 			
 			
@@ -4456,49 +4601,9 @@ void GameWorld::rasterHolders (bool doShadow)
 			activeRaster = 1 - activeRaster;
 			
 			
+			drawBasicPrims(false);
 			
 			
-			
-			glEnable(GL_CULL_FACE);
-			glCullFace(GL_FRONT);
-			
-			singleton->bindShader("BasicPrimShader");
-			singleton->bindFBO("rasterLowFBO");
-			
-			if (numCubes > 0) {
-				
-				singleton->setShaderTBO(
-					0,
-					singleton->primTBO.tbo_tex,
-					singleton->primTBO.tbo_buf,
-					true
-				);
-				
-				singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
-				singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
-				singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
-				singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-				singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-				singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
-				
-				// singleton->setShaderfVec4("paramFetch1", &tempVec1 );
-				// singleton->setShaderfVec4("paramFetch2", &tempVec2 );
-				// singleton->setShaderFloat("primArrLength",numCubes);
-				
-				singleton->setShaderArrayfVec4("primArr", singleton->primArr, numCubes*2);
-				singleton->zoCubes.drawCubes(numCubes);
-				
-				singleton->setShaderTBO(0,0,0,true);
-			}
-			
-			
-			
-			singleton->unbindFBO();
-			singleton->unbindShader();
-			
-			
-			glCullFace(GL_BACK);
-			glDisable(GL_CULL_FACE);
 		}
 		
 		
@@ -4513,6 +4618,7 @@ void GameWorld::rasterHolders (bool doShadow)
 		if (doShadow) {
 			return;	
 		}
+		
 		
 		
 		
@@ -4560,12 +4666,12 @@ void GameWorld::rasterHolders (bool doShadow)
 			singleton->bindShader("NearestShader");
 			singleton->bindFBO("rasterFBO", activeRaster);
 			singleton->sampleFBO("rasterFBO",0,activeRaster);
-			singleton->sampleFBO("rasterLowFBO",2);
+			singleton->sampleFBO("rasterLowFBO",3);
 			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 			singleton->setShaderInt("totRad",singleton->iGetConst(E_CONST_FILLNEARESTRAD));
 			singleton->fsQuad.draw();
-			singleton->unsampleFBO("rasterLowFBO",2);
+			singleton->unsampleFBO("rasterLowFBO",3);
 			singleton->unsampleFBO("rasterFBO",0,activeRaster);
 			singleton->unbindFBO();
 			singleton->unbindShader();
@@ -4574,19 +4680,15 @@ void GameWorld::rasterHolders (bool doShadow)
 		}
 		
 		
-		
-		
-		
-		
-		singleton->copyFBO("rasterFBO"+i__s(activeRaster), "solidTargFBO");
+		singleton->copyFBO3("rasterFBO"+i__s(activeRaster), "readFBO");
 		
 		
 		singleton->bindShader("LightShader");
 		singleton->bindFBO("resultFBO", activeFBO);
 		singleton->sampleFBO("rasterFBO",0,activeRaster);
-		singleton->sampleFBO("debugTargFBO", 2);
-		singleton->setShaderTexture3D(4,singleton->volIdMat);
-		singleton->sampleFBO("shadowMapFBO",5);
+		singleton->sampleFBO("debugTargFBO", 3);
+		singleton->setShaderTexture3D(5,singleton->volIdMat);
+		singleton->sampleFBO("shadowMapFBO",6);
 		
 		
 		if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {
@@ -4630,6 +4732,11 @@ void GameWorld::rasterHolders (bool doShadow)
 		
 		*/
 		
+		
+		
+		singleton->setShaderFloat("curTime", singleton->curTime);
+		singleton->setShaderfVec4("readData",&(singleton->mouseUpPixData.pd[2]));
+		singleton->setShaderfVec2("mouseCoords",&(singleton->lastMouseZO));
 		singleton->setShaderInt("gridOn", singleton->settings[E_BS_SHOW_GRID]);
 		singleton->setShaderFloat("gammaVal", singleton->gammaVal);
 		singleton->setShaderFloat("cellsPerChunk",singleton->cellsPerChunk);
@@ -4656,9 +4763,9 @@ void GameWorld::rasterHolders (bool doShadow)
 		
 		singleton->fsQuad.draw();
 
-		singleton->unsampleFBO("shadowMapFBO",5);
-		singleton->setShaderTexture3D(4,0);
-		singleton->unsampleFBO("debugTargFBO", 2);
+		singleton->unsampleFBO("shadowMapFBO",6);
+		singleton->setShaderTexture3D(5,0);
+		singleton->unsampleFBO("debugTargFBO", 3);
 		singleton->unsampleFBO("rasterFBO",0,activeRaster);
 		singleton->unbindFBO();
 		
@@ -4667,55 +4774,6 @@ void GameWorld::rasterHolders (bool doShadow)
 		activeFBO = 1-activeFBO;
 		
 		
-		
-		
-	}
-void GameWorld::rasterGrid (VBOGrid * vboGrid, bool showResults)
-                                                            {
-		
-		// get view matrix
-		singleton->perspectiveOn = true;
-		singleton->getMatrixFromFBO("rasterFBO0");
-		singleton->perspectiveOn = false;
-
-
-		glEnable(GL_DEPTH_TEST);
-
-		singleton->bindShader("GridShader");
-		singleton->bindFBO("rasterFBO0");
-
-		singleton->sampleFBO("rasterPosFBO",0);
-		singleton->sampleFBO("rasterSourceFBO",1);
-
-		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
-		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
-		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-		
-		
-		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
-		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
-		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
-
-		//singleton->fsQuad.draw();
-		vboGrid->vboWrapper.draw();
-
-
-		singleton->unsampleFBO("rasterSourceFBO",1);
-		singleton->unsampleFBO("rasterPosFBO",0);
-		singleton->unbindFBO();
-		singleton->unbindShader();
-		
-		glDisable(GL_DEPTH_TEST);
-
-		
-		if (showResults) {
-			singleton->drawFBO("rasterFBO0", 0, 1.0f);
-			
-			glutSwapBuffers();
-			
-			
-		}
 		
 		
 	}
@@ -5072,8 +5130,8 @@ void GameWorld::finalStep (bool postToScreen)
 				singleton->drawFBO("resultFBO", 0, 1.0f, 1 - activeFBO);
 			}
 			else {
-				singleton->copyFBO("solidTargFBO", "rasterPosFBO");
-				singleton->copyFBO("resultFBO"+i__s(activeFBO), "rasterSourceFBO");
+				// singleton->copyFBO("solidTargFBO", "rasterPosFBO");
+				// singleton->copyFBO("resultFBO"+i__s(activeFBO), "rasterSourceFBO");
 			}
 			
 			
@@ -5452,7 +5510,7 @@ void GameWorld::postProcess (bool postToScreen)
 					].patternVals,
 					PATTERN_SIZE*PATTERN_SIZE
 				);
-				singleton->setShaderfVec3("patternTarg", &(singleton->mouseMovePD));
+				singleton->setShaderfVec3("patternTarg", &(singleton->mouseMovePixData.pd[0]));
 				
 			}
 			singleton->setShaderInt("placingPattern", singleton->settings[E_BS_PLACING_PATTERN]);

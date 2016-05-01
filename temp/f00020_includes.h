@@ -644,7 +644,7 @@ const T& HPClockMin(const T& a, const T& b)
 #endif //_WIN32
 
 #include <stdint.h>
-int64_t GLOBAL_OBJ_COUNT = 0LL;
+int64_t GLOBAL_OBJ_COUNT = 1LL;
 
 
 struct HPClockData

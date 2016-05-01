@@ -1464,6 +1464,10 @@ public:
 
 
 
+struct PixData {
+	FIVector4 pd[3];
+};
+
 
 void hsv2rgb(materialNode* matNode) {
 	

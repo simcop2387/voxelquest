@@ -5,6 +5,10 @@
 
 uniform samplerBuffer Texture0; // primTBO
 
+
+uniform int actorCount;
+uniform int MAX_PRIM_IDS;
+uniform int MAX_PRIMTEST;
 uniform float heightOfNearPlane;
 uniform float FOV;
 uniform vec2 clipDist;
@@ -20,6 +24,7 @@ uniform mat4 pmMatrix;
 
 uniform vec4 primArr[128];
 // uniform float primArrLength;
+
 
 
 const float TEX_NULL=0.0/255.0;
@@ -67,29 +72,46 @@ const int E_PRIMTEMP_LENGTH = 6;
 
 
 in vec4 worldPos;
-in vec4 vdata0;
+flat in vec4 vdata0;
 
-in vec4 texelRes1;
-in vec4 texelRes2;
-in vec4 pdVisMin;
-in vec4 pdVisMax;
-in vec4 pdBoundsMin;
-in vec4 pdBoundsMax;
-in vec4 pdCornerDis;
-in vec4 pdMatParmas;
-in vec4 boxDim;
-in vec2 boxPower;
-in vec3 boxCenterPoint;
+flat in vec4 texelRes1;
+flat in vec4 texelRes2;
+flat in vec4 pdVisMin;
+flat in vec4 pdVisMax;
+flat in vec4 pdBoundsMin;
+flat in vec4 pdBoundsMax;
+flat in vec4 pdCornerDis;
+flat in vec4 pdMatParmas;
+flat in vec4 boxDim;
+flat in vec2 boxPower;
+flat in vec3 boxCenterPoint;
 
 layout(location = 0) out vec4 FragColor0;
 layout(location = 1) out vec4 FragColor1;
+layout(location = 2) out vec4 FragColor2;
 
+// qqqqq 
+
+bool globPrimaryRay;
+float MAX_CAM_DIS;
+
+
+const int TOT_DETAIL_STEPS = 8;
+const float M_PI = 3.14159265359;
 const int NUM_RAY_STEPS = 128;
+const float SKY_ID = -5.0;
+const float CAM_BOX_SIZE = 2.0;
+
 
 float sdBox( vec3 p, vec3 b )
 {
 	vec3 d = abs(p) - b;
 	return min(max(d.x,max(d.y,d.z)),0.0) + length(max(d,0.0));
+}
+
+vec2 opU( vec2 d1, vec2 d2 )
+{
+		return mix(d2,d1,float(d1.x<d2.x));
 }
 
 float opS( float d1, float d2 )
@@ -138,6 +160,7 @@ vec2 aabbIntersect(vec3 rayOrig, vec3 rayDir, vec3 minv, vec3 maxv) {
 }
 
 
+
 float mapPrim(vec3 pos) {
 	
 	
@@ -166,7 +189,7 @@ float mapPrim(vec3 pos) {
 	
 	finalRes = opS(
 		finalRes,
-		sdBox(pos-cameraPos, vec3(4.0) ) //8.0 //CAM_BOX_SIZE
+		sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) ) //8.0 //
 	);
 	
 	return finalRes;
@@ -237,7 +260,8 @@ vec4 castPrim(
 
 void main() {
 	
-	
+	globPrimaryRay = true;
+	MAX_CAM_DIS = clipDist.y;
 
 	vec4 primRes = vec4(0.0,0.0,1.0,0.0);
 
@@ -266,15 +290,26 @@ void main() {
 
 	float totSteps = 0.0;
 
+
+	vec2 curTex = vec2(TEX_EARTH,0.0);
+	
+	float totStepVal = 0.0;
+	
+	
 	primRes = castPrim(ro,rd,hitBox.x,hitBox.y,NUM_RAY_STEPS, totSteps);
+	totStepVal = totSteps/float(NUM_RAY_STEPS);
+	curTex = vec2(TEX_EARTH,totStepVal);
+	
 	
 	if (primRes.w < 0.0) {
 		discard;
 	}
 	
+	//primRes.w = ;
+	
 	vec3 newPos = ro+rd*primRes.w;
 
-	float totStepVal = totSteps/float(NUM_RAY_STEPS);
+	
 
 	// float myDepth = primRes.w/clipDist.y;
 	// //gl_FragDepthEXT = myDepth;
@@ -295,7 +330,7 @@ void main() {
 	//newPos.z += -0.1;
 	
 	
-	vec2 curTex = vec2(TEX_EARTH,totStepVal);
+	
 	float curMat = floor(curTex.x*256.0*255.0) + floor(curTex.y*255.0);
 	
 	vec4 clipPos = pmMatrix * vec4(newPos.xyz, 1.0);
@@ -308,6 +343,7 @@ void main() {
 	
 	FragColor0 = vec4(newPos,1.0);
 	FragColor1 = vec4(primRes.xyz,curMat);
+	FragColor2 = vec4(texelRes2.x,0.0,0.0,0.0);
 
 }
 

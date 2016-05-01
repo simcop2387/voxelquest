@@ -3,17 +3,22 @@
 // rasterFBO
 uniform sampler2D Texture0;
 uniform sampler2D Texture1;
+uniform sampler2D Texture2;
 
 // debugTargFBO
-uniform sampler2D Texture2;
 uniform sampler2D Texture3;
+uniform sampler2D Texture4;
 
 // palFBO
-uniform sampler3D Texture4;
+uniform sampler3D Texture5;
 
 // shadowMapFBO
-uniform sampler2D Texture5;
+uniform sampler2D Texture6;
 
+
+uniform float curTime;
+uniform vec4 readData;
+uniform vec2 mouseCoords;
 uniform bool gridOn;
 uniform float gammaVal;
 uniform vec3 brushCol;
@@ -42,7 +47,14 @@ uniform mat4 pmMatrix;
 
 ^INCLUDE:RayFuncs^
 
-
+const vec3 dirVecs[6] = vec3[](
+  vec3(  1.0,  0.0,  0.0 ), // right
+  vec3( -1.0,  0.0,  0.0 ), // left
+  vec3(  0.0,  1.0,  0.0 ), // up
+  vec3(  0.0, -1.0,  0.0 ), // down
+  vec3(  0.0,  0.0,  1.0 ), // above
+  vec3(  0.0,  0.0, -1.0 ) // below
+);
 
 
 $
@@ -107,7 +119,7 @@ float unpack16(vec2 num)
 
 vec3 unpackColor(vec2 num, float lightVal)
 {
-  return texture( Texture4, vec3(lightVal, num.r, num.g + 0.5/255.0) ).rgb;
+  return texture( Texture5, vec3(lightVal, num.r, num.g + 0.5/255.0) ).rgb;
 }
 
 vec3 rgb2hsv(vec3 c)
@@ -330,6 +342,109 @@ float calcAO(vec2 texc, vec3 worldPosition, vec3 normVec) {
 //bool globBool;
 
 
+vec3 getOutline(vec3 _baseCol, vec2 TexCoord0, vec4 wp, vec4 sampOrig) {
+  
+  vec3 baseCol = _baseCol;
+  
+  bool isOutlineObj = false;
+  bool isOutlineNPC = false;
+  
+  bool isSelObj = false;
+  bool isSelNPC = false;
+  // bool isActObj = false;
+  // bool isSelLimb = false;
+  
+  bool highlightedObj = false;
+  bool highlightedNPC = false;
+  
+  int i;
+  
+  vec2 newTC = vec2(0.0);
+  vec4 samp;
+  
+  vec4 mouseSamp = texture(Texture2,mouseCoords);
+  
+  for (i = 0; i < 4; i++) {
+      newTC = TexCoord0.xy + dirVecs[i].xy*2.0/bufferDim;
+      samp = texture(Texture2, newTC );
+      if (
+        (samp.x != sampOrig.x) &&
+        (sampOrig.x == 0.0)        
+      ) {
+        isOutlineObj = true;
+      }
+      
+      if (
+        (samp.w != sampOrig.w) &&
+        (sampOrig.w == 0.0)        
+      ) {
+        isOutlineNPC = true;
+      }
+      
+      if (
+        (sampOrig.x != readData.x) &&
+        (samp.x == readData.x)  &&
+        (readData.x != 0.0)
+      ) {
+        isSelObj = true;
+      }
+      
+      if (
+        (sampOrig.w != readData.w) &&
+        (samp.w == readData.w)  &&
+        (readData.w != 0.0)
+      ) {
+        isSelNPC = true;
+      }
+      
+  }
+  
+  
+  if (isOutlineNPC) { //isOutlineObj
+    baseCol *= vec3(0.25);
+  }
+  
+  if (
+    (mouseSamp.x != 0.0) &&
+    (sampOrig.x == mouseSamp.x)
+  ) {
+    highlightedObj = true;
+  }
+  
+  if (
+    (mouseSamp.w != 0.0) &&
+    (sampOrig.w == mouseSamp.w)
+  ) {
+    highlightedNPC = true;
+  }
+  
+  vec3 res = vec3(0.0);
+  
+  // if (isOutline) {
+  //   res = vec3(1.0,1.0,0.0);
+  // }
+  
+  if (highlightedObj||highlightedNPC) {
+    res = vec3(1.0)*0.25;//*abs(sin(curTime/400.0))*0.25;
+  }
+  
+ 
+  
+  float stripeVal = float(sin(
+      (TexCoord0.x + TexCoord0.y)*(bufferDim.y/5.0) + curTime/50.0     
+  ) > 0.0);
+  
+  if (isSelObj||isSelNPC) {
+    res = vec3(1.0)*stripeVal;
+  }
+  
+  // if (isOutline) {
+  //   res *= stripeVal;
+  // }
+  
+  return baseCol + clamp(res,0.0,1.0);
+}
+
 float getGrid(vec3 worldPosition, vec3 normVec) {
   
   vec3 absNorm = abs(normVec);
@@ -364,7 +479,7 @@ float calcShadow(vec4 worldPos, vec4 worldPosInLightSpace, vec3 normVec) {
     float cutoff = projCoords.z;
     
     // Get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
-    float closestDepth = texture(Texture5, projCoords.xy).w; 
+    float closestDepth = texture(Texture6, projCoords.xy).w; 
     // Get depth of current fragment from light's perspective
     //projCoords.z *= 0.5;
     float currentDepth = distance(lightPos.xyz,worldPos.xyz);//projCoords.z;
@@ -381,12 +496,12 @@ float calcShadow(vec4 worldPos, vec4 worldPosInLightSpace, vec3 normVec) {
     int y = 0;
     float pcfDepth = 0.0;
     float shadow = 0.0;
-    vec2 texelSize = 1.0 / textureSize(Texture5, 0);
+    vec2 texelSize = 1.0 / textureSize(Texture6, 0);
     for(x = -1; x <= 1; ++x)
     {
         for(y = -1; y <= 1; ++y)
         {
-            pcfDepth = texture(Texture5, projCoords.xy + vec2(x, y) * texelSize).w; 
+            pcfDepth = texture(Texture6, projCoords.xy + vec2(x, y) * texelSize).w; 
             shadow += float(currentDepth < pcfDepth);        
         }
     }
@@ -458,16 +573,18 @@ void main() {
   
   vec4 tex0 = texture(Texture0,TexCoord0.xy);
   vec4 tex1 = texture(Texture1,TexCoord0.xy);
-  
   vec4 tex2 = texture(Texture2,TexCoord0.xy);
+  
   vec4 tex3 = texture(Texture3,TexCoord0.xy);
+  vec4 tex4 = texture(Texture4,TexCoord0.xy);
+
 
   if (testOn3) {
     FragColor0 = vec4(
      vec3(
-      distance(texture(Texture5,TexCoord0.xy).xyz,cameraPos.xyz)/600.0  
+      distance(texture(Texture6,TexCoord0.xy).xyz,cameraPos.xyz)/600.0  
      ),
-     //(sin(texture(Texture5,TexCoord0.xy).xyz)+1.0)*0.5,
+     //(sin(texture(Texture6,TexCoord0.xy).xyz)+1.0)*0.5,
      1.0
     );
     return;
@@ -508,7 +625,7 @@ void main() {
     
     worldPosInLightSpace = lightSpaceMatrix*vec4(tex0.xyz,1.0);
     shadowVal = calcShadow(tex0, worldPosInLightSpace, tex1.xyz);
-    shadowVal2 = calcShadowSS(tex0.xyz, tex1.xyz);
+    shadowVal2 = 1.0;//calcShadowSS(tex0.xyz, tex1.xyz);
     shadowVal *= shadowVal2;
     lightVal = lightValOrig*shadowVal;
     
@@ -560,7 +677,7 @@ void main() {
     //   all(greaterThan(screenPos.xy,vec2(0.0))) &&
     //   all(lessThan(screenPos.xy,vec2(1.0)))
     // ) {
-    //   shadowSamp = texture(Texture5,screenPos.xy+0.5);
+    //   shadowSamp = texture(Texture6,screenPos.xy+0.5);
     //   if ((shadowSamp.z+0.5) > tex0.z) {
     //     finalCol *= 0.25;
     //   }
@@ -578,6 +695,8 @@ void main() {
       finalCol += getGrid(tex0.xyz,tex1.xyz)*vec3(0.1);
     }
     
+    
+    
     finalCol = mix(
       finalCol,//mix(finalCol*0.25,finalCol,shadowVal),
       fogCol,
@@ -592,9 +711,9 @@ void main() {
 
   }
 
-  if (distance(cameraPos.xyz,tex2.xyz) < distance(cameraPos.xyz,tex0.xyz)) {
-    if (dot(tex2.xyz,oneVec.xyz) != 0.0) {
-      finalCol = tex3.xyz;
+  if (distance(cameraPos.xyz,tex3.xyz) < distance(cameraPos.xyz,tex0.xyz)) {
+    if (dot(tex3.xyz,oneVec.xyz) != 0.0) {
+      finalCol = tex4.xyz;
     }
   }
   
@@ -623,6 +742,8 @@ void main() {
   // }
   
   finalCol.xyz = doGamma(finalCol.xyz,gammaVal);
+
+  finalCol = getOutline(finalCol, TexCoord0,tex0,tex2);
 
   //mod(tex.xyz+0.01,1.0);
   

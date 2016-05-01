@@ -2,6 +2,7 @@
 
 uniform sampler2D Texture0;
 uniform sampler2D Texture1;
+uniform sampler2D Texture2;
 
 uniform float voxelsPerCell;
 uniform float FOV;
@@ -35,6 +36,7 @@ in vec4 worldPos;
 
 layout(location = 0) out vec4 FragColor0;
 layout(location = 1) out vec4 FragColor1;
+layout(location = 2) out vec4 FragColor2;
 
 ^INCLUDE:MATERIALS^
 
@@ -53,7 +55,7 @@ void main() {
     
     vec4 tex0 = texture(Texture0,TexCoord0.xy);
     vec4 tex1 = texture(Texture1,TexCoord0.xy);
-
+    vec4 tex2 = texture(Texture2,TexCoord0.xy);
     
     
     
@@ -90,6 +92,7 @@ void main() {
     vec4 samp = vec4(0.0);
     vec4 bestSamp0 = tex0;
     vec4 bestSamp1 = tex1;
+    vec4 bestSamp2 = tex2;
 
     vec2 curCoord = vec2(0.0);
     vec2 offVal = vec2(0.0);
@@ -131,6 +134,7 @@ void main() {
                     bestDis = testDis;
                     bestSamp0 = samp;
                     bestSamp1 = texture2D(Texture1,curCoord);
+                    bestSamp2 = texture2D(Texture2,curCoord);
                 }
             }
             
@@ -147,6 +151,7 @@ void main() {
 
     FragColor0 = bestSamp0;
     FragColor1 = bestSamp1;
+    FragColor2 = bestSamp2;
 
 }
 

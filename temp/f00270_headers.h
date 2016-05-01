@@ -201,6 +201,9 @@ public:
   int currentTick;
   int curPattern;
   int curPatternRot;
+  int curSelPrim;
+  int limbArrPos;
+  int primArrPos;
   int cacheVersion;
   int holderLoadCount;
   int bakeTicks;
@@ -341,6 +344,7 @@ public:
   float * paramArr;
   float * paramArrGeom;
   float * primArr;
+  float * limbArr;
   float * splashArr;
   float * explodeArr;
   float * voroArr;
@@ -362,6 +366,7 @@ public:
   FIVector4 (colVecs) [16];
   FIVector4 geomOrigOffset;
   FIVector4 lastSend;
+  FIVector4 lastMouseZO;
   FIVector4 lastLightPos;
   FIVector4 lightPos;
   FIVector4 lightLookAt;
@@ -374,13 +379,10 @@ public:
   FIVector4 lookAtVec;
   FIVector4 lookAtVec2D;
   FIVector4 baseScrollPos;
-  FIVector4 mouseUpPD;
-  FIVector4 mouseUpOPD;
-  FIVector4 spaceUpPD;
-  FIVector4 mouseDownPD;
-  FIVector4 mouseDownOPD;
-  FIVector4 mouseMovePD;
-  FIVector4 mouseMoveOPD;
+  PixData spaceUpPixData;
+  PixData mouseUpPixData;
+  PixData mouseDownPixData;
+  PixData mouseMovePixData;
   FIVector4 tempVec1;
   FIVector4 tempVec2;
   FIVector4 tempVec3;
@@ -554,6 +556,7 @@ public:
   FBOWrapper * getFBOWrapper (string fboName, int offset);
   void copyFBO (string src, string dest, int num = 0);
   void copyFBO2 (string src, string dest, int num1 = 0, int num2 = 1);
+  void copyFBO3 (string src, string dest, int num1 = 0, int num2 = 1, int num3 = 2);
   void bindFBO (string fboName, int swapFlag = -1, int doClear = 1);
   void unbindFBO ();
   void bindShader (string shaderName);
@@ -618,7 +621,7 @@ public:
   void resetGeom ();
   void stopAllThreads ();
   void processInput (unsigned char key, bool keyDown, int x, int y);
-  void getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj);
+  void getPixData (PixData * toPixData, int _xv, int _yv, bool forceUpdate);
   float getMinGeom (int baseIndex);
   FIVector4 * getGeomRef (int templateId, int enumVal);
   void setFXYZWGeom (int baseIndex, FIVector4 * baseVec);
@@ -1649,7 +1652,7 @@ public:
   void applyNodeChanges (GameOrgNode * _curNode, float dx, float dy);
   void transformOrg (GameOrg * curOrg, GameOrgNode * tempParent);
   void resetActiveNode ();
-  bool updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS);
+  bool updateNearestOrgNode (bool setActive);
   void saveOrgFromMenu (string currentFieldString);
   void loadOrgFromMenu (string currentFieldString);
   void makeDirty ();
@@ -2139,7 +2142,7 @@ public:
   btVector3 zMask;
   GamePhysics ();
   void init (Singleton * _singleton);
-  void pickBody (FIVector4 * mouseMoveOPD);
+  void pickBody (FIVector4 * mmPD);
   void collectDebris ();
   void beginDrop ();
   void remBoxFromObj (BaseObjType _uid);
@@ -2311,8 +2314,8 @@ public:
   void initMap ();
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
+  void drawBasicPrims (bool doShadow);
   void rasterHolders (bool doShadow);
-  void rasterGrid (VBOGrid * vboGrid, bool showResults);
   void renderDebug ();
   void finalStep (bool postToScreen);
   void postProcess (bool postToScreen);

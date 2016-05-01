@@ -1248,7 +1248,7 @@ NEXT_FILL_STEP:
 		
 		vec3 testPos;
 		float testDis;
-		vec3 variance = vec3(0.4f);
+		vec3 variance = vec3(0.5f);
 		
 		
 		vec3 bestPos = VORO_OFFSETS[0] + randPN(fWorldCellPos+VORO_OFFSETS[0])*variance;

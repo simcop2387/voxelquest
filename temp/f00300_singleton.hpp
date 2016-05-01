@@ -193,6 +193,9 @@ public:
 	int curPattern;
 	int curPatternRot;
 	
+	int curSelPrim;
+	int limbArrPos;
+	int primArrPos;
 	int cacheVersion;
 	int holderLoadCount;
 	int bakeTicks;
@@ -361,6 +364,7 @@ public:
 	float *paramArr;
 	float *paramArrGeom;
 	float *primArr;
+	float *limbArr;
 	float *splashArr;
 	float *explodeArr;
 	float *voroArr;
@@ -401,7 +405,7 @@ public:
 	
 	
 	
-	
+	FIVector4 lastMouseZO;
 	FIVector4 lastLightPos;
 	FIVector4 lightPos;
 	FIVector4 lightLookAt;
@@ -414,13 +418,19 @@ public:
 	FIVector4 lookAtVec;
 	FIVector4 lookAtVec2D;
 	FIVector4 baseScrollPos;
-	FIVector4 mouseUpPD;
-	FIVector4 mouseUpOPD;
-	FIVector4 spaceUpPD;
-	FIVector4 mouseDownPD;
-	FIVector4 mouseDownOPD;
-	FIVector4 mouseMovePD;
-	FIVector4 mouseMoveOPD;
+	
+	
+	
+	
+	
+	
+	PixData spaceUpPixData;
+	PixData mouseUpPixData;
+	PixData mouseDownPixData;
+	PixData mouseMovePixData;
+	
+	
+	
 	FIVector4 tempVec1;
 	FIVector4 tempVec2;
 	FIVector4 tempVec3;
@@ -693,7 +703,9 @@ public:
 		
 		initNetMasks();
 		
-		
+		limbArrPos = 0;
+		primArrPos = 0;
+		curSelPrim = 0;
 		cacheMetaJS = NULL;
 		curCLBaseDir = "e:\\vqcache";
 		curCLWorldDir = "world001";
@@ -1430,6 +1442,7 @@ public:
 		
 		paramArr = new float[4096];
 		paramArrGeom = new float[128];
+		limbArr = new float[MAX_ZO_CUBES*4*2];
 		primArr = new float[MAX_ZO_CUBES*4*2];
 		splashArr = new float[MAX_SPLASHES*4];
 		explodeArr = new float[MAX_EXPLODES*4];
@@ -1734,6 +1747,7 @@ public:
 		shaderStrings.push_back("WaterShaderCombine");
 		shaderStrings.push_back("CopyShader");
 		shaderStrings.push_back("CopyShader2");
+		shaderStrings.push_back("CopyShader3");
 		shaderStrings.push_back("NoiseShader");
 		shaderStrings.push_back("MapBorderShader");
 		shaderStrings.push_back("BillboardShader");
@@ -1747,6 +1761,7 @@ public:
 		shaderStrings.push_back("RasterShader");
 		shaderStrings.push_back("HolderShader");
 		shaderStrings.push_back("BasicPrimShader");
+		shaderStrings.push_back("BasicLimbShader");
 		shaderStrings.push_back("ShadowMapShader");
 		shaderStrings.push_back("GridShader");
 		shaderStrings.push_back("GeomShader");
@@ -1949,16 +1964,16 @@ public:
 			fboMap[polyFBOStrings[i]].init(1, bufferRenderDim.getIX(), bufferRenderDim.getIY(), 4, true);
 		}
 		
+		
+		
 		fboMap["shadowMapFBO"].init(1, SHADOW_MAP_RES, SHADOW_MAP_RES, 4, true, GL_LINEAR);
+		fboMap["rasterFBO0"].init(3, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
+		fboMap["rasterFBO1"].init(3, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);		
+		fboMap["rasterLowFBO"].init(3, rasterLowDim.getIX(), rasterLowDim.getIY(), 4, true, GL_NEAREST);
+		fboMap["readFBO"].init(3, rasterLowDim.getIX(), rasterLowDim.getIY(), 4, true, GL_NEAREST);
 		
-		
-		fboMap["rasterFBO0"].init(2, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
-		fboMap["rasterFBO1"].init(2, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
-		
-		fboMap["rasterLowFBO"].init(2, rasterLowDim.getIX(), rasterLowDim.getIY(), 4, true, GL_NEAREST);
-		
-		fboMap["rasterPosFBO"].init(1, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);//, GL_REPEAT);
-		fboMap["rasterSourceFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);//, GL_REPEAT);
+		// fboMap["rasterPosFBO"].init(1, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);//, GL_REPEAT);
+		// fboMap["rasterSourceFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);//, GL_REPEAT);
 		
 		
 		
@@ -2982,7 +2997,7 @@ public:
 		
 		if (toggled) {
 			
-			ind = mouseDownOPD.getFW();
+			ind = mouseDownPixData.pd[2].getFW();
 			
 			objTargeted = ind >= E_OBJ_LENGTH;	
 			
@@ -4022,16 +4037,19 @@ DISPATCH_EVENT_END:
 			primArr[i*8 + 2] = curObj->offset.z;
 			primArr[i*8 + 3] = curObj->templateId;
 			
-			primArr[i*8 + 4] = 0;
+			// texelRes2
+			primArr[i*8 + 4] = curObj->globalId;
 			primArr[i*8 + 5] = 0;
 			primArr[i*8 + 6] = 0;
 			primArr[i*8 + 7] = 0;
 			
 		}
 		
-		i = tempPrimList.size();
+		
 		
 		if (settings[E_BS_PLACING_GEOM]) {
+			
+			
 			tempVec1.copyFrom(&(geomPoints[0]));
 			tempVec1.addXYZRef(&(geomOrigOffset));
 			tempVec1.setFW(curPrimTemplate);
@@ -4047,7 +4065,24 @@ DISPATCH_EVENT_END:
 			primArr[i*8 + 6] = 0;
 			primArr[i*8 + 7] = 0;
 			
+			i++;
+			
 		}
+		
+		primArrPos = i;
+		
+		// for (j = i; j < (i+actorCount); j++) {
+		// 	primArr[i*8 + 0] = tempVec1[0];
+		// 	primArr[i*8 + 1] = tempVec1[1];
+		// 	primArr[i*8 + 2] = tempVec1[2];
+		// 	primArr[i*8 + 3] = tempVec1[3];
+			
+		// 	primArr[i*8 + 4] = 0;
+		// 	primArr[i*8 + 5] = 1;
+		// 	primArr[i*8 + 6] = 0;
+		// 	primArr[i*8 + 7] = 0;
+		// }
+		
 		
 	}
 	
@@ -4464,6 +4499,21 @@ DISPATCH_EVENT_END:
 		unbindFBO();
 		unbindShader();
 	}
+	
+	void copyFBO3(string src, string dest, int num1 = 0, int num2 = 1, int num3 = 2)
+	{
+		bindShader("CopyShader3");
+		bindFBO(dest);
+		setShaderTexture(0, getFBOWrapper(src,num1)->color_tex);
+		setShaderTexture(1, getFBOWrapper(src,num2)->color_tex);
+		setShaderTexture(2, getFBOWrapper(src,num3)->color_tex);
+		drawFSQuad();
+		setShaderTexture(2, 0);
+		setShaderTexture(1, 0);
+		setShaderTexture(0, 0);
+		unbindFBO();
+		unbindShader();
+	}
 
 	void bindFBO(string fboName, int swapFlag = -1, int doClear = 1)
 	{
@@ -4661,6 +4711,7 @@ DISPATCH_EVENT_END:
 		{
 			glActiveTexture(GL_TEXTURE0 + multitexNumber);
 			glBindTexture(GL_TEXTURE_2D, tbo_tex);
+			//glBindBuffer(GL_TEXTURE_BUFFER, tboIndices);
 			if (tbo_tex != 0) {
 				if (isFloat) {
 					glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, tbo_buf);
@@ -5535,8 +5586,8 @@ DISPATCH_EVENT_END:
 	
 	
 	void getMarkerPos(int x, int y) {
-		getPixData(&spaceUpPD, x, y, true, false);
-		worldMarker.copyFrom(&spaceUpPD);
+		getPixData(&spaceUpPixData, x, y, true);
+		worldMarker.copyFrom(&spaceUpPixData.pd[0]);
 		lastCellPos.copyFrom(&(worldMarker));
 	}
 	
@@ -5754,6 +5805,8 @@ DISPATCH_EVENT_END:
 					case '2':
 					case '3':
 					
+						speak("Place entity.");
+					
 						switch(key) {
 							case '1':
 								tempType = E_ENTTYPE_NPC;
@@ -5767,7 +5820,7 @@ DISPATCH_EVENT_END:
 							break;
 						}
 					
-						if (settings[E_BS_UPDATE_HOLDERS]) {
+						// if (settings[E_BS_UPDATE_HOLDERS]) {
 							getMarkerPos(x, y);
 							gem->placeNewEnt(gameNetwork->isConnected,tempType,&lastCellPos);
 							
@@ -5780,11 +5833,11 @@ DISPATCH_EVENT_END:
 							
 							gem->refreshTurnList();
 							
-						}
-						else {
-							cout << "Turn On Holder Update (u)\n";
-							doAlert();
-						}
+						// }
+						// else {
+						// 	cout << "Turn On Holder Update (u)\n";
+						// 	doAlert();
+						// }
 						
 					break;
 					//case '0':
@@ -6300,7 +6353,7 @@ DISPATCH_EVENT_END:
 	
 	
 
-	void getPixData(FIVector4 *toVector, int _xv, int _yv, bool forceUpdate, bool isObj)
+	void getPixData(PixData *toPixData, int _xv, int _yv, bool forceUpdate)
 	{
 
 		if (
@@ -6326,45 +6379,61 @@ DISPATCH_EVENT_END:
 		float bufx;
 		float bufy;
 
-		if (isObj) {
-			//fbow = getFBOWrapper("geomBaseTargFBO",2);
-			fbow = getFBOWrapper("limbFBO", 0);
-		}
-		else {
-			fbow = getFBOWrapper("solidTargFBO", 0);
-		}
+		// if (isObj) {
+		// 	//fbow = getFBOWrapper("geomBaseTargFBO",2);
+		// 	fbow = getFBOWrapper("limbFBO", 0);
+		// }
+		// else {
+		// 	fbow = getFBOWrapper("solidTargFBO", 0);
+		// }
 		
+		int i;
 		
-		float srcW = fbow->width;
-		float srcH = fbow->height;
+		float srcW;
+		float srcH;
 		
 		bufx = xv/bufferDim.getFX();
 		bufy = 1.0f-yv/bufferDim.getFY();
+		
+		
+		
+		for (i = 0; i < 3; i++) {
+			
+			fbow = getFBOWrapper("readFBO", i);
+			
+			
+			srcW = fbow->width;
+			srcH = fbow->height;
+			
+			if (wsBufferInvalid || forceUpdate || forceGetPD) {
+				
+				// glFlush();
+				// glFinish();
+				//cout << "getPixData\n";
+				fbow->getPixels();
+				
+				// glFlush();
+				// glFinish();
+				
+			}
+			
+			
+			fbow->getPixelAtF(
+				&(toPixData->pd[i]), 
+				bufx*srcW,
+				bufy*srcH
+			);
 
-		if (wsBufferInvalid || forceUpdate || forceGetPD) {
-			
-			// glFlush();
-			// glFinish();
-			
-			fbow->getPixels();
-			
-			// glFlush();
-			// glFinish();
 			
 		}
-
-		// newX = clamp(xv, 0, bufx - 1);
-		// newY = clamp(yv, 0, bufy - 1);
-
-		fbow->getPixelAtF(
-			toVector, 
-			bufx*srcW,
-			bufy*srcH
-		);
-			//newX, ((bufy - 1) - newY));
-
+		
+		
 		wsBufferInvalid = false;
 		forceGetPD = false;
+		
+		
+
+		
 		
 	}
 
@@ -6543,7 +6612,7 @@ DISPATCH_EVENT_END:
 		int baseInd;
 		
 		if (geomStep == 0) {
-			geomPoints[geomStep].setFXYZRef(&mouseMovePD);
+			geomPoints[geomStep].setFXYZRef(&(mouseMovePixData.pd[0]));
 			geomPoints[geomStep].setFW(-1.0f);
 			geomPoints[geomStep].floorXYZ();
 			geomStep++;
@@ -6693,7 +6762,7 @@ DISPATCH_EVENT_END:
 			
 		}
 		
-		updatePrimArr();
+		
 		
 		//updatePrimTBOData();
 		
@@ -6729,6 +6798,12 @@ DISPATCH_EVENT_END:
 
 		lastMouseX = x;
 		lastMouseY = y;
+		
+		
+		float fxZO = x;
+		float fyZO = y;
+
+		lastMouseZO.setFXYZ(fxZO/bufferDim.getFX(),1.0f-fyZO/bufferDim.getFY(),0.0f);
 
 		mouseXUp = x;
 		mouseYUp = y;
@@ -6785,19 +6860,18 @@ DISPATCH_EVENT_END:
 
 			if ( settings[E_BS_PLACING_PATTERN]||settings[E_BS_PLACING_GEOM]||RT_TRANSFORM||settings[E_BS_EDIT_POSE]||settings[E_BS_PATH_FINDING_TEST]||(mouseState != E_MOUSE_STATE_MOVE)) {
 			//if (true) {
-				getPixData(&mouseMovePD, x, y, false, false);
-				getPixData(&mouseMoveOPD, x, y, true, true);
+				getPixData(&mouseMovePixData, x, y, false);
 			}
 			
 
-			gw->updateMouseCoords(&mouseMovePD);
+			gw->updateMouseCoords(&(mouseMovePixData.pd[0]));
 			
 			if (settings[E_BS_PATH_FINDING_TEST]) {
 				
-				if (gameLogic->getClosestPathRad(mouseMovePD.getBTV(), closestHolder) > -1) {
+				if (gameLogic->getClosestPathRad(mouseMovePixData.pd[0].getBTV(), closestHolder) > -1) {
 					
 					if (pathFindingStep < 2) {
-						gameLogic->testPath.points[pathFindingStep] = mouseMovePD.getBTV();
+						gameLogic->testPath.points[pathFindingStep] = mouseMovePixData.pd[0].getBTV();
 					}
 				}
 				
@@ -6814,7 +6888,7 @@ DISPATCH_EVENT_END:
 				settings[E_BS_EDIT_POSE]
 				&& (!ddVis)
 			) {
-				gem->updateNearestOrgNode(false, &mouseMovePD);
+				gem->updateNearestOrgNode(false); //, &(mouseMovePixData.pd[0])
 			}
 			else {
 				if (!ddVis) {
@@ -6829,16 +6903,6 @@ DISPATCH_EVENT_END:
 			}
 			else {
 				
-				// gw->findNearestEnt(
-				// 	&highlightedEnts,
-				// 	E_ET_GEOM,
-				// 	2,
-				// 	1,
-				// 	&mouseMovePD
-				// );
-				// highlightedEnt = highlightedEnts.getSelectedEnt();
-
-
 			}
 			
 
@@ -7048,26 +7112,20 @@ DISPATCH_EVENT_END:
 		wsBufferInvalid = true;
 		
 		if (abDown) {
-			getPixData(&mouseDownPD, x, y, true, false);
-			getPixData(&mouseDownOPD, x, y, true, true);
+			getPixData(&mouseDownPixData, x, y, true);
 		}
 		else {
-			getPixData(&mouseUpPD, x, y, true, false);
-			getPixData(&mouseUpOPD, x, y, true, true);
+			if (lbClicked) {
+				getPixData(&mouseUpPixData, x, y, true);
+				
+			}
 		}
-		
-		// if (lbDown) {
-		// 	if (gamePhysics != NULL) {
-		// 		gamePhysics->pickBody(mouseDownPD.getBTV(),mouseDownOPD.getBTV());
-		// 	}
-		// }
-		
-		
 		
 		
 		
 		
 		if (lbClicked) {
+			curSelPrim = mouseUpPixData.pd[2].getFX();
 			if (gamePhysics != NULL) {
 				gamePhysics->lastBodyPick = NULL;
 				gamePhysics->lastBodyUID = -1;
@@ -7175,7 +7233,7 @@ DISPATCH_EVENT_END:
 								
 							}
 							else {
-								gem->endDrag(mouseUpOPD.getFW());
+								gem->endDrag(mouseUpPixData.pd[2].getFW());
 							}
 						}
 						
@@ -7197,100 +7255,6 @@ DISPATCH_EVENT_END:
 							
 
 							
-							// gw->findNearestEnt(
-							// 	&selectedEnts,
-							// 	E_ET_GEOM,
-							// 	2,
-							// 	1,
-							// 	&mouseUpPD,
-							// 	true
-							// );
-							
-							// selectedEnt = selectedEnts.getSelectedEnt();
-
-							// if (
-							// 	(selectedEnt == NULL) ||
-							// 	(mouseState == E_MOUSE_STATE_PICKING) ||
-							// 	(mouseState == E_MOUSE_STATE_BRUSH)
-							// )	{
-
-							// }
-							// else {
-
-							// 	switch (selectedEnt->buildingType)
-							// 	{
-							// 	case E_CT_DOOR:
-							// 	case E_CT_WINDOW:
-									
-									
-									
-							// 		if (selectedEnt->toggled) {
-							// 			// open
-							// 			switch (selectedEnt->buildingType)
-							// 			{
-							// 				case E_CT_DOOR:
-							// 					playSoundPosAndPitch(
-							// 						"open3",
-							// 						cameraGetPosNoShake(),
-							// 						selectedEnt->getVisMinInPixelsT(),
-							// 						0.3f
-							// 					);
-							// 				break;
-							// 				case E_CT_WINDOW:
-							// 					playSoundPosAndPitch(
-							// 						"open1",
-							// 						cameraGetPosNoShake(),
-							// 						selectedEnt->getVisMinInPixelsT(),
-							// 						0.3f
-							// 					);
-							// 				break;
-							// 			}
-							// 		}
-							// 		else {
-							// 			// close
-										
-							// 			switch (selectedEnt->buildingType)
-							// 			{
-							// 				case E_CT_DOOR:
-							// 					playSoundPosAndPitch(
-							// 						"close2",
-							// 						cameraGetPosNoShake(),
-							// 						selectedEnt->getVisMinInPixelsT(),
-							// 						0.3f
-							// 					);
-							// 				break;
-							// 				case E_CT_WINDOW:
-							// 					playSoundPosAndPitch(
-							// 						"close1",
-							// 						cameraGetPosNoShake(),
-							// 						selectedEnt->getVisMinInPixelsT(),
-							// 						0.3f
-							// 					);
-							// 				break;
-							// 			}
-							// 		}
-									
-
-									
-							// 		wsBufferInvalid = true;
-							// 		break;
-
-							// 	case E_CT_LANTERN:
-							// 		selectedEnt->light->toggle();
-							// 		playSoundPosAndPitch(
-							// 			"castinet0",
-							// 			cameraGetPosNoShake(),
-							// 			selectedEnt->getVisMinInPixelsT(),
-							// 			0.3f
-							// 		);
-							// 		//gw->updateLights();
-							// 		cout << "final toggle " << selectedEnt->light->toggled << "\n";
-							// 		break;
-
-							// 	}
-
-							// }
-
 
 
 						}
@@ -7326,7 +7290,7 @@ DISPATCH_EVENT_END:
 				&& (!ddVis)
 				
 			) {
-				findObject = !(gem->updateNearestOrgNode(true, &mouseDownPD));
+				findObject = !(gem->updateNearestOrgNode(true)); //, &(mouseDownPixData.pd[0])
 			}
 			else {
 				findObject = true;
@@ -7334,7 +7298,7 @@ DISPATCH_EVENT_END:
 			
 			if (findObject) {
 				
-				gem->updateDragInfo(mouseDownOPD.getFW(), lbDown, wasDoubleClick[RLBN_LEFT]);
+				gem->updateDragInfo(mouseDownPixData.pd[2].getFW(), lbDown, wasDoubleClick[RLBN_LEFT]);
 				
 			}
 		}
@@ -7362,8 +7326,6 @@ DISPATCH_EVENT_END:
 						}
 						
 						if (abClicked) {
-							//gameFluid[E_FID_SML]->pushModifyUnit(true, &mouseUpPD, buttonInt, earthMod, curBrushRad);
-							//gameFluid[E_FID_BIG]->pushModifyUnit(true, &mouseUpPD, buttonInt, earthMod, curBrushRad);
 							gameFluid[E_FID_BIG]->flushStacks();
 							forceGetPD = true;
 						}
@@ -7654,11 +7616,8 @@ DISPATCH_EVENT_END:
 				// 	camRotX
 				// );
 				
-				//getPixData(&mouseMovePD, lastMouseX, lastMouseY, false, false);
-				
 				if (bShift) {
 					deltaAng = ca->turnTowardsPointDelta(
-						// mouseMovePD.getBTV()
 						
 						ca->getCenterPoint(E_BDG_CENTER) +
 						lookAtVec.getBTV()
@@ -10275,8 +10234,10 @@ DISPATCH_EVENT_END:
 				mouseMoveVec.setFXYZ(lastMouseX,lastMouseY,0.0);
 				noTravel = mouseMoveVec.distance(&mouseStart) < MAX_TRAVEL_DIS;	
 				markerFound = !noTravel;
-				getPixData(&worldMarker, lastMouseX, lastMouseY, true, false);
-			
+				
+				getMarkerPos(lastMouseX, lastMouseY);
+				//getPixData(&worldMarker, lastMouseX, lastMouseY, true);
+				
 			}
 			else {
 				markerFound = (menuList[E_FM_DDMENU]->visible)&&(gem->selObjInd < E_OBJ_LENGTH);

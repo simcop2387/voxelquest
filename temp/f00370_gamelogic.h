@@ -1072,7 +1072,7 @@ void GameLogic::getPath (PathInfo * pathInfo)
 		
 		
 		// current mouse position
-		// bestInd3 = getClosestPathRad(&(singleton->mouseMovePD), closestHolder3);
+		// bestInd3 = getClosestPathRad(&(singleton->mouseMovePixData.pd[0]), closestHolder3);
 		
 		
 		//drawPointAtIndex(closestHolder, bestInd, 0,128+singleton->smoothTime*127.0f,0, singleton->smoothTime);

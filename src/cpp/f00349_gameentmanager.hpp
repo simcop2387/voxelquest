@@ -2733,7 +2733,7 @@ public:
 		
 	}
 	
-	bool updateNearestOrgNode(bool setActive, FIVector4* mousePosWS) {
+	bool updateNearestOrgNode(bool setActive) { //, FIVector4* mousePosWS
 		// tempVec3.setFXYZRef(mousePosWS);
 		// tempVec3.addXYZRef(&(testOrg->basePosition),-1.0f);
 		
@@ -2753,7 +2753,7 @@ public:
 		highlightedLimb2 = -1;
 		highlightedLimb = -1;
 		
-		singleton->gamePhysics->pickBody(&singleton->mouseMoveOPD);
+		singleton->gamePhysics->pickBody(&singleton->mouseMovePixData.pd[2]);
 		
 		if (
 			(singleton->gamePhysics->lastBodyPick == NULL) ||

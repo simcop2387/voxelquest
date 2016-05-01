@@ -59,7 +59,7 @@ public:
 	}
 	
 	
-	void pickBody(FIVector4* mouseMoveOPD) {
+	void pickBody(FIVector4* mmPD) {
 		
 		if (!(singleton->settings[E_BS_EDIT_POSE])) {
 			lastBodyPick = NULL;
@@ -67,8 +67,8 @@ public:
 			return;
 		}
 		
-		int bodyUID = mouseMoveOPD->getFW();
-		int limbUID = mouseMoveOPD->getFZ();
+		int bodyUID = mmPD->getFW();
+		int limbUID = mmPD->getFZ();
 		BaseObj* ge;
 		
 		if (
@@ -1403,6 +1403,7 @@ public:
 								);
 								resVector4 = myMatrix4*myVector4;
 								basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
+								
 								
 								ge->addAABBPoint(&(ge->aabbMinSkel), &(ge->aabbMaxSkel), basePos);
 								
