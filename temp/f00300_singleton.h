@@ -1318,7 +1318,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		fboMap["shadowMapFBO"].init(1, SHADOW_MAP_RES, SHADOW_MAP_RES, 4, true, GL_LINEAR);
 		fboMap["rasterFBO0"].init(3, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
 		fboMap["rasterFBO1"].init(3, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);		
+		
 		fboMap["rasterLowFBO"].init(3, rasterLowDim.getIX(), rasterLowDim.getIY(), 4, true, GL_NEAREST);
+		fboMap["shadowLowFBO"].init(3, SHADOW_MAP_LOW_RES, SHADOW_MAP_LOW_RES, 4, true, GL_LINEAR);
+		
 		fboMap["readFBO"].init(3, rasterLowDim.getIX(), rasterLowDim.getIY(), 4, true, GL_NEAREST);
 		
 		// fboMap["rasterPosFBO"].init(1, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);//, GL_REPEAT);
@@ -4400,7 +4403,7 @@ void Singleton::setCameraToElevation ()
 
 		float newHeight = getHeightAtPixelPos(cameraGetPosNoShake()->getFX(), cameraGetPosNoShake()->getFY());
 		
-		newHeight = max(newHeight,getSeaHeightScaled()+64.0f);
+		newHeight = max(newHeight,getSeaHeightScaled()+64.0f) + conVals[E_CONST_CAM_HEIGHT_MOD];
 		
 		float curHeight = cameraGetPosNoShake()->getFZ();
 
@@ -4409,7 +4412,7 @@ void Singleton::setCameraToElevation ()
 		modXYZ.setFXYZ(
 			0.0,
 			0.0,
-			128.0f + newHeight - curHeight
+			newHeight - curHeight
 		);
 		
 		moveCamera(&modXYZ);
@@ -4690,8 +4693,10 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 					
 					case 'e':
-						cout << "error:\n";
-						glError();
+						setCameraToElevation();
+						
+						// cout << "error:\n";
+						// glError();
 					break;
 					case 'r':
 						gw->clearAllHolders();
@@ -5161,8 +5166,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 					
 					case 'C':
-					
-						
+						toggleSetting(E_BS_COMBAT);
 					break;
 					case 'c':
 					
@@ -5173,8 +5177,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						
 						
 						
-						//toggleSetting(E_BS_COMBAT);
-						//setCameraToElevation();
+						//
 					
 						//doShaderRefresh(bakeParamsOn);
 
@@ -5768,7 +5771,7 @@ void Singleton::mouseMove (int _x, int _y)
 		if ((gem->highlightedLimb==-1)&&mbDown) {
 			angleToVec(&lightVec, fx*2.0, fy*2.0);
 			lightVecOrig.copyFrom(&lightVec);
-			lightVec.setFZ(-abs(lightVec.getFZ()));
+			//lightVec.setFZ(-abs(lightVec.getFZ()));
 			lightChanged = true;
 		}
 		
@@ -9207,20 +9210,21 @@ void Singleton::ComputeFOVProjection (float * result, float fov, float aspect, f
 	    result[getMatrixInd(2,3)] = 1;
 	    result[getMatrixInd(3,3)] = 0;
 	}
+void Singleton::getLSMatrix (Matrix4 & lsMat, float orthoSize)
+                                                          {
+		Matrix4 lightProjection;
+		GLfloat near_plane = clipDist[0];
+		GLfloat far_plane = clipDist[1];//+conVals[E_CONST_LIGHTDIS];
+		lightProjection.orthoProjection(orthoSize, orthoSize, near_plane, far_plane);
+		lsMat = lightProjection * lightView;
+	}
 void Singleton::updateLightPos ()
                               {
+		
 		lightPos.copyFrom(cameraGetPosNoShake());
 		lightPos.addXYZRef(&lightVec,conVals[E_CONST_LIGHTDIS]);
 		lightLookAt.copyFrom(cameraGetPosNoShake());
-	}
-void Singleton::getLightMatrix ()
-                              {
-		Matrix4 lightProjection;
-		Matrix4 lightView;
-		GLfloat near_plane = clipDist[0];
-		GLfloat far_plane = clipDist[1]+conVals[E_CONST_LIGHTDIS];
-		lightProjection.orthoProjection(conVals[E_CONST_LIGHTORTHOSIZE], conVals[E_CONST_LIGHTORTHOSIZE], near_plane, far_plane);
-		//lightProjection = glm::perspective(45.0f, (GLfloat)SHADOW_WIDTH / (GLfloat)SHADOW_HEIGHT, near_plane, far_plane); // Note that if you use a perspective projection matrix you'll have to change the light position as the current light position isn't enough to reflect the whole scene.
+		
 		
 		
 		glMatrixMode (GL_MODELVIEW);
@@ -9238,14 +9242,7 @@ void Singleton::getLightMatrix ()
 		);
 		glGetFloatv(GL_MODELVIEW_MATRIX, lightView.get());
 		
-		// lightView.lookAt(
-		// 	Vector3(lightLookAt[0],lightLookAt[1],lightLookAt[2]),
-		// 	Vector3(lightPos[0],lightPos[1],lightPos[2]),
-		// 	Vector3(0.0f,0.0f,1.0f)
-		// );
 		
-		//lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
-		lightSpaceMatrix = lightProjection * lightView;
 	}
 void Singleton::setMatrices (int w, int h)
         {

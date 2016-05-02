@@ -101,6 +101,7 @@ public:
   GLdouble (viewMatrixD) [16];
   float (viewMatrixDI) [16];
   GLdouble (projMatrixD) [16];
+  Matrix4 lightView;
   Matrix4 identMatrix;
   Matrix4 viewMatrix;
   Matrix4 projMatrix;
@@ -111,6 +112,7 @@ public:
   Matrix3 curObjMatrix3;
   Matrix4 tempObjMatrix;
   Matrix4 lightSpaceMatrix;
+  Matrix4 lightSpaceMatrixLow;
   GLint (viewport) [4];
   E_OBJ activeObject;
   E_OBJ tempObj;
@@ -710,8 +712,8 @@ public:
   bool gluInvertMatrix (double const (m) [16], float (invOut) [16]);
   int getMatrixInd (int col, int row);
   void ComputeFOVProjection (float * result, float fov, float aspect, float nearDist, float farDist, bool leftHanded);
+  void getLSMatrix (Matrix4 & lsMat, float orthoSize);
   void updateLightPos ();
-  void getLightMatrix ();
   void setMatrices (int w, int h);
   void reshape (int w, int h);
 };

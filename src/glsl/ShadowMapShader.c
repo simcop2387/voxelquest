@@ -66,7 +66,7 @@ void main() {
 
 	//gl_FragDepthEXT = fragDep;
 
-	FragColor0 = vec4(worldPos.xyz,distance(worldPos.xyz,lightPos.xyz)); //,
+	FragColor0 = vec4(worldPos.xyz,distance(worldPos.xyz,lightPos.xyz)); //, distance(worldPos.xyz,lightPos.xyz)
 		
 
 }

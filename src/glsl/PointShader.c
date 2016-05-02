@@ -66,7 +66,7 @@ void main() {
     int j;
     vec2 tc;
     
-    float voxelWidth = 0.5/voxelsPerCell;
+    float voxelWidth = 0.75/voxelsPerCell;
     float resWidth = 0.0;
     float camDis = 0.0;
     

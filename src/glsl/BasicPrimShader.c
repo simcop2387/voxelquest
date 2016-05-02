@@ -4,11 +4,12 @@
 uniform samplerBuffer Texture0; // primTBO
 
 
-uniform int actorCount;
-uniform int MAX_PRIM_IDS;
-uniform int MAX_PRIMTEST;
-uniform float heightOfNearPlane;
-uniform float FOV;
+//uniform int actorCount;
+//uniform int MAX_PRIM_IDS;
+//uniform int MAX_PRIMTEST;
+//uniform float heightOfNearPlane;
+//uniform float FOV;
+uniform vec3 lightPos;
 uniform vec2 clipDist;
 uniform vec2 bufferDim;
 uniform vec3 cameraPos;
@@ -131,6 +132,7 @@ void main() {
 	vdata0 = data0;
 	//vdata0.w = floor(vdata0.w+1.0); // *65281.0 + 0.1)/65280.0;
 	vec4 screenPos = pmMatrix*worldPos;
+	screenPos.z /= 2.0;
 	worldPos.w = vposition.w;
 	gl_Position = screenPos;
 	
@@ -173,7 +175,7 @@ const int TOT_DETAIL_STEPS = 8;
 const float M_PI = 3.14159265359;
 const int NUM_RAY_STEPS = 128;
 const float SKY_ID = -5.0;
-const float CAM_BOX_SIZE = 2.0;
+const float CAM_BOX_SIZE = 1.0;
 
 
 float sdBox( vec3 p, vec3 b )
@@ -334,7 +336,7 @@ vec4 castPrim(
 void main() {
 	
 	globPrimaryRay = true;
-	MAX_CAM_DIS = clipDist.y;
+	MAX_CAM_DIS = 999999.0;//clipDist.y;
 
 	vec4 primRes = vec4(0.0,0.0,1.0,0.0);
 
@@ -414,7 +416,7 @@ void main() {
 	// float myDepth = hitBox.x/clipDist.y;
 	// gl_FragDepth = myDepth;
 	
-	FragColor0 = vec4(newPos,1.0);
+	FragColor0 = vec4(newPos,distance(newPos.xyz,lightPos.xyz));
 	FragColor1 = vec4(primRes.xyz,curMat);
 	FragColor2 = vec4(texelRes2.x,0.0,0.0,0.0);
 

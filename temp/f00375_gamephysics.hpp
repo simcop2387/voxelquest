@@ -1395,31 +1395,31 @@ public:
 							
 							
 							
-								myVector4 = Vector4(
-									tempBTV.getX(),
-									tempBTV.getY(),
-									tempBTV.getZ(),
-									1.0f
-								);
-								resVector4 = myMatrix4*myVector4;
-								basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
-								
-								
-								ge->addAABBPoint(&(ge->aabbMinSkel), &(ge->aabbMaxSkel), basePos);
-								
-								basePos += grabber->skelOffset;
-								
-								difVec = basePos - curBody->body->getCenterOfMassPosition();
-								
-								
-								// move limbs towards pose
-								
-								
-								ge->setLinVel(
-									curBody->body->getLinearVelocity()*(1.0f-bindingPower)
-									+ difVec*singleton->conVals[E_CONST_BINDING_MULT]*bindingPower,
-									bodInd
-								);
+							myVector4 = Vector4(
+								tempBTV.getX(),
+								tempBTV.getY(),
+								tempBTV.getZ(),
+								1.0f
+							);
+							resVector4 = myMatrix4*myVector4;
+							basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
+							
+							
+							ge->addAABBPoint(&(ge->aabbMinSkel), &(ge->aabbMaxSkel), basePos);
+							
+							basePos += grabber->skelOffset;
+							
+							difVec = basePos - curBody->body->getCenterOfMassPosition();
+							
+							
+							// move limbs towards pose
+							
+							
+							ge->setLinVel(
+								curBody->body->getLinearVelocity()*(1.0f-bindingPower)
+								+ difVec*singleton->conVals[E_CONST_BINDING_MULT]*bindingPower,
+								bodInd
+							);
 								
 						}
 						
@@ -1563,21 +1563,15 @@ public:
 				
 				if (ge->baseContact()&&hasRig&&animatedRig) {
 					
-					
-					
 					ge->skelOffset = btVector3(
 						0.0f,
 						0.0f,
 						
-						
-							
 						(
 							(ge->getCenterPoint(E_BDG_CENTER).getZ()-(BASE_ENT_HEIGHT+BASE_ENT_RAD)*0.5f) -
 							ge->aabbMinSkel.getZ()	
 						)
-							
 						
-							
 					);
 					
 					if (singleton->settings[E_BS_EDIT_POSE]) {
@@ -1590,9 +1584,6 @@ public:
 					else {
 						
 					}
-					
-										
-					
 					
 				}
 				else {

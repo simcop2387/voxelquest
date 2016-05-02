@@ -15,25 +15,36 @@ uniform sampler3D Texture5;
 // shadowMapFBO
 uniform sampler2D Texture6;
 
+// shadowLowFBO
+uniform sampler2D Texture7;
+uniform sampler2D Texture8; // not used
+uniform sampler2D Texture9; // not used
 
-uniform float curTime;
-uniform vec4 readData;
-uniform vec2 mouseCoords;
+
+uniform int iNumSteps;
+uniform int cellsPerHolder;
+
 uniform bool gridOn;
+uniform bool testOn3;
+uniform bool mouseDown;
+uniform bool combatOn;
+uniform bool editPose;
+
+uniform float activeActorInd;
+uniform float curTime;
 uniform float gammaVal;
+uniform float cellsPerChunk;
+uniform float voxelsPerCell;
+uniform float FOV;
+
+uniform vec4 readDataMU;
+uniform vec4 readDataMD;
+uniform vec2 mouseCoords;
 uniform vec3 brushCol;
 uniform vec4 brushPos;
 uniform vec3 lightPos;
-uniform bool testOn3;
-// uniform vec3 minBounds;
-// uniform vec3 maxBounds;
-uniform float cellsPerChunk;
 uniform vec2 shadowBias;
 uniform vec3 lookAtVec;
-uniform int iNumSteps;
-uniform float voxelsPerCell;
-uniform int cellsPerHolder;
-uniform float FOV;
 uniform vec2 clipDist;
 uniform vec2 bufferDim;
 uniform vec3 cameraPos;
@@ -41,6 +52,7 @@ uniform vec3 lightVec;
 
 uniform mat4 modelviewInverse;
 uniform mat4 lightSpaceMatrix;
+uniform mat4 lightSpaceMatrixLow;
 uniform mat4 pmMatrix;
 
 ^INCLUDE:MATERIALS^
@@ -163,80 +175,7 @@ vec3 getModCol(float lightRes, vec3 normVec, vec3 rd) {
   return modColor;
 }
 
-float calcShadowSS(vec3 begWorldPos, vec3 normVec) {
-  
-  
-  float rayDis = 4.0;
-  int numShadSteps = 32;
-  
-  
-  
-  vec2 offsetCoord = vec2(0.0);
-  vec2 curTC = vec2(2.0);
-  
-  vec4 curRayPos = vec4(0.0);
-  vec4 curWorldPos = vec4(0.0);
-  
-  int i;
-  float fi;
-  
-  
-  float fNumShadSteps = float(numShadSteps);
-  
-  float lerpVal = 0.0;
-  float hitCount = 0.0;
-  float totCount = 0.0;
-  
-  vec4 transPos = vec4(0.0);
-  vec3 projCoords = vec3(0.0);
-  
-  vec4 begPosWS = vec4(begWorldPos.xyz,0.0);
-  vec4 endPosWS = vec4(begWorldPos.xyz,0.0);
-  
-  endPosWS.xyz += -lightVec.xyz*rayDis;
-  
-  begPosWS.w = distance(cameraPos.xyz,begPosWS.xyz);
-  endPosWS.w = distance(cameraPos.xyz,endPosWS.xyz);
-  
-  float bias = clamp((dot(normVec, lightVec)+1.0)*0.5,0.0,1.0);
-  float newBias = mix(-0.1, 0.1, bias);
-  
-  for (i = 0; i < numShadSteps; i++) {
-    fi = float(i);
-    lerpVal = fi/fNumShadSteps;
-    
-    curRayPos = mix(begPosWS, endPosWS, lerpVal);
-    
-    transPos = pmMatrix*vec4(curRayPos.xyz,1.0);
-    projCoords = transPos.xyz / transPos.w;
-    
-    if ((abs(projCoords.x) < 1.0) && (abs(projCoords.y) < 1.0)) {
-      projCoords = projCoords * 0.5 + 0.5;
-      
-      curTC = projCoords.xy;
-      
-      
-      curWorldPos.xyz = texture(Texture0,curTC).xyz;
-      curWorldPos.w = distance(cameraPos.xyz,curWorldPos.xyz);
-      
-      
-      //if (curWorldPos.w < (curRayPos.w+newBias)) {
-      //  hitCount += 1.0;
-      //}
-      
-      hitCount += clamp( ((curRayPos.w+newBias)-curWorldPos.w)*4.0, 0.0,1.0);
-      
-      
-    }
-    totCount += 1.0;
-    
-    
-  }
-  
-  return 1.0-clamp(hitCount/totCount,0.0,1.0);
-  
-  
-}
+
 
 float calcAO(vec2 texc, vec3 worldPosition, vec3 normVec) {
   
@@ -344,18 +283,24 @@ float calcAO(vec2 texc, vec3 worldPosition, vec3 normVec) {
 
 vec3 getOutline(vec3 _baseCol, vec2 TexCoord0, vec4 wp, vec4 sampOrig) {
   
+  if (combatOn) {
+    return _baseCol;
+  }
+  
   vec3 baseCol = _baseCol;
   
   bool isOutlineObj = false;
-  bool isOutlineNPC = false;
+  bool isOutlineEnt = false;
   
   bool isSelObj = false;
-  bool isSelNPC = false;
-  // bool isActObj = false;
-  // bool isSelLimb = false;
+  bool isSelEnt = false;
   
   bool highlightedObj = false;
-  bool highlightedNPC = false;
+  bool highlightedEnt = false;
+  
+  
+  bool isSelLimb = false;
+  bool isActiveActor = false;
   
   int i;
   
@@ -378,31 +323,64 @@ vec3 getOutline(vec3 _baseCol, vec2 TexCoord0, vec4 wp, vec4 sampOrig) {
         (samp.w != sampOrig.w) &&
         (sampOrig.w == 0.0)        
       ) {
-        isOutlineNPC = true;
+        isOutlineEnt = true;
       }
       
       if (
-        (sampOrig.x != readData.x) &&
-        (samp.x == readData.x)  &&
-        (readData.x != 0.0)
+        (sampOrig.x != readDataMU.x) &&
+        (samp.x == readDataMU.x)  &&
+        (readDataMU.x != 0.0)
       ) {
         isSelObj = true;
       }
       
       if (
-        (sampOrig.w != readData.w) &&
-        (samp.w == readData.w)  &&
-        (readData.w != 0.0)
+        (sampOrig.w != readDataMU.w) &&
+        (samp.w == readDataMU.w)  &&
+        (readDataMU.w != 0.0)
       ) {
-        isSelNPC = true;
+        isSelEnt = true;
+      }
+      
+      if (
+        (sampOrig.w != activeActorInd) &&
+        (samp.w == activeActorInd)  &&
+        (activeActorInd != 0.0)
+      ) {
+        isActiveActor = true;
       }
       
   }
   
+  vec4 tempRead;
   
-  if (isOutlineNPC) { //isOutlineObj
+  if (editPose) {
+    if (mouseDown) {
+      tempRead = readDataMD;
+    }
+    else {
+      tempRead = mouseSamp;
+    }
+    
+    if (
+      (sampOrig.z == tempRead.z) &&
+      (sampOrig.w == activeActorInd) &&
+      //(tempRead.z != 0.0) &&
+      (tempRead.w != 0.0)
+    ) {
+      isSelLimb = true;
+    }
+    
+  }
+  
+  
+  
+  
+  if (isOutlineEnt) { //isOutlineObj
     baseCol *= vec3(0.25);
   }
+  
+  
   
   if (
     (mouseSamp.x != 0.0) &&
@@ -415,7 +393,7 @@ vec3 getOutline(vec3 _baseCol, vec2 TexCoord0, vec4 wp, vec4 sampOrig) {
     (mouseSamp.w != 0.0) &&
     (sampOrig.w == mouseSamp.w)
   ) {
-    highlightedNPC = true;
+    highlightedEnt = true;
   }
   
   vec3 res = vec3(0.0);
@@ -424,7 +402,10 @@ vec3 getOutline(vec3 _baseCol, vec2 TexCoord0, vec4 wp, vec4 sampOrig) {
   //   res = vec3(1.0,1.0,0.0);
   // }
   
-  if (highlightedObj||highlightedNPC) {
+  if (
+    (highlightedObj||highlightedEnt) &&
+    (!editPose)
+  ) {
     res = vec3(1.0)*0.25;//*abs(sin(curTime/400.0))*0.25;
   }
   
@@ -434,8 +415,17 @@ vec3 getOutline(vec3 _baseCol, vec2 TexCoord0, vec4 wp, vec4 sampOrig) {
       (TexCoord0.x + TexCoord0.y)*(bufferDim.y/5.0) + curTime/50.0     
   ) > 0.0);
   
-  if (isSelObj||isSelNPC) {
+  if (isSelObj||isSelEnt) {
     res = vec3(1.0)*stripeVal;
+  }
+  
+  if (isActiveActor&&editPose) {
+    res = vec3(0.0,1.0,0.0);
+  }
+  
+  if (isSelLimb) {
+    res += vec3(1.0,1.0,0.0)*0.5;
+    baseCol *= 0.5;
   }
   
   // if (isOutline) {
@@ -470,7 +460,7 @@ float getGrid(vec3 worldPosition, vec3 normVec) {
 
 
 
-float calcShadow(vec4 worldPos, vec4 worldPosInLightSpace, vec3 normVec) {
+float calcShadow(sampler2D mySampler, vec2 myBias, vec4 worldPos, vec4 worldPosInLightSpace, vec3 normVec) {
     // perform perspective divide
     vec3 projCoords = worldPosInLightSpace.xyz / worldPosInLightSpace.w;
     // Transform to [0,1] range
@@ -479,13 +469,16 @@ float calcShadow(vec4 worldPos, vec4 worldPosInLightSpace, vec3 normVec) {
     float cutoff = projCoords.z;
     
     // Get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
-    float closestDepth = texture(Texture6, projCoords.xy).w; 
+    
+    vec4 tempSamp = texture(mySampler, projCoords.xy);
+    
+    float closestDepth = tempSamp.w;
     // Get depth of current fragment from light's perspective
     //projCoords.z *= 0.5;
     float currentDepth = distance(lightPos.xyz,worldPos.xyz);//projCoords.z;
     // Calculate bias (based on depth map resolution and slope)
     float bias = clamp((dot(normVec, lightVec)+1.0)*0.5,0.0,1.0);
-    currentDepth += mix(shadowBias.x, shadowBias.y, 1.0-bias);
+    currentDepth += mix(myBias.x, myBias.y, 1.0-bias);
     
     
     // Check whether current frag pos is in shadow
@@ -496,16 +489,22 @@ float calcShadow(vec4 worldPos, vec4 worldPosInLightSpace, vec3 normVec) {
     int y = 0;
     float pcfDepth = 0.0;
     float shadow = 0.0;
-    vec2 texelSize = 1.0 / textureSize(Texture6, 0);
-    for(x = -1; x <= 1; ++x)
+    vec2 texelSize = 1.0 / textureSize(mySampler, 0);
+    
+    int rad = 2;
+    float totShad = 0.0;
+    
+    for(x = -rad; x <= rad; ++x)
     {
-        for(y = -1; y <= 1; ++y)
+        for(y = -rad; y <= rad; ++y)
         {
-            pcfDepth = texture(Texture6, projCoords.xy + vec2(x, y) * texelSize).w; 
-            shadow += float(currentDepth < pcfDepth);        
+            tempSamp = texture(mySampler, projCoords.xy + vec2(x, y) * texelSize);
+            pcfDepth = tempSamp.w;//distance(tempSamp,lightPos.xyz); 
+            shadow += float(currentDepth < pcfDepth); // float(currentDepth < pcfDepth);
+            totShad += 1.0;
         }
     }
-    shadow /= 9.0;
+    shadow = clamp(shadow*2.0/totShad,0.0,1.0);
     
     // Keep the shadow at 0.0 when outside the far_plane region of the light's frustum.
     if(cutoff > 1.0) {
@@ -513,7 +512,7 @@ float calcShadow(vec4 worldPos, vec4 worldPosInLightSpace, vec3 normVec) {
       //globBool = true;
     }
     
-    return clamp(1.0-shadow,0.0,1.0);
+    return 1.0-shadow;
 }
 
 vec3 doGamma(vec3 t, float gv) {
@@ -582,7 +581,8 @@ void main() {
   if (testOn3) {
     FragColor0 = vec4(
      vec3(
-      distance(texture(Texture6,TexCoord0.xy).xyz,cameraPos.xyz)/600.0  
+      mod(texture(Texture7,TexCoord0.xy).xyz,vec3(1.0))
+      //distance(texture(Texture7,TexCoord0.xy).xyz,cameraPos.xyz)/600.0  
      ),
      //(sin(texture(Texture6,TexCoord0.xy).xyz)+1.0)*0.5,
      1.0
@@ -614,6 +614,7 @@ void main() {
   float curMat = tex1.w;//floor(curTex.x*256.0*255.0) + floor(curTex.y*255.0);
 
   vec4 worldPosInLightSpace = vec4(0.0);
+  vec4 worldPosInLightSpaceLow = vec4(0.0);
 
   if (dot(oneVec,tex0) == 0.0) {
     finalCol = fogCol;
@@ -624,8 +625,9 @@ void main() {
     //aoVal = sqrt(aoVal);
     
     worldPosInLightSpace = lightSpaceMatrix*vec4(tex0.xyz,1.0);
-    shadowVal = calcShadow(tex0, worldPosInLightSpace, tex1.xyz);
-    shadowVal2 = 1.0;//calcShadowSS(tex0.xyz, tex1.xyz);
+    worldPosInLightSpaceLow = lightSpaceMatrixLow*vec4(tex0.xyz,1.0);
+    shadowVal = calcShadow(Texture6, shadowBias.xy, tex0, worldPosInLightSpace, tex1.xyz);
+    shadowVal2 = calcShadow(Texture7, vec2(0.1,0.3), tex0, worldPosInLightSpaceLow, tex1.xyz);
     shadowVal *= shadowVal2;
     lightVal = lightValOrig*shadowVal;
     
@@ -640,6 +642,10 @@ void main() {
     //matVals.b = 0.0;
     finalCol = unpackColor(matVals.ba,lightRes); //*vec2(aoVal,1.0)
     
+    if (tex2.w != 0) {
+      finalCol = mix(finalCol*0.25,finalCol,aoVal);
+    }
+    
     oldCol = finalCol;
     
     finalCol = mix(finalCol*0.5,finalCol,aoVal);
@@ -647,9 +653,9 @@ void main() {
     finalCol = mix(finalCol*finalCol*finalCol,finalCol,finalCol);
     
     //finalCol += vec3(1.0-shadowVal2,0.0,0.0);
-    //finalCol = vec3(shadowVal2);
+    //finalCol = vec3(shadowVal2*lightValOrig);
     
-    //finalCol = vec3(aoVal);
+    
     
     finalCol += getModCol(lightRes, tex1.xyz, rd)*mix(0.2,0.5,lightRes);//(lightVal*0.25+0.25);
     
@@ -695,7 +701,9 @@ void main() {
       finalCol += getGrid(tex0.xyz,tex1.xyz)*vec3(0.1);
     }
     
+    //finalCol = vec3(aoVal);
     
+    //finalCol = vec3(shadowVal2);
     
     finalCol = mix(
       finalCol,//mix(finalCol*0.25,finalCol,shadowVal),
@@ -764,3 +772,78 @@ void main() {
 
 
 
+
+// float calcShadowSS(vec3 begWorldPos, vec3 normVec) {
+  
+  
+//   float rayDis = 4.0;
+//   int numShadSteps = 32;
+  
+  
+  
+//   vec2 offsetCoord = vec2(0.0);
+//   vec2 curTC = vec2(2.0);
+  
+//   vec4 curRayPos = vec4(0.0);
+//   vec4 curWorldPos = vec4(0.0);
+  
+//   int i;
+//   float fi;
+  
+  
+//   float fNumShadSteps = float(numShadSteps);
+  
+//   float lerpVal = 0.0;
+//   float hitCount = 0.0;
+//   float totCount = 0.0;
+  
+//   vec4 transPos = vec4(0.0);
+//   vec3 projCoords = vec3(0.0);
+  
+//   vec4 begPosWS = vec4(begWorldPos.xyz,0.0);
+//   vec4 endPosWS = vec4(begWorldPos.xyz,0.0);
+  
+//   endPosWS.xyz += -lightVec.xyz*rayDis;
+  
+//   begPosWS.w = distance(cameraPos.xyz,begPosWS.xyz);
+//   endPosWS.w = distance(cameraPos.xyz,endPosWS.xyz);
+  
+//   float bias = clamp((dot(normVec, lightVec)+1.0)*0.5,0.0,1.0);
+//   float newBias = mix(-0.1, 0.1, bias);
+  
+//   for (i = 0; i < numShadSteps; i++) {
+//     fi = float(i);
+//     lerpVal = fi/fNumShadSteps;
+    
+//     curRayPos = mix(begPosWS, endPosWS, lerpVal);
+    
+//     transPos = pmMatrix*vec4(curRayPos.xyz,1.0);
+//     projCoords = transPos.xyz / transPos.w;
+    
+//     if ((abs(projCoords.x) < 1.0) && (abs(projCoords.y) < 1.0)) {
+//       projCoords = projCoords * 0.5 + 0.5;
+      
+//       curTC = projCoords.xy;
+      
+      
+//       curWorldPos.xyz = texture(Texture0,curTC).xyz;
+//       curWorldPos.w = distance(cameraPos.xyz,curWorldPos.xyz);
+      
+      
+//       //if (curWorldPos.w < (curRayPos.w+newBias)) {
+//       //  hitCount += 1.0;
+//       //}
+      
+//       hitCount += clamp( ((curRayPos.w+newBias)-curWorldPos.w)*4.0, 0.0,1.0);
+      
+      
+//     }
+//     totCount += 1.0;
+    
+    
+//   }
+  
+//   return 1.0-clamp(hitCount/totCount,0.0,1.0);
+  
+  
+// }

@@ -1,9 +1,5 @@
 {
  "params":[{
-   "paramName":"medianStrength",
-   "shaderName":"MedianShader",
-   "uid":"$shaderParams.MedianShader.medianStrength"
-   },{
    "paramName":"myTexSpacing",
    "shaderName":"PolyShader",
    "uid":"$shaderParams.PolyShader.myTexSpacing"

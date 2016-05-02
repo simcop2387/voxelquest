@@ -2125,7 +2125,7 @@ public:
 	
 	void clearAABB(btVector3* aabbMin, btVector3* aabbMax) {
 		*aabbMin = btVector3(FLT_MAX,FLT_MAX,FLT_MAX);
-		*aabbMax = btVector3(FLT_MIN,FLT_MIN,FLT_MIN);	
+		*aabbMax = btVector3(FLT_MIN,FLT_MIN,FLT_MIN);
 	}
 	
 	void addAABBPoint(btVector3* aabbMin, btVector3* aabbMax, btVector3 newPoint) {

@@ -4,13 +4,14 @@
 uniform samplerBuffer Texture0; // limbTBO
 
 
-uniform int actorCount;
+//uniform int actorCount;
 //uniform int MAX_PRIM_IDS;
-uniform float heightOfNearPlane;
-uniform float FOV;
+//uniform float heightOfNearPlane;
+//uniform float FOV;
 uniform vec2 clipDist;
 uniform vec2 bufferDim;
 uniform vec3 cameraPos;
+uniform vec3 lightPos;
 
 uniform mat4 pmMatrix;
 
@@ -41,8 +42,8 @@ flat out vec4 vdata0;
 
 flat out vec4 texelRes1;
 flat out vec4 texelRes2;
-flat out vec4 pdVisMin;
-flat out vec4 pdVisMax;
+//flat out vec4 pdVisMin;
+//flat out vec4 pdVisMax;
 flat out vec4 boxDim;
 flat out vec2 boxPower;
 flat out vec3 boxCenterPoint;
@@ -56,38 +57,40 @@ void main() {
 	
 	int cubeIndex = int(floor(data0.x+0.1));
 	
-	
 	texelRes1 = limbArr[cubeIndex*2+0];
 	texelRes2 = limbArr[cubeIndex*2+1];
 	
-	int primDataInd = int(texelRes1.w);
+	// int primDataInd = int(texelRes1.w);
 	
 	
-	vec4 header0 = texelFetch(Texture0, primDataInd); primDataInd++;
-	vec4 header1 = texelFetch(Texture0, primDataInd); primDataInd++;
-	vec4 header2 = texelFetch(Texture0, primDataInd); primDataInd++;
+	// vec4 header0 = texelFetch(Texture0, primDataInd); primDataInd++;
+	// vec4 header1 = texelFetch(Texture0, primDataInd); primDataInd++;
+	// vec4 header2 = texelFetch(Texture0, primDataInd); primDataInd++;
 	
-	pdVisMin = header1;
-	pdVisMax = header2;
+	// pdVisMin = header1;
+	// pdVisMax = header2;
 	
-	pdVisMin.xyz -= texelRes1.xyz;
-	pdVisMax.xyz -= texelRes1.xyz;
+	// pdVisMin.xyz -= texelRes1.xyz;
+	// pdVisMax.xyz -= texelRes1.xyz;
 	
-	pdVisMin.xyz = vec3(-4.0);
-	pdVisMax.xyz = vec3(4.0);
+	// pdVisMin.xyz = vec3(-4.0);
+	// pdVisMax.xyz = vec3(4.0);
 	
 	
 	
 	worldPos = vec4(
 		mix(
-			(texelRes1.xyz + pdVisMin.xyz),
-			(texelRes1.xyz + pdVisMax.xyz),
+			// (texelRes1.xyz + pdVisMin.xyz),
+			// (texelRes1.xyz + pdVisMax.xyz),
+			texelRes1.xyz,
+			texelRes2.xyz,
 			vposition.xyz	
 		),
 		1.0
 	);
 	vdata0 = data0;
 	vec4 screenPos = pmMatrix*worldPos;
+	screenPos.z /= 4.0;
 	worldPos.w = vposition.w;
 	gl_Position = screenPos;
 	
@@ -106,8 +109,8 @@ flat in vec4 vdata0;
 
 flat in vec4 texelRes1;
 flat in vec4 texelRes2;
-flat in vec4 pdVisMin;
-flat in vec4 pdVisMax;
+//flat in vec4 pdVisMin;
+//flat in vec4 pdVisMax;
 flat in vec4 boxDim;
 flat in vec2 boxPower;
 flat in vec3 boxCenterPoint;
@@ -118,8 +121,10 @@ layout(location = 2) out vec4 FragColor2;
 
 // qqqqq 
 
+
 float globBestLimbDepth;
 vec2 globTexDyn;
+float globStepCount;
 int globBestLimbInd;
 bool globPrimaryRay;
 float globBoneRad;
@@ -129,9 +134,9 @@ float MAX_CAM_DIS;
 
 const int TOT_DETAIL_STEPS = 8;
 const float M_PI = 3.14159265359;
-const int NUM_RAY_STEPS = 128;
+const int NUM_RAY_STEPS = 32;
 const float SKY_ID = -5.0;
-const float CAM_BOX_SIZE = 2.0;
+const float CAM_BOX_SIZE = 1.0;
 
 
 float sdBox( vec3 p, vec3 b )
@@ -338,9 +343,10 @@ void preLimb(vec3 ro, vec3 rd) {
 		// 	break;
 		// }
 		
-		hitBox = aabbIntersect(ro,rd,header1.xyz,header2.xyz);
 		
-		if (hitBox.x <= hitBox.y) {
+		//hitBox = aabbIntersect(ro,rd,header1.xyz,header2.xyz);
+		
+//		if (hitBox.x <= hitBox.y) {
 			
 			
 			while (primDataInd < endInd) {
@@ -382,11 +388,11 @@ void preLimb(vec3 ro, vec3 rd) {
 				
 			}
 			
-		}
-		else {
+		// }
+		// else {
 			
-			primDataInd = endInd;
-		}
+		// 	primDataInd = endInd;
+		// }
 		
 		// if (endInd <= 0) {
 		// 	return;
@@ -532,10 +538,10 @@ vec3 mapDyn(vec3 pos) {
 				
 		float oldX = res.x;
 		
-		res.x = opS(
-			res.x,
-			sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) ) //8.0 //CAM_BOX_SIZE
-		);
+		// res.x = opS(
+		// 	res.x,
+		// 	sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) ) //8.0 //CAM_BOX_SIZE
+		// );
 		
 		
 		return vec3(res,oldX);
@@ -571,6 +577,7 @@ vec4 castDyn(
 		vec3 pos;
 		
 		
+		
 		float DYN_PREC = 0.02;
 		float DYN_PREC2 = 0.002;
 		
@@ -594,7 +601,7 @@ vec4 castDyn(
 				t += res.x;
 		}
 		
-		
+		globStepCount = float(p);
 		
 		if (res.x < DYN_PREC) {
 				
@@ -660,21 +667,22 @@ vec4 castDyn(
 
 void main() {
 	
+	globStepCount = 0.0;
 	globTexDyn = vec2(0.0);
 	primIdListLength = 0;
 	globBestLimbInd = -1;
 	globPrimaryRay = true;
 	globBoneRad = 99999.0;
 	globBestLimbDepth = 99999.0;
-	MAX_CAM_DIS = clipDist.y;
+	MAX_CAM_DIS = 999999.0;//clipDist.y;
 
 	vec4 primRes = vec4(0.0,0.0,1.0,0.0);
 
 	vec3 ro = cameraPos.xyz;
 	vec3 rd = normalize(worldPos.xyz-cameraPos.xyz);
 
-	vec3 minVisBox = texelRes1.xyz+pdVisMin.xyz;
-	vec3 maxVisBox = texelRes1.xyz+pdVisMax.xyz;
+	vec3 minVisBox = texelRes1.xyz;//+pdVisMin.xyz;
+	vec3 maxVisBox = texelRes2.xyz;//+pdVisMax.xyz;
 	
 	vec2 hitBox = aabbIntersect(
 			ro,
@@ -691,7 +699,6 @@ void main() {
 		hitBox.x = 0.0;
 	}
 
-	// primRes.w = hitBox.x;
 
 	float totSteps = 0.0;
 
@@ -702,8 +709,13 @@ void main() {
 	
 	primRes.w = distance(cameraPos.xyz,worldPos.xyz);
 	
+	// if (texelRes1.w == 0.0) {
+	// 	discard;
+	// }
+	
 	preLimb(ro,rd);
-	primRes = castDyn(ro,rd,hitBox, 32);
+	primRes = castDyn(ro,rd,hitBox, NUM_RAY_STEPS);
+	
 	//curTex = globTexDyn;
 	
 	// if (curTex.x == TEX_NULL) {
@@ -733,7 +745,7 @@ void main() {
 		
 		curTex = vec2(
 			datVec.z/255.0,
-			datVec.w
+			clamp(datVec.w + (globStepCount/float(NUM_RAY_STEPS)*0.25),0.0,1.0)
 		);
 		
 		if (
@@ -787,7 +799,6 @@ void main() {
 	//newPos.z += -0.1;
 	
 	
-	
 	float curMat = floor(curTex.x*256.0*255.0) + floor(curTex.y*255.0);
 	
 	vec4 clipPos = pmMatrix * vec4(newPos.xyz, 1.0);
@@ -798,7 +809,7 @@ void main() {
 	// float myDepth = hitBox.x/clipDist.y;
 	// gl_FragDepth = myDepth;
 	
-	FragColor0 = vec4(newPos,1.0);
+	FragColor0 = vec4(newPos,distance(newPos.xyz,lightPos.xyz));
 	FragColor1 = vec4(primRes.xyz,curMat);
 	FragColor2 = vec4(texelRes2.x,0.0,limbRes.zw);
 

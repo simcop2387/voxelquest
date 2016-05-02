@@ -76,6 +76,7 @@ const static float ORG_SCALE_BASE = 0.5f;
 
 
 const static int SHADOW_MAP_RES = 2048;
+const static int SHADOW_MAP_LOW_RES = 512;
 
 const static int DEF_SCALE_FACTOR = 2;
 const static int RENDER_SCALE_FACTOR = 4;
@@ -3681,6 +3682,7 @@ bool replaceStr(std::string& str, const std::string& from, const std::string& to
 
 
 #define E_CONST(DDD) \
+DDD(E_CONST_CAM_HEIGHT_MOD) \
 DDD(E_CONST_SAMP_SIN) \
 DDD(E_CONST_MAX_STACK_DIS) \
 DDD(E_CONST_DIV_VAL) \
@@ -3702,6 +3704,7 @@ DDD(E_CONST_MAX_HOLDER_GEN) \
 DDD(E_CONST_MAX_CLIPDIST) \
 DDD(E_CONST_LIGHTTHRESH) \
 DDD(E_CONST_LIGHTORTHOSIZE) \
+DDD(E_CONST_LIGHTORTHOSIZE_LOW) \
 DDD(E_CONST_LIGHTDIS) \
 DDD(E_CONST_RASTER_CHUNK_RAD) \
 DDD(E_CONST_VOXEL_NORM_RAD) \
@@ -10761,7 +10764,7 @@ public:
 	
 	void clearAABB(btVector3* aabbMin, btVector3* aabbMax) {
 		*aabbMin = btVector3(FLT_MAX,FLT_MAX,FLT_MAX);
-		*aabbMax = btVector3(FLT_MIN,FLT_MIN,FLT_MIN);	
+		*aabbMax = btVector3(FLT_MIN,FLT_MIN,FLT_MIN);
 	}
 	
 	void addAABBPoint(btVector3* aabbMin, btVector3* aabbMax, btVector3 newPoint) {
@@ -24937,6 +24940,7 @@ public:
   GLdouble (viewMatrixD) [16];
   float (viewMatrixDI) [16];
   GLdouble (projMatrixD) [16];
+  Matrix4 lightView;
   Matrix4 identMatrix;
   Matrix4 viewMatrix;
   Matrix4 projMatrix;
@@ -24947,6 +24951,7 @@ public:
   Matrix3 curObjMatrix3;
   Matrix4 tempObjMatrix;
   Matrix4 lightSpaceMatrix;
+  Matrix4 lightSpaceMatrixLow;
   GLint (viewport) [4];
   E_OBJ activeObject;
   E_OBJ tempObj;
@@ -25546,8 +25551,8 @@ public:
   bool gluInvertMatrix (double const (m) [16], float (invOut) [16]);
   int getMatrixInd (int col, int row);
   void ComputeFOVProjection (float * result, float fov, float aspect, float nearDist, float farDist, bool leftHanded);
+  void getLSMatrix (Matrix4 & lsMat, float orthoSize);
   void updateLightPos ();
-  void getLightMatrix ();
   void setMatrices (int w, int h);
   void reshape (int w, int h);
 };
@@ -28581,7 +28586,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		fboMap["shadowMapFBO"].init(1, SHADOW_MAP_RES, SHADOW_MAP_RES, 4, true, GL_LINEAR);
 		fboMap["rasterFBO0"].init(3, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
 		fboMap["rasterFBO1"].init(3, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);		
+		
 		fboMap["rasterLowFBO"].init(3, rasterLowDim.getIX(), rasterLowDim.getIY(), 4, true, GL_NEAREST);
+		fboMap["shadowLowFBO"].init(3, SHADOW_MAP_LOW_RES, SHADOW_MAP_LOW_RES, 4, true, GL_LINEAR);
+		
 		fboMap["readFBO"].init(3, rasterLowDim.getIX(), rasterLowDim.getIY(), 4, true, GL_NEAREST);
 		
 		// fboMap["rasterPosFBO"].init(1, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);//, GL_REPEAT);
@@ -31663,7 +31671,7 @@ void Singleton::setCameraToElevation ()
 
 		float newHeight = getHeightAtPixelPos(cameraGetPosNoShake()->getFX(), cameraGetPosNoShake()->getFY());
 		
-		newHeight = max(newHeight,getSeaHeightScaled()+64.0f);
+		newHeight = max(newHeight,getSeaHeightScaled()+64.0f) + conVals[E_CONST_CAM_HEIGHT_MOD];
 		
 		float curHeight = cameraGetPosNoShake()->getFZ();
 
@@ -31672,7 +31680,7 @@ void Singleton::setCameraToElevation ()
 		modXYZ.setFXYZ(
 			0.0,
 			0.0,
-			128.0f + newHeight - curHeight
+			newHeight - curHeight
 		);
 		
 		moveCamera(&modXYZ);
@@ -31953,8 +31961,10 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 					
 					case 'e':
-						cout << "error:\n";
-						glError();
+						setCameraToElevation();
+						
+						// cout << "error:\n";
+						// glError();
 					break;
 					case 'r':
 						gw->clearAllHolders();
@@ -32424,8 +32434,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 					
 					case 'C':
-					
-						
+						toggleSetting(E_BS_COMBAT);
 					break;
 					case 'c':
 					
@@ -32436,8 +32445,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						
 						
 						
-						//toggleSetting(E_BS_COMBAT);
-						//setCameraToElevation();
+						//
 					
 						//doShaderRefresh(bakeParamsOn);
 
@@ -33031,7 +33039,7 @@ void Singleton::mouseMove (int _x, int _y)
 		if ((gem->highlightedLimb==-1)&&mbDown) {
 			angleToVec(&lightVec, fx*2.0, fy*2.0);
 			lightVecOrig.copyFrom(&lightVec);
-			lightVec.setFZ(-abs(lightVec.getFZ()));
+			//lightVec.setFZ(-abs(lightVec.getFZ()));
 			lightChanged = true;
 		}
 		
@@ -36470,20 +36478,21 @@ void Singleton::ComputeFOVProjection (float * result, float fov, float aspect, f
 	    result[getMatrixInd(2,3)] = 1;
 	    result[getMatrixInd(3,3)] = 0;
 	}
+void Singleton::getLSMatrix (Matrix4 & lsMat, float orthoSize)
+                                                          {
+		Matrix4 lightProjection;
+		GLfloat near_plane = clipDist[0];
+		GLfloat far_plane = clipDist[1];//+conVals[E_CONST_LIGHTDIS];
+		lightProjection.orthoProjection(orthoSize, orthoSize, near_plane, far_plane);
+		lsMat = lightProjection * lightView;
+	}
 void Singleton::updateLightPos ()
                               {
+		
 		lightPos.copyFrom(cameraGetPosNoShake());
 		lightPos.addXYZRef(&lightVec,conVals[E_CONST_LIGHTDIS]);
 		lightLookAt.copyFrom(cameraGetPosNoShake());
-	}
-void Singleton::getLightMatrix ()
-                              {
-		Matrix4 lightProjection;
-		Matrix4 lightView;
-		GLfloat near_plane = clipDist[0];
-		GLfloat far_plane = clipDist[1]+conVals[E_CONST_LIGHTDIS];
-		lightProjection.orthoProjection(conVals[E_CONST_LIGHTORTHOSIZE], conVals[E_CONST_LIGHTORTHOSIZE], near_plane, far_plane);
-		//lightProjection = glm::perspective(45.0f, (GLfloat)SHADOW_WIDTH / (GLfloat)SHADOW_HEIGHT, near_plane, far_plane); // Note that if you use a perspective projection matrix you'll have to change the light position as the current light position isn't enough to reflect the whole scene.
+		
 		
 		
 		glMatrixMode (GL_MODELVIEW);
@@ -36501,14 +36510,7 @@ void Singleton::getLightMatrix ()
 		);
 		glGetFloatv(GL_MODELVIEW_MATRIX, lightView.get());
 		
-		// lightView.lookAt(
-		// 	Vector3(lightLookAt[0],lightLookAt[1],lightLookAt[2]),
-		// 	Vector3(lightPos[0],lightPos[1],lightPos[2]),
-		// 	Vector3(0.0f,0.0f,1.0f)
-		// );
 		
-		//lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
-		lightSpaceMatrix = lightProjection * lightView;
 	}
 void Singleton::setMatrices (int w, int h)
         {
@@ -64874,31 +64876,31 @@ void GamePhysics::collideWithWorld (double curStepTime)
 							
 							
 							
-								myVector4 = Vector4(
-									tempBTV.getX(),
-									tempBTV.getY(),
-									tempBTV.getZ(),
-									1.0f
-								);
-								resVector4 = myMatrix4*myVector4;
-								basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
-								
-								
-								ge->addAABBPoint(&(ge->aabbMinSkel), &(ge->aabbMaxSkel), basePos);
-								
-								basePos += grabber->skelOffset;
-								
-								difVec = basePos - curBody->body->getCenterOfMassPosition();
-								
-								
-								// move limbs towards pose
-								
-								
-								ge->setLinVel(
-									curBody->body->getLinearVelocity()*(1.0f-bindingPower)
-									+ difVec*singleton->conVals[E_CONST_BINDING_MULT]*bindingPower,
-									bodInd
-								);
+							myVector4 = Vector4(
+								tempBTV.getX(),
+								tempBTV.getY(),
+								tempBTV.getZ(),
+								1.0f
+							);
+							resVector4 = myMatrix4*myVector4;
+							basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
+							
+							
+							ge->addAABBPoint(&(ge->aabbMinSkel), &(ge->aabbMaxSkel), basePos);
+							
+							basePos += grabber->skelOffset;
+							
+							difVec = basePos - curBody->body->getCenterOfMassPosition();
+							
+							
+							// move limbs towards pose
+							
+							
+							ge->setLinVel(
+								curBody->body->getLinearVelocity()*(1.0f-bindingPower)
+								+ difVec*singleton->conVals[E_CONST_BINDING_MULT]*bindingPower,
+								bodInd
+							);
 								
 						}
 						
@@ -65042,21 +65044,15 @@ void GamePhysics::collideWithWorld (double curStepTime)
 				
 				if (ge->baseContact()&&hasRig&&animatedRig) {
 					
-					
-					
 					ge->skelOffset = btVector3(
 						0.0f,
 						0.0f,
 						
-						
-							
 						(
 							(ge->getCenterPoint(E_BDG_CENTER).getZ()-(BASE_ENT_HEIGHT+BASE_ENT_RAD)*0.5f) -
 							ge->aabbMinSkel.getZ()	
 						)
-							
 						
-							
 					);
 					
 					if (singleton->settings[E_BS_EDIT_POSE]) {
@@ -65069,9 +65065,6 @@ void GamePhysics::collideWithWorld (double curStepTime)
 					else {
 						
 					}
-					
-										
-					
 					
 				}
 				else {
@@ -66314,11 +66307,23 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 				for (j = 0; j < ge->bodies.size(); j++) {
 					curBody = &(ge->bodies[j]);
 					ge->addAABBPoint(
-						&(ge->aabbMinSkel),
-						&(ge->aabbMaxSkel),
+						&(ge->aabbMinVis),
+						&(ge->aabbMaxVis),
 						curBody->body->getCenterOfMassPosition()
 					);
 				}
+			
+				// ge->aabbMinVis = (ge->aabbMinSkel);
+				// ge->aabbMaxVis = (ge->aabbMaxSkel);
+				
+				ge->aabbMinVis = ge->aabbMinVis + btVector3(-buffer,-buffer,-buffer);
+				ge->aabbMaxVis = ge->aabbMaxVis + btVector3(buffer,buffer,buffer);
+			
+				// if (ge->entType == E_ENTTYPE_NPC) {
+				// 	ge->aabbMinVis = ge->aabbMinVis + ge->skelOffset;
+				// 	ge->aabbMaxVis = ge->aabbMaxVis + ge->skelOffset;
+				// }
+				
 				
 				curOrg = singleton->gem->gameOrgs[ge->orgId];
 				
@@ -66340,19 +66345,19 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
 			
-				singleton->limbTBOData[dataInd] = ge->aabbMinVis.getX() - buffer; dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMinVis.getY() - buffer; dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMinVis.getZ() - buffer; dataInd++;
+				// todo: aabbMinSkel wont show weapons
+			
+				singleton->limbTBOData[dataInd] = ge->aabbMinVis.getX(); dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMinVis.getY(); dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMinVis.getZ(); dataInd++;
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
 				
 				
-				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getX() + buffer; dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getY() + buffer; dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getZ() + buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getX(); dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getY(); dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getZ(); dataInd++;
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
 				
-				// traceBTV("ge->aabbMinVis ", (ge->aabbMinVis));
-				// traceBTV("ge->aabbMaxVis ", (ge->aabbMaxVis));
 				
 				float randOff;
 				
@@ -66478,15 +66483,16 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 				
 				
 				limbAP = singleton->limbArrPos*8;
-				singleton->limbArr[limbAP + 0] = ge->getCenterPointFIV(0)->getFX(); //((ge->aabbMaxVis[0])+(ge->aabbMinVis[0]))*0.5f;
-				singleton->limbArr[limbAP + 1] = ge->getCenterPointFIV(0)->getFY();//((ge->aabbMaxVis[1])+(ge->aabbMinVis[1]))*0.5f;
-				singleton->limbArr[limbAP + 2] = ge->getCenterPointFIV(0)->getFZ();//((ge->aabbMaxVis[2])+(ge->aabbMinVis[2]))*0.5f;
-				singleton->limbArr[limbAP + 3] = headerStart/4;
+				//texelRes1
+				singleton->limbArr[limbAP + 0] = ge->aabbMinVis[0];
+				singleton->limbArr[limbAP + 1] = ge->aabbMinVis[1];
+				singleton->limbArr[limbAP + 2] = ge->aabbMinVis[2];
+				singleton->limbArr[limbAP + 3] = (headerStart)/4;
 				
 				//texelRes2
-				singleton->limbArr[limbAP + 4] = 0;
-				singleton->limbArr[limbAP + 5] = 0;
-				singleton->limbArr[limbAP + 6] = 0;
+				singleton->limbArr[limbAP + 4] = ge->aabbMaxVis[0];
+				singleton->limbArr[limbAP + 5] = ge->aabbMaxVis[1];
+				singleton->limbArr[limbAP + 6] = ge->aabbMaxVis[2];
 				singleton->limbArr[limbAP + 7] = 0;
 				singleton->limbArrPos++;
 				
@@ -69561,105 +69567,120 @@ void GameWorld::drawBasicPrims (bool doShadow)
 		
 		// numCubes += singleton->actorCount;
 		
-		int numCubes = singleton->primArrPos;
-		
+		int numCubes = 0;
+		int i;
 		
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_FRONT);
 		
+		
+		numCubes = singleton->primArrPos;
+		
+		singleton->getLSMatrix(singleton->lightSpaceMatrixLow,singleton->conVals[E_CONST_LIGHTORTHOSIZE_LOW]);
+		
 		singleton->bindShader("BasicPrimShader");
-		singleton->bindFBO("rasterLowFBO");
-		
-		if (numCubes > 0) {
-			
-			singleton->setShaderTBO(
-				0,
-				singleton->primTBO.tbo_tex,
-				singleton->primTBO.tbo_buf,
-				true
-			);
-			
-			//cout << "singleton->actorCount " << singleton->actorCount << "\n";
-			
-			singleton->setShaderInt("actorCount",singleton->actorCount);
-			//singleton->setShaderInt("MAX_PRIM_IDS", min(singleton->actorCount,MAX_PRIM_IDS));
-			//singleton->setShaderInt("MAX_PRIMTEST", min(singleton->actorCount,MAX_PRIMTEST));
-			
-			singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
-			singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
-			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
-			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-			singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
-			
-			singleton->setShaderArrayfVec4("primArr", singleton->primArr, numCubes*2);
-			singleton->zoCubes.drawCubes(numCubes);
-			
-			singleton->setShaderTBO(0,0,0,true);
-			
+		for (i = 0; i < 2; i++) {
+			if (i == 0) {
+				singleton->bindFBO("rasterLowFBO");
+			}
+			else {
+				singleton->bindFBO("shadowLowFBO");
+			}
+			if (numCubes > 0) {
+				
+				singleton->setShaderTBO(
+					0,
+					singleton->primTBO.tbo_tex,
+					singleton->primTBO.tbo_buf,
+					true
+				);
+				
+				//cout << "singleton->actorCount " << singleton->actorCount << "\n";
+				
+				// singleton->setShaderInt("actorCount",singleton->actorCount);
+				//singleton->setShaderInt("MAX_PRIM_IDS", min(singleton->actorCount,MAX_PRIM_IDS));
+				//singleton->setShaderInt("MAX_PRIMTEST", min(singleton->actorCount,MAX_PRIMTEST));
+				
+				//singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+				//singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+				singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+				singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+				singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
+				
+				if (i == 0) {
+					singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+					singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
+				}
+				else {
+					singleton->setShaderfVec3("cameraPos", &(singleton->lightPos));
+					singleton->setShaderMatrix4x4("pmMatrix",singleton->lightSpaceMatrixLow.get(),1);
+				}
+				
+				
+				singleton->setShaderArrayfVec4("primArr", singleton->primArr, numCubes*2);
+				singleton->zoCubes.drawCubes(numCubes);
+				
+				singleton->setShaderTBO(0,0,0,true);
+				
+			}
+			singleton->unbindFBO();
 		}
-		
-		
-		
-		singleton->unbindFBO();
 		singleton->unbindShader();
 		
 		
 		//singleton->copyFBO("rasterLowFBO","solidBaseTargFBO");
 		
 		
-		
 		numCubes = singleton->limbArrPos;
 		
-		
-		
-		if (numCubes > 0) {
+		singleton->bindShader("BasicLimbShader");
+		for (i = 0; i < 2; i++) {
+			if (numCubes > 0) {
+				if (i == 0) {
+					singleton->bindFBO("rasterLowFBO",-1,0);
+				}
+				else {
+					singleton->bindFBO("shadowLowFBO",-1,0);
+				}
+				
+				singleton->setShaderTBO(
+					0,
+					singleton->limbTBO.tbo_tex,
+					singleton->limbTBO.tbo_buf,
+					true
+				);
+				
+				
+				// cout << "singleton->actorCount " << singleton->actorCount << "\n";
+				
+				//singleton->setShaderInt("actorCount",singleton->actorCount);
+				singleton->setShaderInt("MAX_PRIM_IDS", min(singleton->actorCount,MAX_PRIM_IDS));
+				singleton->setShaderInt("MAX_PRIMTEST", min(singleton->actorCount,MAX_PRIMTEST));
+				
+				//singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+				//singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+				singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
+				singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+				singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+				if (i == 0) {
+					singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+					singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
+				}
+				else {
+					singleton->setShaderfVec3("cameraPos", &(singleton->lightPos));
+					singleton->setShaderMatrix4x4("pmMatrix",singleton->lightSpaceMatrixLow.get(),1);
+				}
+				
+				singleton->setShaderArrayfVec4("limbArr", singleton->limbArr, numCubes*2);
+				singleton->zoCubes.drawCubes(numCubes);
+				
+				singleton->setShaderTBO(0,0,0,true);
 			
-			singleton->bindShader("BasicLimbShader");
-			singleton->bindFBO("rasterLowFBO",-1,0);
-			
-			singleton->setShaderTBO(
-				0,
-				singleton->limbTBO.tbo_tex,
-				singleton->limbTBO.tbo_buf,
-				true
-			);
-			
-			
-			// cout << "singleton->actorCount " << singleton->actorCount << "\n";
-			
-			singleton->setShaderInt("actorCount",singleton->actorCount);
-			singleton->setShaderInt("MAX_PRIM_IDS", min(singleton->actorCount,MAX_PRIM_IDS));
-			singleton->setShaderInt("MAX_PRIMTEST", min(singleton->actorCount,MAX_PRIMTEST));
-			
-			singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
-			singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
-			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
-			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-			singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
-			
-			singleton->setShaderArrayfVec4("limbArr", singleton->limbArr, numCubes*2);
-			singleton->zoCubes.drawCubes(numCubes);
-			
-			singleton->setShaderTBO(0,0,0,true);
-		
-			singleton->unbindFBO();
-			singleton->unbindShader();
+				singleton->unbindFBO();
+				
+			}
 		}
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
+		singleton->unbindShader();
 		
 		
 		
@@ -69700,8 +69721,7 @@ void GameWorld::rasterHolders (bool doShadow)
 			// );
 			
 			singleton->updateLightPos();
-			singleton->getLightMatrix();
-			
+			singleton->getLSMatrix(singleton->lightSpaceMatrix,singleton->conVals[E_CONST_LIGHTORTHOSIZE]);
 			
 			
 			singleton->bindShader("ShadowMapShader");
@@ -69837,6 +69857,7 @@ void GameWorld::rasterHolders (bool doShadow)
 		singleton->sampleFBO("debugTargFBO", 3);
 		singleton->setShaderTexture3D(5,singleton->volIdMat);
 		singleton->sampleFBO("shadowMapFBO",6);
+		singleton->sampleFBO("shadowLowFBO",7);
 		
 		
 		if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {
@@ -69882,20 +69903,30 @@ void GameWorld::rasterHolders (bool doShadow)
 		
 		
 		
-		singleton->setShaderFloat("curTime", singleton->curTime);
-		singleton->setShaderfVec4("readData",&(singleton->mouseUpPixData.pd[2]));
-		singleton->setShaderfVec2("mouseCoords",&(singleton->lastMouseZO));
+		
+		singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
+		singleton->setShaderInt("cellsPerHolder",singleton->cellsPerHolder);
+		
+		
+		singleton->setShaderInt("combatOn", singleton->settings[E_BS_COMBAT]);
+		singleton->setShaderInt("editPose", singleton->settings[E_BS_EDIT_POSE]);
 		singleton->setShaderInt("gridOn", singleton->settings[E_BS_SHOW_GRID]);
+		singleton->setShaderInt("mouseDown", singleton->abDown);
+		singleton->setShaderInt("testOn3", (int)(singleton->settings[E_BS_TEST_3]));
+		
+		singleton->setShaderFloat("activeActorInd",singleton->gem->actObjInd);
+		singleton->setShaderfVec4("readDataMU",&(singleton->mouseUpPixData.pd[2]));
+		singleton->setShaderfVec4("readDataMD",&(singleton->mouseDownPixData.pd[2]));
+		
+		singleton->setShaderFloat("curTime", singleton->curTime);
+		singleton->setShaderfVec2("mouseCoords",&(singleton->lastMouseZO));
 		singleton->setShaderFloat("gammaVal", singleton->gammaVal);
 		singleton->setShaderFloat("cellsPerChunk",singleton->cellsPerChunk);
 		singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
-		singleton->setShaderInt("testOn3", (int)(singleton->settings[E_BS_TEST_3]));
 		// singleton->setShaderfVec3("minBounds",&(minShadowBounds));
 		// singleton->setShaderfVec3("maxBounds",&(maxShadowBounds));
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
-		singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
 		singleton->setShaderFloat("voxelsPerCell",singleton->voxelsPerCell);
-		singleton->setShaderInt("cellsPerHolder",singleton->cellsPerHolder);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 		singleton->setShaderVec2("shadowBias", 
@@ -69907,10 +69938,13 @@ void GameWorld::rasterHolders (bool doShadow)
 		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
 		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
 		singleton->setShaderMatrix4x4("lightSpaceMatrix",singleton->lightSpaceMatrix.get(),1);
+		singleton->setShaderMatrix4x4("lightSpaceMatrixLow",singleton->lightSpaceMatrixLow.get(),1);
 		singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
 		
 		singleton->fsQuad.draw();
 
+
+		singleton->unsampleFBO("shadowLowFBO",7);
 		singleton->unsampleFBO("shadowMapFBO",6);
 		singleton->setShaderTexture3D(5,0);
 		singleton->unsampleFBO("debugTargFBO", 3);

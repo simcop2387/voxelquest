@@ -76,10 +76,11 @@ const static float ORG_SCALE_BASE = 0.5f;
 
 
 const static int SHADOW_MAP_RES = 2048;
+const static int SHADOW_MAP_LOW_RES = 512;
 
 const static int DEF_SCALE_FACTOR = 2;
 const static int RENDER_SCALE_FACTOR = 4;
-const static int RASTER_LOW_SCALE_FACTOR = 2;
+const static int RASTER_LOW_SCALE_FACTOR = 1;
 const static bool SINGLE_THREADED = false;
 
 int TOT_POINT_COUNT = 0;

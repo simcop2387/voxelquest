@@ -607,7 +607,6 @@ void main() {
     if (tex4.z == selLimbInd) {
         isSelLimb = true;
     }
-    
     if (tex4.w == selObjInd) {
         isSelObj = true;
     }
