@@ -9,7 +9,6 @@ GamePhysics::GamePhysics ()
 		lastBodyPick = NULL;
 		lastBodyUID = -1;
 		
-		
 	}
 void GamePhysics::init (Singleton * _singleton)
         {
@@ -140,6 +139,7 @@ void GamePhysics::remBoxFromObj (BaseObjType _uid)
 		// ge->orgId = -1;
 		
 		ge->bodies.clear();
+		//ge->blockers.clear();
 	}
 void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
                                                                 {
@@ -149,6 +149,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 		//cout << "\n\nADD BOX\n\n";
 		
 		int i;
+		int j;
 		int bodInd;
 		GameOrg* curOrg = NULL;
 		
@@ -165,6 +166,10 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 		btTransform trans;
 		trans.setIdentity();
 		trans.setOrigin(ge->startPoint);
+		
+		btTransform trans2;
+		trans2.setIdentity();
+		trans2.setOrigin(ge->startPoint);
 		
 		GamePhysRig* curPhysRig;
 		
@@ -221,6 +226,43 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 										COL_MARKER,
 										markerCollidesWith
 									);
+									
+									// for (j = 0; j < E_BLOCKER_LENGTH; j++) {
+										
+									// 	switch(j) {
+									// 		case E_BLOCKER_GRAV:
+									// 			trans2.setOrigin(ge->startPoint + btVector3(0.0f,0.0f,-5.0f));
+									// 		break;
+									// 	}
+										
+									// 	ge->blockers.push_back(BodyStruct());
+									// 	ge->blockers[j].body = example->createRigidBodyMask(
+									// 		9999.0, //mass
+									// 		trans2,
+									// 		new btSphereShape(BLOCKER_RADIUS),
+									// 		COL_BLOCKER,
+									// 		blockerCollidesWith
+									// 	);
+										
+									// 	ge->blockers[j].body->bodyUID = _uid;
+									// 	ge->blockers[j].body->limbUID = -7;
+									// 	ge->blockers[j].body->setDamping(0.0f,0.0f);
+									// 	ge->blockers[j].body->setContactProcessingThreshold(CONTACT_THRESH);
+									// 	ge->blockers[j].isVisible = true;
+									// 	ge->blockers[j].body->setGravity(btVector3(0.0f,0.0f,0.0f));
+									// 	ge->blockers[j].mass = 0.0;
+									// 	ge->blockers[j].hasContact = false;
+									// 	ge->blockers[j].isInside = false;
+									// 	ge->blockers[j].isFalling = false;
+									// 	ge->blockers[j].inWater = false;
+									// 	ge->blockers[j].lastVel = orig;
+									// 	ge->blockers[j].totAV = orig;
+									// 	ge->blockers[j].totLV = orig;
+										
+										
+										
+									// }
+									
 								}
 								else {
 									// ge->bodies[i].body = example->createRigidBodyMask(
@@ -355,8 +397,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 			ge->bodies[bodInd].body->bodyUID = _uid;
 			ge->bodies[bodInd].body->limbUID = bodInd;
 			
-			
-			ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
+			ge->bodies[bodInd].body->setDamping(0.0f,0.9f);
 			
 			ge->bodies[bodInd].body->setContactProcessingThreshold(CONTACT_THRESH);
 			
@@ -728,6 +769,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 		float angDamp = singleton->conVals[E_CONST_ANGDAMP];
 		
 		
+		
 		if (VOXEL_COLLISION) {
 			for(k = 0; k < singleton->gem->visObjects.size(); k++) {
 				ge = &(singleton->gem->gameObjects[singleton->gem->visObjects[k]]);
@@ -738,16 +780,19 @@ void GamePhysics::collideWithWorld (double curStepTime)
 					
 				}
 				else {
-					for (bodInd = 0; bodInd < ge->bodies.size(); bodInd++) {
+					for (bodInd = 0; bodInd < 1; bodInd++) { //ge->bodies.size()
 						curBody = &(ge->bodies[bodInd]);
 						
 						switch (curBody->jointType) {
 							case E_JT_LIMB:
 							case E_JT_BALL:
 							case E_JT_OBJ:
-								segCount = 1;
-								segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
-									btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_LIMB]);
+								
+								segCount = 0;
+								
+								// segCount = 1;
+								// segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
+								// 	btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_LIMB]);
 							break;
 							break;
 							case E_JT_NORM:
@@ -779,6 +824,12 @@ void GamePhysics::collideWithWorld (double curStepTime)
 									
 								}
 								else {
+									
+									// ge->setBlockerPosXY(
+									// 	E_BLOCKER_GRAV,
+									// 	curBody->body->getCenterOfMassPosition()
+									// );
+									
 									segCount = 2;
 									segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
 										btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_CONT]);
@@ -821,6 +872,47 @@ void GamePhysics::collideWithWorld (double curStepTime)
 							norVal = singleton->gw->getNormalAtCoord(
 								segPos[p], cellVal
 							);
+							
+							
+							// if (!VOXEL_COLLISION) {
+							// 	if (p == 0) {
+							// 		// collision below body
+									
+							// 		lastInside = curBody->isInside;
+							// 		curBody->isInside = (cellVal[3] > 0.5f);
+									
+							// 		curBody->hasContact = (curBody->hasContact)||(cellVal[3] > 0.01f);
+							// 		curBody->isFalling = !(curBody->hasContact);
+									
+							// 		if (cellVal[3] > 0.1f) {
+							// 			ge->moveOffsetBlocker(
+							// 				E_BLOCKER_GRAV,
+							// 				btVector3(0.0f,0.0f,cellVal[3]*0.1f)
+							// 			);
+										
+							// 		}
+							// 		else {
+							// 			ge->moveOffsetBlocker(
+							// 				E_BLOCKER_GRAV,
+							// 				btVector3(0.0f,0.0f,-1.0f)
+							// 			);
+							// 			if (
+							// 				ge->blockers[E_BLOCKER_GRAV].body->getCenterOfMassPosition().distance(
+							// 					ge->getCenterPoint(E_BDG_CENTER)
+							// 				) > 5.0f
+							// 			) {
+							// 				ge->moveOffsetBlocker(
+							// 					E_BLOCKER_GRAV,
+							// 					btVector3(0.0f,0.0f,1.0f)
+							// 				);
+							// 			}
+							// 		}
+									
+							// 	}
+							// }
+							
+							
+							
 							
 							if (p == 0) {
 								// collision below body
@@ -901,14 +993,13 @@ void GamePhysics::collideWithWorld (double curStepTime)
 									}
 									else {
 										
-											if (ge->getActionState(E_ACT_ISWALKING,RLBN_NEIT)) {
-												ge->addVel(bodInd,
-													norVal*xyMask * 
-													cellVal[3]*singleton->conVals[E_CONST_NOR_PUSH]
-												);
-											}
+										if (ge->getActionState(E_ACT_ISWALKING,RLBN_NEIT)) {
+											ge->addVel(bodInd,
+												norVal*xyMask * 
+												cellVal[3]*singleton->conVals[E_CONST_NOR_PUSH]
+											);
+										}
 										
-											
 									}
 									
 									
@@ -992,6 +1083,12 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								
 								
 							}
+							
+							
+							
+							
+							
+							
 							
 							// if (ge->isDead()) {
 							// 	curBody->body->setGravity(btVector3(0.0f,0.0f,-5.0f));
@@ -1140,6 +1237,9 @@ void GamePhysics::collideWithWorld (double curStepTime)
 				}
 			}
 		}
+		
+		
+		
 		
 		
 		
@@ -1372,7 +1472,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								+ difVec*singleton->conVals[E_CONST_BINDING_MULT]*bindingPower,
 								bodInd
 							);
-								
+
 						}
 						
 						

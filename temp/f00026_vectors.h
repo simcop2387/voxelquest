@@ -1958,6 +1958,40 @@ struct StatSheet {
 
 
 
+struct RigidBody {
+	
+	bool isStatic;
+	
+	uint filterMask;
+	
+	float mass;
+	
+	vec3 outerBounds;
+	vec3 innerBounds;
+	float cornerRadius;
+	float maxRadius;
+	
+	vec3 pos;
+	mat3 orient;
+	
+	vec3 linearForce;
+	vec3 angularForce;
+	
+	vec3 linearAccel;
+	vec3 angularAccel;
+	
+	vec3 linearVel;
+	vec3 angularVel;
+	
+	
+};
+
+struct RigidBodyGroup {
+	float broadRadius;
+	RigidBody parentBody;
+	std::vector<RigidBody> childBodies;
+};
+
 
 class BaseObj
 {
@@ -1985,6 +2019,7 @@ public:
 	
 	std::vector<int> targWeaponStack;
 	std::vector<BodyStruct> bodies;
+	//std::vector<BodyStruct> blockers;
 	
 	int actorId;
 	int orgId;
@@ -2152,6 +2187,49 @@ public:
 	bool hasBodies() {
 		return (bodies.size() > 0);
 	}
+	
+	// void setBlockerPos(int blockerId, btVector3 newPos) {
+		
+		
+	// 	btTransform trans;
+	// 	trans.setIdentity();
+	// 	trans.setOrigin(newPos);
+	// 	blockers[blockerId].body->setCenterOfMassTransform(trans);
+	// 	blockers[blockerId].body->setActivationState(ACTIVE_TAG);
+		
+	// }
+	
+	// void setBlockerPosXY(int blockerId, btVector3 newPos) {
+		
+		
+	// 	btTransform trans;
+	// 	trans.setIdentity();
+	// 	trans.setOrigin(btVector3(
+	// 		newPos.getX(),
+	// 		newPos.getY(),
+	// 		blockers[blockerId].body->getCenterOfMassPosition().getZ()
+	// 	));
+	// 	blockers[blockerId].body->setCenterOfMassTransform(trans);
+	// 	blockers[blockerId].body->setActivationState(ACTIVE_TAG);
+		
+	// }
+	
+	// void moveOffsetBlocker(int blockerId, btVector3 offset) {
+	// 	btTransform trans;
+		
+	// 	trans.setIdentity();
+	// 	trans.setOrigin(
+	// 		blockers[blockerId].body->getCenterOfMassPosition() + offset
+	// 	);
+	// 	blockers[blockerId].body->setCenterOfMassTransform(
+	// 		trans
+	// 	);
+	// 	blockers[blockerId].body->setActivationState(ACTIVE_TAG);
+		
+		
+	// }
+	
+	
 	
 	void multVel(int i, btVector3 velMod) {
 		
@@ -3471,7 +3549,7 @@ public:
 		}
 		
 		glBindVertexArray(vao);
-		glDrawElements(GL_TRIANGLES, (numCubes)*36, GL_UNSIGNED_INT, 0); //sizeOfID //&(vi->indexVec[0])
+		glDrawElements(GL_TRIANGLES, (numCubes)*36, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 	}
 	

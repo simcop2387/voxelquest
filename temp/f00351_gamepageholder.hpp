@@ -77,7 +77,7 @@ public:
 	
 
 	std::vector<int> collideIndices;
-	
+	std::vector<btRigidBody*> collideBodies;
 
 	FIVector4 offsetInHolders;
 
@@ -1991,8 +1991,6 @@ FIRST_FILL_DONE:
 		
 		
 		
-		
-		
 		/////////////////////
 		
 		if (
@@ -2011,54 +2009,65 @@ FIRST_FILL_DONE:
 			//hasData = true;
 		}
 		
-		
+		btVector3 boxRad = btVector3(0.5f,0.5f,0.5f);
 		
 		/////////////////////
 		
 		
-		//float fk;
+		float fi, fj, fk;
 		
-		// if (GEN_COLLISION) {
-		// 	for (q = 0; q < collideIndices.size(); q += 2) {
-				
-		// 		p = collideIndices[q];
-		// 		p2 = collideIndices[q+1];
-				
-		// 		kk = p/(cellsPerHolder*cellsPerHolder);
-		// 		jj = (p-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
-		// 		ii = p-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
-				
-		// 		kk2 = p2/(cellsPerHolder*cellsPerHolder);
-				
-		// 		fk = (kk2-kk)+1;
-				
-				
-		// 		btTransform trans;
-		// 		trans.setOrigin(btVector3(
-		// 			ii,jj,(kk+kk2)*0.5f
-		// 		));
-				
-		// 		// todo: mem leak
-				
-		// 		btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(0.5f,fk);
-		// 		btRigidBody* myBody = singleton->gamePhysics->example->createRigidBody(0,trans,capsuleShape);
-		// 		myBody->setFriction(btScalar(0.9));
-				
-		// 		// q3BoxDef boxDef;
-		// 		// boxDef.SetRestitution( 0 );
-		// 		// q3Transform tx;
-		// 		// q3Identity( tx );
-		// 		// tx.position.Set(ii,jj,(kk+kk2)*0.5f);
-		// 		// boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, fk ) );
-		// 		// body->AddBox( boxDef );
-				
-				
-		// 	}
-		// }
+		btBoxShape* boxShape;
+		//btRigidBody* myBody;
 		
-		//singleton->gamePhysics->example->updateGraphicsObjects();
+		if (GEN_COLLISION && hasData && (collideIndices.size() > 0)) {
+			//cout << "yay\n";
+			for (q = 0; q < collideIndices.size(); q ++) {
+				
+				p = collideIndices[q];
+				// p2 = collideIndices[q+1];
+				
+				kk = p/(cellsPerHolder*cellsPerHolder);
+				jj = (p-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+				ii = p-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+				
+				//kk2 = p2/(cellsPerHolder*cellsPerHolder);
+				
+				//fk = (kk2-kk)+1;
+				
+				fi = ii + gphMinInCells.getIX();
+				fj = jj + gphMinInCells.getIY();
+				fk = kk + gphMinInCells.getIZ();
+				
+				btTransform trans;
+				trans.setIdentity();
+				trans.setOrigin(btVector3(
+					fi+0.5f,fj+0.5f,fk+0.5f//(kk+kk2)*0.5f
+				));
+				
+				// todo: mem leak
+				
+				boxShape = new btBoxShape(boxRad);
+				collideBodies.push_back(
+					singleton->gamePhysics->example->createRigidBodyMask(
+						0,
+						trans,
+						boxShape,
+						COL_STATIC,
+						staticCollidesWith
+						)
+				);
+				collideBodies.back()->setFriction(btScalar(0.9f));
+				collideBodies.back()->bodyUID = -1;
+				collideBodies.back()->limbUID = -1;
+				collideBodies.back()->setCollisionFlags(btCollisionObject::CF_STATIC_OBJECT); //
+			}
+			
+			singleton->gamePhysics->example->updateGraphicsObjects();
+		}
 		
-		//cout << "collideIndices.size() " << collideIndices.size() << "\n";
+		
+		
+		// cout << "collideIndices.size() " << collideIndices.size() << "\n";
 		
 		
 		
@@ -2214,10 +2223,12 @@ FIRST_FILL_DONE:
 			return;
 		}
 		
+		collideIndices.clear();
+		vertexVec.clear();//beginFill();
 		
 		uint tempHF = gatherData();		
 		
-		vertexVec.clear();//beginFill();
+		
 		
 		if (
 			(
@@ -2243,7 +2254,7 @@ FIRST_FILL_DONE:
 				
 			}
 			
-			if (POLYS_FOR_CELLS) {
+			if (GEN_COLLISION) {
 				wrapPolys();
 			}
 			
@@ -2422,11 +2433,9 @@ FIRST_FILL_DONE:
 						// 		procFlag;
 						// }
 						
-						// if (GEN_COLLISION) {
-						// 	if (doProcAny) {
-						// 		collideIndices.push_back(i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder);
-						// 	}
-						// }
+						if (doProcAny) {
+							collideIndices.push_back(i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder);
+						}
 						
 						
 						
@@ -2484,15 +2493,15 @@ FIRST_FILL_DONE:
 							
 						// }
 						
-						if (doProcAny) {
-							// vboWrapper.vboBox(
-							// 	bpX,bpY,bpZ,
-							// 	iv0,iv1,
-							// 	procFlag,
-							// 	ZERO_FLOATS,
-							// 	4
-							// );
-						}
+						// if (doProcAny) {
+						// 	// vboWrapper.vboBox(
+						// 	// 	bpX,bpY,bpZ,
+						// 	// 	iv0,iv1,
+						// 	// 	procFlag,
+						// 	// 	ZERO_FLOATS,
+						// 	// 	4
+						// 	// );
+						// }
 						
 						
 					}

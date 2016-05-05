@@ -669,6 +669,32 @@ public:
 		
 		singleton->tempPrimList.push_back(os);
 		
+		
+		
+		
+		
+		// btTransform trans;
+		// trans.setOrigin(btVector3(
+		// 	os.offset.x,os.offset.y,os.offset.z
+		// ));
+		// btVector3 boxRad = btVector3(5.0f,5.05,5.0f);
+		// btBoxShape* boxShape = new btBoxShape(boxRad);
+		// btRigidBody* myBody = singleton->gamePhysics->example->createRigidBodyMask(
+		// 	0,
+		// 	trans,
+		// 	boxShape,
+		// 	COL_STATIC,
+		// 	staticCollidesWith
+		// );
+		// myBody->setFriction(btScalar(0.9f));
+		// myBody->bodyUID = -11;
+		// singleton->gamePhysics->example->updateGraphicsObjects();
+		
+		
+		
+		
+		
+		
 	}
 	
 	void fetchGeom() {

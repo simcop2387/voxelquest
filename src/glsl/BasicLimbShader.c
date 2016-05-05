@@ -17,7 +17,7 @@ uniform mat4 pmMatrix;
 
 uniform vec4 limbArr[128];
 
-const int MAX_PRIM_IDS = 16;
+const int MAX_PRIM_IDS = 24;
 int primIdList[MAX_PRIM_IDS]; // this is related to MAX_PRIM_IDS
 
 
@@ -538,10 +538,10 @@ vec3 mapDyn(vec3 pos) {
 				
 		float oldX = res.x;
 		
-		// res.x = opS(
-		// 	res.x,
-		// 	sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) ) //8.0 //CAM_BOX_SIZE
-		// );
+		res.x = opS(
+			res.x,
+			sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) ) //8.0 //CAM_BOX_SIZE
+		);
 		
 		
 		return vec3(res,oldX);
@@ -702,8 +702,8 @@ void main() {
 
 	float totSteps = 0.0;
 
-
-	vec2 curTex = vec2(TEX_EARTH,0.0);
+	//TEX_EARTH
+	vec2 curTex = vec2(0.0,0.0);
 	
 	float totStepVal = 0.0;
 	
@@ -759,7 +759,7 @@ void main() {
 			);
 			
 			
-			if (globBoneRad < 0.05) {
+			if (globBoneRad < 0.03) {
 				curTex = vec2(
 					TEX_BONE,
 					datVec.w
@@ -773,6 +773,10 @@ void main() {
 		
 	}
 	
+	
+	if (curTex.x == 0.0) {
+		discard;
+	}
 	
 	//primRes.w = ;
 	

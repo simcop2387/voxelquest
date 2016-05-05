@@ -42,7 +42,8 @@ uniform vec4 readDataMD;
 uniform vec2 mouseCoords;
 uniform vec3 brushCol;
 uniform vec4 brushPos;
-uniform vec3 lightPos;
+uniform vec3 lightPosStatic;
+uniform vec3 lightPosDynamic;
 uniform vec2 shadowBias;
 uniform vec3 lookAtVec;
 uniform vec2 clipDist;
@@ -283,9 +284,7 @@ float calcAO(vec2 texc, vec3 worldPosition, vec3 normVec) {
 
 vec3 getOutline(vec3 _baseCol, vec2 TexCoord0, vec4 wp, vec4 sampOrig) {
   
-  if (combatOn) {
-    return _baseCol;
-  }
+  
   
   vec3 baseCol = _baseCol;
   
@@ -380,6 +379,9 @@ vec3 getOutline(vec3 _baseCol, vec2 TexCoord0, vec4 wp, vec4 sampOrig) {
     baseCol *= vec3(0.25);
   }
   
+  if (combatOn) {
+    return baseCol;
+  }
   
   
   if (
@@ -460,13 +462,23 @@ float getGrid(vec3 worldPosition, vec3 normVec) {
 
 
 
-float calcShadow(sampler2D mySampler, vec2 myBias, vec4 worldPos, vec4 worldPosInLightSpace, vec3 normVec) {
+float calcShadow(sampler2D mySampler, vec3 myLightPos, vec2 myBias, vec4 worldPos, vec4 worldPosInLightSpace, vec3 normVec) {
     // perform perspective divide
     vec3 projCoords = worldPosInLightSpace.xyz / worldPosInLightSpace.w;
     // Transform to [0,1] range
+    
+    vec3 absCoords = abs(projCoords);
+    
+    if (
+      (absCoords.x > 1.0) ||
+      (absCoords.y > 1.0)  
+    ) {
+      return 1.0;
+    }
+    
     projCoords = projCoords * 0.5 + 0.5;
     
-    float cutoff = projCoords.z;
+    //float cutoff = projCoords.z;
     
     // Get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
     
@@ -475,10 +487,10 @@ float calcShadow(sampler2D mySampler, vec2 myBias, vec4 worldPos, vec4 worldPosI
     float closestDepth = tempSamp.w;
     // Get depth of current fragment from light's perspective
     //projCoords.z *= 0.5;
-    float currentDepth = distance(lightPos.xyz,worldPos.xyz);//projCoords.z;
+    float currentDepth = distance(myLightPos.xyz,worldPos.xyz);//projCoords.z;
     // Calculate bias (based on depth map resolution and slope)
-    float bias = clamp((dot(normVec, lightVec)+1.0)*0.5,0.0,1.0);
-    currentDepth += mix(myBias.x, myBias.y, 1.0-bias);
+    float bias = clamp( abs(dot(normVec, -lightVec))-0.5,0.0,1.0);
+    currentDepth += mix(myBias.x, myBias.y, pow(1.0-bias,10.0));//mix(myBias.x, myBias.y, 1.0-bias);
     
     
     // Check whether current frag pos is in shadow
@@ -491,26 +503,28 @@ float calcShadow(sampler2D mySampler, vec2 myBias, vec4 worldPos, vec4 worldPosI
     float shadow = 0.0;
     vec2 texelSize = 1.0 / textureSize(mySampler, 0);
     
-    int rad = 2;
+    int rad = 6;
     float totShad = 0.0;
     
     for(x = -rad; x <= rad; ++x)
     {
         for(y = -rad; y <= rad; ++y)
         {
-            tempSamp = texture(mySampler, projCoords.xy + vec2(x, y) * texelSize);
-            pcfDepth = tempSamp.w;//distance(tempSamp,lightPos.xyz); 
-            shadow += float(currentDepth < pcfDepth); // float(currentDepth < pcfDepth);
+            tempSamp = texture(mySampler, projCoords.xy + vec2(x, y) * texelSize*0.5);
+            pcfDepth = tempSamp.w;//distance(tempSamp,myLightPos.xyz); 
+            shadow += float(currentDepth < pcfDepth);
+            // (clamp( (pcfDepth - currentDepth)*5.0, -1.0, 1.0)+1.0)*0.5)
+            // float(currentDepth < pcfDepth);
             totShad += 1.0;
         }
     }
-    shadow = clamp(shadow*2.0/totShad,0.0,1.0);
+    shadow = clamp(shadow*4.0/totShad,0.0,1.0);
     
     // Keep the shadow at 0.0 when outside the far_plane region of the light's frustum.
-    if(cutoff > 1.0) {
-      shadow = 0.0;
-      //globBool = true;
-    }
+    // if(cutoff > 1.0) {
+    //   shadow = 0.0;
+    //   //globBool = true;
+    // }
     
     return 1.0-shadow;
 }
@@ -626,8 +640,8 @@ void main() {
     
     worldPosInLightSpace = lightSpaceMatrix*vec4(tex0.xyz,1.0);
     worldPosInLightSpaceLow = lightSpaceMatrixLow*vec4(tex0.xyz,1.0);
-    shadowVal = calcShadow(Texture6, shadowBias.xy, tex0, worldPosInLightSpace, tex1.xyz);
-    shadowVal2 = calcShadow(Texture7, vec2(0.1,0.3), tex0, worldPosInLightSpaceLow, tex1.xyz);
+    shadowVal = calcShadow(Texture6, lightPosStatic, vec2(1.0,2.0), tex0, worldPosInLightSpace, tex1.xyz); //shadowBias.xy
+    shadowVal2 = calcShadow(Texture7, lightPosDynamic, vec2(0.2,0.5), tex0, worldPosInLightSpaceLow, tex1.xyz);
     shadowVal *= shadowVal2;
     lightVal = lightValOrig*shadowVal;
     
@@ -653,7 +667,7 @@ void main() {
     finalCol = mix(finalCol*finalCol*finalCol,finalCol,finalCol);
     
     //finalCol += vec3(1.0-shadowVal2,0.0,0.0);
-    //finalCol = vec3(shadowVal2*lightValOrig);
+    // finalCol = vec3(shadowVal2);
     
     
     
@@ -693,7 +707,7 @@ void main() {
     
     //finalCol = vec3(shadowVal2);
     
-    //finalCol = vec3(shadowVal2);
+    //finalCol = vec3(lightValOrig*shadowVal2);
     
     camDis = distance(cameraPos.xyz,tex0.xyz);
     

@@ -1197,163 +1197,178 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 				myMatrix4 = Matrix4(myMat);
 				
 				
-				// header info
-				headerStart = dataInd;
-				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
-				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
-				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
-				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
-			
-				// todo: aabbMinSkel wont show weapons
-			
-				singleton->limbTBOData[dataInd] = ge->aabbMinVis.getX(); dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMinVis.getY(); dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMinVis.getZ(); dataInd++;
-				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
-				
-				
-				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getX(); dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getY(); dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getZ(); dataInd++;
-				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
 				
 				
 				float randOff;
 				
-				for (j = 0; j < ge->bodies.size(); j++) {
-					curBody = &(ge->bodies[j]);
+				
+				if (
+					singleton->gem->firstPerson &&
+					(ge->uid == singleton->gem->getCurActorUID())
+				) {
 					
-					if (
-						(curBody->jointType != E_JT_LIMB) ||
-						(curBody->boneId < 0) ||
-						(curBody->boneId == E_BONE_C_BASE) ||
-						(
-							singleton->gem->firstPerson &&
-							(curBody->boneId == E_BONE_C_SKULL) &&
-							(ge->uid == singleton->gem->getCurActorUID())
-						)
+				}
+				else {
+					
+					// header info
+					headerStart = dataInd;
+					singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+					singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+					singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+					singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+					
+					// todo: aabbMinSkel wont show weapons
+					
+					singleton->limbTBOData[dataInd] = ge->aabbMinVis.getX(); dataInd++;
+					singleton->limbTBOData[dataInd] = ge->aabbMinVis.getY(); dataInd++;
+					singleton->limbTBOData[dataInd] = ge->aabbMinVis.getZ(); dataInd++;
+					singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+					
+					
+					singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getX(); dataInd++;
+					singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getY(); dataInd++;
+					singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getZ(); dataInd++;
+					singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+					
+					
+					
+					for (j = 0; j < ge->bodies.size(); j++) {
+						curBody = &(ge->bodies[j]);
 						
-					) {
-						
+						if (
+							(curBody->jointType != E_JT_LIMB) ||
+							(curBody->boneId < 0) ||
+							(curBody->boneId == E_BONE_C_BASE)
+							
+							
+						) {
+							
+						}
+						else {
+							
+							
+							
+							curOrgNode = curOrg->allNodes[curBody->boneId];
+							
+							centerPoint = curBody->body->getCenterOfMassPosition();
+							//centerPoint += btVector3(0.0,0.0,-0.4f);
+							basis = curBody->body->getCenterOfMassTransform().getBasis();
+							
+							
+							
+							tempBTV = curOrgNode->tbnTrans[1].getBTV();
+							myVector4 = Vector4(
+								tempBTV.getX(),
+								tempBTV.getY(),
+								tempBTV.getZ(),
+								1.0f
+							);
+							resVector4 = myMatrix4*myVector4;
+							basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
+							basePos += grabber->skelOffset;
+							basePos -= centerPoint;
+							safeNorm(basePos);
+							
+							
+							
+							tanVec = basis.getColumn(0);//basis*curOrgNode->orgVecs[0].getBTV();
+							safeNorm(tanVec);
+							// bitVec = basis.getColumn(1);//basis*curOrgNode->orgVecs[1].getBTV();
+							// norVec = basis.getColumn(2);//basis*curOrgNode->orgVecs[2].getBTV();
+							
+							//tanVec = basePos[0];//basis*curOrgNode->orgVecs[0].getBTV();
+							bitVec = basePos;//basis*curOrgNode->orgVecs[1].getBTV();
+							//norVec = basePos[2];//basis*curOrgNode->orgVecs[2].getBTV();
+							
+							norVec = tanVec.cross(bitVec);
+							safeNorm(norVec);
+							
+							bitVec = norVec.cross(tanVec);
+							safeNorm(bitVec);
+							
+							
+							len0 = curOrgNode->orgVecs[E_OV_TBNRAD0].getBTV();
+							len1 = curOrgNode->orgVecs[E_OV_TBNRAD1].getBTV();
+							
+							
+							// datVec
+							randOff = abs( fSeedRand2((ge->uid*37.19232f),(curOrgNode->orgVecs[E_OV_MATPARAMS].getFX()*17.89923f)) );
+							
+							singleton->limbTBOData[dataInd] = ge->uid; dataInd++;
+							singleton->limbTBOData[dataInd] = curBody->body->limbUID; dataInd++;
+							singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_MATPARAMS].getFX(); dataInd++;
+							singleton->limbTBOData[dataInd] = randOff; dataInd++;
+							
+							//cenVec
+							
+							singleton->limbTBOData[dataInd] = centerPoint.getX(); dataInd++;
+							singleton->limbTBOData[dataInd] = centerPoint.getY(); dataInd++;
+							singleton->limbTBOData[dataInd] = centerPoint.getZ(); dataInd++;
+							singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFX(); dataInd++;
+							
+							singleton->limbTBOData[dataInd] = tanVec.getX(); dataInd++;
+							singleton->limbTBOData[dataInd] = tanVec.getY(); dataInd++;
+							singleton->limbTBOData[dataInd] = tanVec.getZ(); dataInd++;
+							singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFY(); dataInd++;
+							
+							singleton->limbTBOData[dataInd] = bitVec.getX(); dataInd++;
+							singleton->limbTBOData[dataInd] = bitVec.getY(); dataInd++;
+							singleton->limbTBOData[dataInd] = bitVec.getZ(); dataInd++;
+							singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFZ(); dataInd++;
+							
+							// if (singleton->doPathReport) {
+							// 	cout << curOrgNode->orgVecs[E_OV_MATPARAMS].getFX() << "\n";
+							// }
+							
+							singleton->limbTBOData[dataInd] = norVec.getX(); dataInd++;
+							singleton->limbTBOData[dataInd] = norVec.getY(); dataInd++;
+							singleton->limbTBOData[dataInd] = norVec.getZ(); dataInd++;
+							singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFW(); dataInd++;
+							
+							// ln0Vec
+							
+							singleton->limbTBOData[dataInd] = len0.getX(); dataInd++;
+							singleton->limbTBOData[dataInd] = len0.getY(); dataInd++;
+							singleton->limbTBOData[dataInd] = len0.getZ(); dataInd++;
+							singleton->limbTBOData[dataInd] = ge->entType; dataInd++;
+							
+							// ln1Vec
+							
+							singleton->limbTBOData[dataInd] = len1.getX(); dataInd++;
+							singleton->limbTBOData[dataInd] = len1.getY(); dataInd++;
+							singleton->limbTBOData[dataInd] = len1.getZ(); dataInd++;
+							singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_TBNOFFSET].getFW(); dataInd++;
+							
+							
+						}
 					}
-					else {
-						
-						
-						
-						curOrgNode = curOrg->allNodes[curBody->boneId];
-						
-						centerPoint = curBody->body->getCenterOfMassPosition();
-						//centerPoint += btVector3(0.0,0.0,-0.4f);
-						basis = curBody->body->getCenterOfMassTransform().getBasis();
-						
-						
-						
-						tempBTV = curOrgNode->tbnTrans[1].getBTV();
-						myVector4 = Vector4(
-							tempBTV.getX(),
-							tempBTV.getY(),
-							tempBTV.getZ(),
-							1.0f
-						);
-						resVector4 = myMatrix4*myVector4;
-						basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
-						basePos += grabber->skelOffset;
-						basePos -= centerPoint;
-						safeNorm(basePos);
-						
-						
-						
-						tanVec = basis.getColumn(0);//basis*curOrgNode->orgVecs[0].getBTV();
-						safeNorm(tanVec);
-						// bitVec = basis.getColumn(1);//basis*curOrgNode->orgVecs[1].getBTV();
-						// norVec = basis.getColumn(2);//basis*curOrgNode->orgVecs[2].getBTV();
-						
-						//tanVec = basePos[0];//basis*curOrgNode->orgVecs[0].getBTV();
-						bitVec = basePos;//basis*curOrgNode->orgVecs[1].getBTV();
-						//norVec = basePos[2];//basis*curOrgNode->orgVecs[2].getBTV();
-						
-						norVec = tanVec.cross(bitVec);
-						safeNorm(norVec);
-						
-						bitVec = norVec.cross(tanVec);
-						safeNorm(bitVec);
-						
-						
-						len0 = curOrgNode->orgVecs[E_OV_TBNRAD0].getBTV();
-						len1 = curOrgNode->orgVecs[E_OV_TBNRAD1].getBTV();
-						
-						
-						// datVec
-						randOff = abs( fSeedRand2((ge->uid*37.19232f),(curOrgNode->orgVecs[E_OV_MATPARAMS].getFX()*17.89923f)) );
-						
-						singleton->limbTBOData[dataInd] = ge->uid; dataInd++;
-						singleton->limbTBOData[dataInd] = curBody->body->limbUID; dataInd++;
-						singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_MATPARAMS].getFX(); dataInd++;
-						singleton->limbTBOData[dataInd] = randOff; dataInd++;
-						
-						//cenVec
-						
-						singleton->limbTBOData[dataInd] = centerPoint.getX(); dataInd++;
-						singleton->limbTBOData[dataInd] = centerPoint.getY(); dataInd++;
-						singleton->limbTBOData[dataInd] = centerPoint.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFX(); dataInd++;
-						
-						singleton->limbTBOData[dataInd] = tanVec.getX(); dataInd++;
-						singleton->limbTBOData[dataInd] = tanVec.getY(); dataInd++;
-						singleton->limbTBOData[dataInd] = tanVec.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFY(); dataInd++;
-						
-						singleton->limbTBOData[dataInd] = bitVec.getX(); dataInd++;
-						singleton->limbTBOData[dataInd] = bitVec.getY(); dataInd++;
-						singleton->limbTBOData[dataInd] = bitVec.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFZ(); dataInd++;
-						
-						// if (singleton->doPathReport) {
-						// 	cout << curOrgNode->orgVecs[E_OV_MATPARAMS].getFX() << "\n";
-						// }
-						
-						singleton->limbTBOData[dataInd] = norVec.getX(); dataInd++;
-						singleton->limbTBOData[dataInd] = norVec.getY(); dataInd++;
-						singleton->limbTBOData[dataInd] = norVec.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFW(); dataInd++;
-						
-						// ln0Vec
-						
-						singleton->limbTBOData[dataInd] = len0.getX(); dataInd++;
-						singleton->limbTBOData[dataInd] = len0.getY(); dataInd++;
-						singleton->limbTBOData[dataInd] = len0.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = ge->entType; dataInd++;
-						
-						// ln1Vec
-						
-						singleton->limbTBOData[dataInd] = len1.getX(); dataInd++;
-						singleton->limbTBOData[dataInd] = len1.getY(); dataInd++;
-						singleton->limbTBOData[dataInd] = len1.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_TBNOFFSET].getFW(); dataInd++;
-						
-						
-					}
+					
+					
+					singleton->limbTBOData[headerStart+0] = dataInd/4;
+					singleton->limbTBOData[headerStart+1] = 0.0f;
+					singleton->limbTBOData[headerStart+2] = 0.0f;
+					singleton->limbTBOData[headerStart+3] = 0.0f;
+					
+					
+					limbAP = singleton->limbArrPos*8;
+					//texelRes1
+					singleton->limbArr[limbAP + 0] = ge->aabbMinVis[0];
+					singleton->limbArr[limbAP + 1] = ge->aabbMinVis[1];
+					singleton->limbArr[limbAP + 2] = ge->aabbMinVis[2];
+					singleton->limbArr[limbAP + 3] = (headerStart)/4;
+					
+					//texelRes2
+					singleton->limbArr[limbAP + 4] = ge->aabbMaxVis[0];
+					singleton->limbArr[limbAP + 5] = ge->aabbMaxVis[1];
+					singleton->limbArr[limbAP + 6] = ge->aabbMaxVis[2];
+					singleton->limbArr[limbAP + 7] = 0;
+					singleton->limbArrPos++;
+					
 				}
 				
-				singleton->limbTBOData[headerStart+0] = dataInd/4;
-				singleton->limbTBOData[headerStart+1] = 0.0f;
-				singleton->limbTBOData[headerStart+2] = 0.0f;
-				singleton->limbTBOData[headerStart+3] = 0.0f;
 				
 				
-				limbAP = singleton->limbArrPos*8;
-				//texelRes1
-				singleton->limbArr[limbAP + 0] = ge->aabbMinVis[0];
-				singleton->limbArr[limbAP + 1] = ge->aabbMinVis[1];
-				singleton->limbArr[limbAP + 2] = ge->aabbMinVis[2];
-				singleton->limbArr[limbAP + 3] = (headerStart)/4;
 				
-				//texelRes2
-				singleton->limbArr[limbAP + 4] = ge->aabbMaxVis[0];
-				singleton->limbArr[limbAP + 5] = ge->aabbMaxVis[1];
-				singleton->limbArr[limbAP + 6] = ge->aabbMaxVis[2];
-				singleton->limbArr[limbAP + 7] = 0;
-				singleton->limbArrPos++;
 				
 				
 				
@@ -1716,7 +1731,7 @@ void GameWorld::drawOrg (GameOrg * curOrg, bool drawAll)
 			drawNodeEnt((curOrg->baseNode),&(curOrg->basePosition), scale, 3, drawAll);
 		}
 		
-		
+		// cout << "yay\n";
 		
 	}
 void GameWorld::drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll)
@@ -4435,7 +4450,11 @@ void GameWorld::drawBasicPrims (bool doShadow)
 		
 		numCubes = singleton->primArrPos;
 		
-		singleton->getLSMatrix(singleton->lightSpaceMatrixLow,singleton->conVals[E_CONST_LIGHTORTHOSIZE_LOW]);
+		singleton->getLSMatrix(
+			&(singleton->lightPosDynamic),
+			singleton->lightSpaceMatrixLow,
+			singleton->conVals[E_CONST_LIGHTORTHOSIZE_LOW]
+		);
 		
 		singleton->bindShader("BasicPrimShader");
 		for (i = 0; i < 2; i++) {
@@ -4464,14 +4483,14 @@ void GameWorld::drawBasicPrims (bool doShadow)
 				//singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 				singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 				singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-				singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
+				singleton->setShaderfVec3("lightPos", &(singleton->lightPosDynamic));
 				
 				if (i == 0) {
 					singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 					singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
 				}
 				else {
-					singleton->setShaderfVec3("cameraPos", &(singleton->lightPos));
+					singleton->setShaderfVec3("cameraPos", &(singleton->lightPosDynamic));
 					singleton->setShaderMatrix4x4("pmMatrix",singleton->lightSpaceMatrixLow.get(),1);
 				}
 				
@@ -4518,7 +4537,7 @@ void GameWorld::drawBasicPrims (bool doShadow)
 				
 				//singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
 				//singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
-				singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
+				singleton->setShaderfVec3("lightPos", &(singleton->lightPosDynamic));
 				singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 				singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 				if (i == 0) {
@@ -4526,7 +4545,7 @@ void GameWorld::drawBasicPrims (bool doShadow)
 					singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
 				}
 				else {
-					singleton->setShaderfVec3("cameraPos", &(singleton->lightPos));
+					singleton->setShaderfVec3("cameraPos", &(singleton->lightPosDynamic));
 					singleton->setShaderMatrix4x4("pmMatrix",singleton->lightSpaceMatrixLow.get(),1);
 				}
 				
@@ -4579,8 +4598,12 @@ void GameWorld::rasterHolders (bool doShadow)
 			// 	singleton->clipDist[1]+singleton->conVals[E_CONST_LIGHTDIS]
 			// );
 			
-			singleton->updateLightPos();
-			singleton->getLSMatrix(singleton->lightSpaceMatrix,singleton->conVals[E_CONST_LIGHTORTHOSIZE]);
+			//singleton->updateLightPos();
+			singleton->getLSMatrix(
+				&(singleton->lightPosStatic),
+				singleton->lightSpaceMatrix,
+				singleton->conVals[E_CONST_LIGHTORTHOSIZE]
+			);
 			
 			
 			singleton->bindShader("ShadowMapShader");
@@ -4588,7 +4611,7 @@ void GameWorld::rasterHolders (bool doShadow)
 			
 			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-			singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
+			singleton->setShaderfVec3("lightPos", &(singleton->lightPosStatic));
 			//singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 			singleton->setShaderMatrix4x4("lightSpaceMatrix",singleton->lightSpaceMatrix.get(),1);
 			
@@ -4781,7 +4804,8 @@ void GameWorld::rasterHolders (bool doShadow)
 		singleton->setShaderfVec2("mouseCoords",&(singleton->lastMouseZO));
 		singleton->setShaderFloat("gammaVal", singleton->gammaVal);
 		singleton->setShaderFloat("cellsPerChunk",singleton->cellsPerChunk);
-		singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
+		singleton->setShaderfVec3("lightPosStatic", &(singleton->lightPosStatic));
+		singleton->setShaderfVec3("lightPosDynamic", &(singleton->lightPosDynamic));
 		// singleton->setShaderfVec3("minBounds",&(minShadowBounds));
 		// singleton->setShaderfVec3("maxBounds",&(maxShadowBounds));
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
@@ -4820,6 +4844,8 @@ void GameWorld::rasterHolders (bool doShadow)
 	}
 void GameWorld::renderDebug ()
                            {
+		
+		//drawScene
 		
 		BaseObj* ge = singleton->gem->getCurActor();
 		
@@ -4989,6 +5015,10 @@ void GameWorld::renderDebug ()
 			
 		}
 		
+		singleton->setShaderFloat("isWire", 0.0f);
+		singleton->setShaderVec3("matVal", 255, 0, 0);
+		singleton->drawOrient = false;
+		singleton->gamePhysics->example->renderScene();
 		
 		
 		// if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {

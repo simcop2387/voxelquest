@@ -6389,6 +6389,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
                                                                                                   {
 		
 		
+		bool strafeMode = gem->firstPerson;
 		
 		int i;
 		BaseObj* ca;
@@ -6424,7 +6425,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				
 				if (keyMapResultUnzipped[KEYMAP_RIGHT]) {
 					
-					if (bShift) {
+					if (strafeMode) {
 						gem->makeMove( actorId, btVector3( 1.0f,0.0f,0.0f), true, true );
 					}
 					else {
@@ -6435,7 +6436,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				}
 				
 				if (keyMapResultUnzipped[KEYMAP_LEFT]) {
-					if (bShift) {
+					if (strafeMode) {
 						gem->makeMove( actorId, btVector3(-1.0f,0.0f,0.0f), true, true );
 					}
 					else {
@@ -6479,7 +6480,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				// 	camRotX
 				// );
 				
-				if (bShift) {
+				if (strafeMode) {
 					deltaAng = ca->turnTowardsPointDelta(
 						
 						ca->getCenterPoint(E_BDG_CENTER) +
@@ -6696,7 +6697,7 @@ void Singleton::handleMovement ()
 			
 			if (gem->firstPerson) {
 				targetCameraPos.setBTV(
-					skullPos
+					skullPos - lookAtVec.getBTV()*1.0f + btVector3(0.0f,0.0f,0.5f)
 				);
 				//targetCameraPos.addXYZ(0.0f,0.0f,2.0f);
 			}
@@ -9210,20 +9211,23 @@ void Singleton::ComputeFOVProjection (float * result, float fov, float aspect, f
 	    result[getMatrixInd(2,3)] = 1;
 	    result[getMatrixInd(3,3)] = 0;
 	}
-void Singleton::getLSMatrix (Matrix4 & lsMat, float orthoSize)
-                                                          {
-		Matrix4 lightProjection;
-		GLfloat near_plane = clipDist[0];
-		GLfloat far_plane = clipDist[1];//+conVals[E_CONST_LIGHTDIS];
-		lightProjection.orthoProjection(orthoSize, orthoSize, near_plane, far_plane);
-		lsMat = lightProjection * lightView;
-	}
-void Singleton::updateLightPos ()
-                              {
+void Singleton::getLSMatrix (FIVector4 * lightPosParam, Matrix4 & lsMat, float orthoSize)
+                                                                                    {
 		
-		lightPos.copyFrom(cameraGetPosNoShake());
-		lightPos.addXYZRef(&lightVec,conVals[E_CONST_LIGHTDIS]);
-		lightLookAt.copyFrom(cameraGetPosNoShake());
+		FIVector4 newCamPos;
+				
+		if (gem->getCurActor() == NULL) {
+			newCamPos.copyFrom(cameraGetPosNoShake());
+		}
+		else {
+			newCamPos.setBTV(gem->getCurActor()->getCenterPoint(0));
+		}
+		
+		
+		
+		lightPosParam->copyFrom(&newCamPos);
+		lightPosParam->addXYZRef(&lightVec,conVals[E_CONST_LIGHTDIS]);
+		lightLookAt.copyFrom(&newCamPos);
 		
 		
 		
@@ -9233,14 +9237,24 @@ void Singleton::updateLightPos ()
 			lightLookAt[0],
 			lightLookAt[1],
 			lightLookAt[2],
-			lightPos[0],
-			lightPos[1],
-			lightPos[2],
+			lightPosParam->getFX(),
+			lightPosParam->getFY(),
+			lightPosParam->getFZ(),
 			0.0f,
 			0.0f,
 			1.0f
 		);
 		glGetFloatv(GL_MODELVIEW_MATRIX, lightView.get());
+		
+		
+		Matrix4 lightProjection;
+		GLfloat near_plane = clipDist[0];
+		GLfloat far_plane = clipDist[1];//+conVals[E_CONST_LIGHTDIS];
+		lightProjection.orthoProjection(orthoSize, orthoSize, near_plane, far_plane);
+		lsMat = lightProjection * lightView;
+	}
+void Singleton::updateLightPos ()
+                              {
 		
 		
 	}

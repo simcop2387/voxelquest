@@ -828,6 +828,9 @@ void MyShapeDrawer::drawSceneInternal (btDiscreteDynamicsWorld const * dynamicsW
 						doProc = ge->bodies[body->limbUID].isVisible;
 					}
 				}
+				else {
+					doProc = true;
+				}
 				
 				
 				

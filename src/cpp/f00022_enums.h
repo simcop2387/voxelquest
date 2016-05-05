@@ -1522,11 +1522,16 @@ enum E_COL_TYPES {
     COL_STATIC = 1,
     COL_DYN = 2,
     COL_MARKER = 4,
-    COL_BODY = 8
+    COL_BODY = 8,
+    COL_BLOCKER = 16
 };
 
+const static float BLOCKER_RADIUS = 1.0f;
+
 const static int terCollidesWith = COL_NOTHING;//COL_DYN|COL_BODY; //COL_MARKER|
-const static int markerCollidesWith = COL_NOTHING;//COL_STATIC;
+const static int staticCollidesWith = COL_BLOCKER|COL_MARKER|COL_STATIC;
+const static int markerCollidesWith = COL_BLOCKER|COL_MARKER|COL_STATIC;//COL_STATIC;
+const static int blockerCollidesWith = COL_BLOCKER|COL_MARKER;
 const static int dynCollidesWith = COL_DYN|COL_BODY; //COL_STATIC|
 const static int bodyCollidesWith = COL_DYN|COL_BODY; //COL_STATIC|
 
@@ -1544,6 +1549,11 @@ enum E_JOINT_TYPES {
 // 	E_LIMB_CLASS_FIST_R,
 // 	E_LIMB_CLASS_
 // };
+
+enum E_BLOCKER {
+	E_BLOCKER_GRAV,
+	E_BLOCKER_LENGTH
+};
 
 struct BodyStruct {
 	btRigidBody* body;
@@ -1565,8 +1575,6 @@ struct BodyStruct {
 	bool isFalling;
 	bool hasContact;
 	bool isInside;
-	
-	
 	
 };
 

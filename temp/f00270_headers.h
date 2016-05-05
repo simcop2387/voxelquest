@@ -370,7 +370,8 @@ public:
   FIVector4 lastSend;
   FIVector4 lastMouseZO;
   FIVector4 lastLightPos;
-  FIVector4 lightPos;
+  FIVector4 lightPosStatic;
+  FIVector4 lightPosDynamic;
   FIVector4 lightLookAt;
   FIVector4 lastHolderPos;
   FIVector4 lightVec;
@@ -712,7 +713,7 @@ public:
   bool gluInvertMatrix (double const (m) [16], float (invOut) [16]);
   int getMatrixInd (int col, int row);
   void ComputeFOVProjection (float * result, float fov, float aspect, float nearDist, float farDist, bool leftHanded);
-  void getLSMatrix (Matrix4 & lsMat, float orthoSize);
+  void getLSMatrix (FIVector4 * lightPosParam, Matrix4 & lsMat, float orthoSize);
   void updateLightPos ();
   void setMatrices (int w, int h);
   void reshape (int w, int h);
@@ -816,7 +817,6 @@ public:
   ~ DynBuffer ();
   bool initSharedMem ();
   void clearSharedMem ();
-  void initLights ();
   void setCamera (float posX, float posY, float posZ, float targetX, float targetY, float targetZ);
   void updatePixels (GLubyte * dst, int size);
   void showTransferRate ();
@@ -1729,6 +1729,7 @@ public:
   std::vector <GroupInfoStruct> groupInfoStack;
   std::vector <ConnectingNodeStruct> bestConnectingNodes;
   std::vector <int> collideIndices;
+  std::vector <btRigidBody*> collideBodies;
   FIVector4 offsetInHolders;
   FIVector4 gphMinInCells;
   FIVector4 gphMaxInCells;
@@ -2158,6 +2159,24 @@ public:
 };
 #undef LZZ_INLINE
 #endif
+// f00377_gamesim.e
+//
+
+#ifndef LZZ_f00377_gamesim_e
+#define LZZ_f00377_gamesim_e
+#define LZZ_INLINE inline
+class GameSim
+{
+public:
+  Singleton * singleton;
+  std::vector <RigidBodyGroup> bodies;
+  std::vector <intPair> broadPairs;
+  GameSim ();
+  void init (Singleton * _singleton);
+  ~ GameSim ();
+};
+#undef LZZ_INLINE
+#endif
 // f00380_gameworld.e
 //
 
@@ -2264,9 +2283,6 @@ public:
   FIVector4 unitPosCenter;
   FIVector4 startBounds;
   FIVector4 endBounds;
-  FIVector4 * lightPos;
-  FIVector4 * globLightPos;
-  FIVector4 lightPosBase;
   FIVector4 * curBoxPos;
   FIVector4 tv0;
   FIVector4 tv1;

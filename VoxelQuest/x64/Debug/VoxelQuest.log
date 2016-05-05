@@ -1,4 +1,4 @@
-﻿Build started 4/27/2016 11:33:20 AM.
+﻿Build started 5/4/2016 4:34:24 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -171,23 +171,11 @@
        ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\CL.exe /c /I"C:\SFML-2.1\include" /Zi /nologo /W1 /WX- /sdl /Od /D _CRT_SECURE_NO_WARNINGS /D SFML_STATIC /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MTd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Debug\\" /Fd"x64\Debug\vc110.pdb" /Gd /TP /errorReport:prompt ..\compiled\main.cpp
          main.cpp
-     1>..\compiled\main.cpp(30430): error C2065: 'singleton' : undeclared identifier
-     1>..\compiled\main.cpp(30430): error C2227: left of '->primTemplateStack' must point to class/struct/union/generic type
-                 type is ''unknown-type''
-     1>..\compiled\main.cpp(30430): error C2228: left of '.size' must have class/struct/union
-     1>..\compiled\main.cpp(30434): error C2065: 'singleton' : undeclared identifier
-     1>..\compiled\main.cpp(30434): error C2227: left of '->primTBOData' must point to class/struct/union/generic type
-                 type is ''unknown-type''
-     1>..\compiled\main.cpp(30434): error C2227: left of '->primTemplateStack' must point to class/struct/union/generic type
-                 type is ''unknown-type''
-     1>..\compiled\main.cpp(30439): error C2065: 'singleton' : undeclared identifier
-     1>..\compiled\main.cpp(30439): error C2227: left of '->primTBO' must point to class/struct/union/generic type
-                 type is ''unknown-type''
-     1>..\compiled\main.cpp(30439): error C2228: left of '.update' must have class/struct/union
-     1>..\compiled\main.cpp(30439): error C2227: left of '->primTBOData' must point to class/struct/union/generic type
-                 type is ''unknown-type''
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.exe" /INCREMENTAL /NOLOGO /LIBPATH:C:\wamp\www\voxelquest\glew\lib /LIBPATH:"C:\Program Files (x86)\Windows Kits\8.0\Lib\win8\um\x64" /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\lib\amd64" /LIBPATH:"C:\SFML-2.3.2\extlibs\libs-msvc\x64" /LIBPATH:"C:\SFML-2.3.2\lib\Debug" /LIBPATH:"C:\bullet3-2.83.6\lib\Debug" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib WinMM.lib openal32.lib flac.lib vorbisenc.lib vorbisfile.lib vorbis.lib ogg.lib "sfml-system-s-d.lib" "sfml-audio-s-d.lib" Bullet3Common_Debug.lib BulletSoftBody_Debug.lib BulletDynamics_Debug.lib BulletCollision_Debug.lib LinearMath_Debug.lib OpenGLWindow_Debug.lib gwen_Debug.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.lib" /MACHINE:X64 x64\Debug\main.obj
+         VoxelQuest.vcxproj -> C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.exe
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
-Build FAILED.
+Build succeeded.
 
-Time Elapsed 00:00:03.13
+Time Elapsed 00:00:08.40

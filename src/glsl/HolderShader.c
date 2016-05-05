@@ -23,6 +23,9 @@ void main() {
 	worldPos = vec4(vposition.xyz,1.0);
 	vdata0 = data0;
 	//vdata1 = data1;
+	
+	// gl_PointSize = 1.0;
+	
 	vec4 screenPos = pmMatrix*worldPos;
 	worldPos.w = vposition.w;
 	gl_Position = screenPos;

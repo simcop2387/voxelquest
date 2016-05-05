@@ -943,6 +943,9 @@ public:
 						doProc = ge->bodies[body->limbUID].isVisible;
 					}
 				}
+				else {
+					doProc = true;
+				}
 				
 				
 				

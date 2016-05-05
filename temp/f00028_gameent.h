@@ -59,19 +59,19 @@ public:
 	FIVector4 tempVec5;
 	
 
-	void setLightPos(FIVector4* newPos) {
-		geomParams[E_LP_POSITION].copyFrom(newPos);
-		geomParams[E_CP_VISMININPIXELST].copyFrom(newPos);
-		geomParams[E_CP_VISMAXINPIXELST].copyFrom(newPos);
+	// void setLightPos(FIVector4* newPos) {
+	// 	geomParams[E_LP_POSITION].copyFrom(newPos);
+	// 	geomParams[E_CP_VISMININPIXELST].copyFrom(newPos);
+	// 	geomParams[E_CP_VISMAXINPIXELST].copyFrom(newPos);
 		
-		geomParams[E_CP_VISMININPIXELST].addXYZRef(&(geomParams[E_LP_RADIUS]),-1.0f);
-		geomParams[E_CP_VISMAXINPIXELST].addXYZRef(&(geomParams[E_LP_RADIUS]),1.0f);
+	// 	geomParams[E_CP_VISMININPIXELST].addXYZRef(&(geomParams[E_LP_RADIUS]),-1.0f);
+	// 	geomParams[E_CP_VISMAXINPIXELST].addXYZRef(&(geomParams[E_LP_RADIUS]),1.0f);
 		
 		
-		moveMinInPixels.setFXYZRef(&(geomParams[E_CP_VISMININPIXELST]));
-		moveMaxInPixels.setFXYZRef(&(geomParams[E_CP_VISMAXINPIXELST]));
+	// 	moveMinInPixels.setFXYZRef(&(geomParams[E_CP_VISMININPIXELST]));
+	// 	moveMaxInPixels.setFXYZRef(&(geomParams[E_CP_VISMAXINPIXELST]));
 		
-	}
+	// }
 
 	void initLight(
 		FIVector4 *position,
@@ -82,7 +82,7 @@ public:
 		geomParams[E_LP_COLOR].copyFrom(color);
 		geomParams[E_LP_RADIUS].setFXYZ(radius,radius,radius);
 		
-		setLightPos(position);
+		//setLightPos(position);
 		
 	}
 	

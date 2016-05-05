@@ -2143,6 +2143,7 @@ Matrix4& Matrix4::rotateZ(float angle)
     return *this;
 }
 
+typedef Matrix3 mat3;
 typedef Vector4 vec4;
 typedef Vector3 vec3;
 typedef Vector2 vec2;

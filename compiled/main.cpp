@@ -18,10 +18,12 @@ const static int MAX_LIMB_DATA_IN_BYTES = 65536;
 const static bool POLYS_FOR_CELLS = false;
 const static bool DO_VOXEL_WRAP = true;
 //const static bool POLY_COLLISION = false;
-const static bool VOXEL_COLLISION = true;
+
 
 const static bool GEN_DEBRIS = false;
 const static int  MAX_DEBRIS = 0;
+
+const static bool VOXEL_COLLISION = true;
 const static bool GEN_COLLISION = false;
 //const static bool GEN_POLYS_WORLD = false;
 
@@ -29,7 +31,7 @@ const static bool GEN_COLLISION = false;
 const static bool DO_RANDOMIZE = false;
 
 // no greater than 8 unless shader changed (primIdList[8])
-const static int MAX_PRIM_IDS = 16;
+const static int MAX_PRIM_IDS = 24;
 const static int MAX_PRIMTEST = 8;
 
 const static int MAX_ZO_CUBES = 64;
@@ -88,7 +90,7 @@ int TOT_POINT_COUNT = 0;
 
 
 const static bool DO_CACHE = false;
-const static int NUM_MIP_LEVELS = 3;
+const static int NUM_MIP_LEVELS = 1;
 const static int NUM_MIP_LEVELS_WITH_FIRST = NUM_MIP_LEVELS+1;
 const static bool DO_AO = false;
 const static bool DO_MIP = true;
@@ -100,11 +102,11 @@ const static int MAX_HOLDER_LOAD_COUNT = 512;
 //const static int RASTER_HOLDER_RAD = 8;
 
 const static int VOXELS_PER_CELL = 16;
-const static int CELLS_PER_HOLDER = 4;
+const static int CELLS_PER_HOLDER = 8;
 const static int HOLDERS_PER_CHUNK = 2;
 const static int CHUNKS_PER_BLOCK = 32;
 
-const static int HOLDER_MOD = 4; // HOLDER_MOD*CELLS_PER_HOLDER should == 16
+const static int HOLDER_MOD = 2; // HOLDER_MOD*CELLS_PER_HOLDER should == 16
 
 
 const static int PADDING_IN_CELLS = 1;
@@ -2136,11 +2138,23 @@ struct CustFilterCallback : public btOverlapFilterCallback
 		// }
 		
 		collides = collides && (
-			(colObj0->bodyUID != colObj1->bodyUID) &&
 			(colObj0->bodyUID > -2) &&
 			(colObj1->bodyUID > -2) &&
-			(colObj0->heldByUID != colObj1->bodyUID) &&
-			(colObj1->heldByUID != colObj0->bodyUID)
+			
+			(
+				(
+					(colObj0->bodyUID != colObj1->bodyUID) &&
+					(colObj0->heldByUID != colObj1->bodyUID) &&
+					(colObj1->heldByUID != colObj0->bodyUID)	
+				)
+				// || (
+				// 	(colObj0->bodyUID == colObj1->bodyUID) &&
+				// 	(
+				// 		(colObj0->limbUID == 1) ||
+				// 		(colObj1->limbUID == 1)
+				// 	)
+				// )	
+			)
 		);
 		
 		
@@ -5195,11 +5209,16 @@ enum E_COL_TYPES {
     COL_STATIC = 1,
     COL_DYN = 2,
     COL_MARKER = 4,
-    COL_BODY = 8
+    COL_BODY = 8,
+    COL_BLOCKER = 16
 };
 
+const static float BLOCKER_RADIUS = 1.0f;
+
 const static int terCollidesWith = COL_NOTHING;//COL_DYN|COL_BODY; //COL_MARKER|
-const static int markerCollidesWith = COL_NOTHING;//COL_STATIC;
+const static int staticCollidesWith = COL_BLOCKER|COL_MARKER|COL_STATIC;
+const static int markerCollidesWith = COL_BLOCKER|COL_MARKER|COL_STATIC;//COL_STATIC;
+const static int blockerCollidesWith = COL_BLOCKER|COL_MARKER;
 const static int dynCollidesWith = COL_DYN|COL_BODY; //COL_STATIC|
 const static int bodyCollidesWith = COL_DYN|COL_BODY; //COL_STATIC|
 
@@ -5217,6 +5236,11 @@ enum E_JOINT_TYPES {
 // 	E_LIMB_CLASS_FIST_R,
 // 	E_LIMB_CLASS_
 // };
+
+enum E_BLOCKER {
+	E_BLOCKER_GRAV,
+	E_BLOCKER_LENGTH
+};
 
 struct BodyStruct {
 	btRigidBody* body;
@@ -5238,8 +5262,6 @@ struct BodyStruct {
 	bool isFalling;
 	bool hasContact;
 	bool isInside;
-	
-	
 	
 };
 
@@ -8402,6 +8424,7 @@ Matrix4& Matrix4::rotateZ(float angle)
     return *this;
 }
 
+typedef Matrix3 mat3;
 typedef Vector4 vec4;
 typedef Vector3 vec3;
 typedef Vector2 vec2;
@@ -10597,6 +10620,40 @@ struct StatSheet {
 
 
 
+struct RigidBody {
+	
+	bool isStatic;
+	
+	uint filterMask;
+	
+	float mass;
+	
+	vec3 outerBounds;
+	vec3 innerBounds;
+	float cornerRadius;
+	float maxRadius;
+	
+	vec3 pos;
+	mat3 orient;
+	
+	vec3 linearForce;
+	vec3 angularForce;
+	
+	vec3 linearAccel;
+	vec3 angularAccel;
+	
+	vec3 linearVel;
+	vec3 angularVel;
+	
+	
+};
+
+struct RigidBodyGroup {
+	float broadRadius;
+	RigidBody parentBody;
+	std::vector<RigidBody> childBodies;
+};
+
 
 class BaseObj
 {
@@ -10624,6 +10681,7 @@ public:
 	
 	std::vector<int> targWeaponStack;
 	std::vector<BodyStruct> bodies;
+	//std::vector<BodyStruct> blockers;
 	
 	int actorId;
 	int orgId;
@@ -10791,6 +10849,49 @@ public:
 	bool hasBodies() {
 		return (bodies.size() > 0);
 	}
+	
+	// void setBlockerPos(int blockerId, btVector3 newPos) {
+		
+		
+	// 	btTransform trans;
+	// 	trans.setIdentity();
+	// 	trans.setOrigin(newPos);
+	// 	blockers[blockerId].body->setCenterOfMassTransform(trans);
+	// 	blockers[blockerId].body->setActivationState(ACTIVE_TAG);
+		
+	// }
+	
+	// void setBlockerPosXY(int blockerId, btVector3 newPos) {
+		
+		
+	// 	btTransform trans;
+	// 	trans.setIdentity();
+	// 	trans.setOrigin(btVector3(
+	// 		newPos.getX(),
+	// 		newPos.getY(),
+	// 		blockers[blockerId].body->getCenterOfMassPosition().getZ()
+	// 	));
+	// 	blockers[blockerId].body->setCenterOfMassTransform(trans);
+	// 	blockers[blockerId].body->setActivationState(ACTIVE_TAG);
+		
+	// }
+	
+	// void moveOffsetBlocker(int blockerId, btVector3 offset) {
+	// 	btTransform trans;
+		
+	// 	trans.setIdentity();
+	// 	trans.setOrigin(
+	// 		blockers[blockerId].body->getCenterOfMassPosition() + offset
+	// 	);
+	// 	blockers[blockerId].body->setCenterOfMassTransform(
+	// 		trans
+	// 	);
+	// 	blockers[blockerId].body->setActivationState(ACTIVE_TAG);
+		
+		
+	// }
+	
+	
 	
 	void multVel(int i, btVector3 velMod) {
 		
@@ -12110,7 +12211,7 @@ public:
 		}
 		
 		glBindVertexArray(vao);
-		glDrawElements(GL_TRIANGLES, (numCubes)*36, GL_UNSIGNED_INT, 0); //sizeOfID //&(vi->indexVec[0])
+		glDrawElements(GL_TRIANGLES, (numCubes)*36, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 	}
 	
@@ -13873,19 +13974,19 @@ public:
 	FIVector4 tempVec5;
 	
 
-	void setLightPos(FIVector4* newPos) {
-		geomParams[E_LP_POSITION].copyFrom(newPos);
-		geomParams[E_CP_VISMININPIXELST].copyFrom(newPos);
-		geomParams[E_CP_VISMAXINPIXELST].copyFrom(newPos);
+	// void setLightPos(FIVector4* newPos) {
+	// 	geomParams[E_LP_POSITION].copyFrom(newPos);
+	// 	geomParams[E_CP_VISMININPIXELST].copyFrom(newPos);
+	// 	geomParams[E_CP_VISMAXINPIXELST].copyFrom(newPos);
 		
-		geomParams[E_CP_VISMININPIXELST].addXYZRef(&(geomParams[E_LP_RADIUS]),-1.0f);
-		geomParams[E_CP_VISMAXINPIXELST].addXYZRef(&(geomParams[E_LP_RADIUS]),1.0f);
+	// 	geomParams[E_CP_VISMININPIXELST].addXYZRef(&(geomParams[E_LP_RADIUS]),-1.0f);
+	// 	geomParams[E_CP_VISMAXINPIXELST].addXYZRef(&(geomParams[E_LP_RADIUS]),1.0f);
 		
 		
-		moveMinInPixels.setFXYZRef(&(geomParams[E_CP_VISMININPIXELST]));
-		moveMaxInPixels.setFXYZRef(&(geomParams[E_CP_VISMAXINPIXELST]));
+	// 	moveMinInPixels.setFXYZRef(&(geomParams[E_CP_VISMININPIXELST]));
+	// 	moveMaxInPixels.setFXYZRef(&(geomParams[E_CP_VISMAXINPIXELST]));
 		
-	}
+	// }
 
 	void initLight(
 		FIVector4 *position,
@@ -13896,7 +13997,7 @@ public:
 		geomParams[E_LP_COLOR].copyFrom(color);
 		geomParams[E_LP_RADIUS].setFXYZ(radius,radius,radius);
 		
-		setLightPos(position);
+		//setLightPos(position);
 		
 	}
 	
@@ -24834,6 +24935,7 @@ class ThreadPoolWrapper;
 class GameLogic;
 class MyGLHelper;
 class GamePhysics;
+class GameSim;
 class GameWorld;
 class DynBuffer;
  
@@ -25209,7 +25311,8 @@ public:
   FIVector4 lastSend;
   FIVector4 lastMouseZO;
   FIVector4 lastLightPos;
-  FIVector4 lightPos;
+  FIVector4 lightPosStatic;
+  FIVector4 lightPosDynamic;
   FIVector4 lightLookAt;
   FIVector4 lastHolderPos;
   FIVector4 lightVec;
@@ -25551,7 +25654,7 @@ public:
   bool gluInvertMatrix (double const (m) [16], float (invOut) [16]);
   int getMatrixInd (int col, int row);
   void ComputeFOVProjection (float * result, float fov, float aspect, float nearDist, float farDist, bool leftHanded);
-  void getLSMatrix (Matrix4 & lsMat, float orthoSize);
+  void getLSMatrix (FIVector4 * lightPosParam, Matrix4 & lsMat, float orthoSize);
   void updateLightPos ();
   void setMatrices (int w, int h);
   void reshape (int w, int h);
@@ -25655,7 +25758,6 @@ public:
   ~ DynBuffer ();
   bool initSharedMem ();
   void clearSharedMem ();
-  void initLights ();
   void setCamera (float posX, float posY, float posZ, float targetX, float targetY, float targetZ);
   void updatePixels (GLubyte * dst, int size);
   void showTransferRate ();
@@ -26568,6 +26670,7 @@ public:
   std::vector <GroupInfoStruct> groupInfoStack;
   std::vector <ConnectingNodeStruct> bestConnectingNodes;
   std::vector <int> collideIndices;
+  std::vector <btRigidBody*> collideBodies;
   FIVector4 offsetInHolders;
   FIVector4 gphMinInCells;
   FIVector4 gphMaxInCells;
@@ -26997,6 +27100,24 @@ public:
 };
 #undef LZZ_INLINE
 #endif
+// f00377_gamesim.e
+//
+
+#ifndef LZZ_f00377_gamesim_e
+#define LZZ_f00377_gamesim_e
+#define LZZ_INLINE inline
+class GameSim
+{
+public:
+  Singleton * singleton;
+  std::vector <RigidBodyGroup> bodies;
+  std::vector <intPair> broadPairs;
+  GameSim ();
+  void init (Singleton * _singleton);
+  ~ GameSim ();
+};
+#undef LZZ_INLINE
+#endif
 // f00380_gameworld.e
 //
 
@@ -27103,9 +27224,6 @@ public:
   FIVector4 unitPosCenter;
   FIVector4 startBounds;
   FIVector4 endBounds;
-  FIVector4 * lightPos;
-  FIVector4 * globLightPos;
-  FIVector4 lightPosBase;
   FIVector4 * curBoxPos;
   FIVector4 tv0;
   FIVector4 tv1;
@@ -33657,6 +33775,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
                                                                                                   {
 		
 		
+		bool strafeMode = gem->firstPerson;
 		
 		int i;
 		BaseObj* ca;
@@ -33692,7 +33811,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				
 				if (keyMapResultUnzipped[KEYMAP_RIGHT]) {
 					
-					if (bShift) {
+					if (strafeMode) {
 						gem->makeMove( actorId, btVector3( 1.0f,0.0f,0.0f), true, true );
 					}
 					else {
@@ -33703,7 +33822,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				}
 				
 				if (keyMapResultUnzipped[KEYMAP_LEFT]) {
-					if (bShift) {
+					if (strafeMode) {
 						gem->makeMove( actorId, btVector3(-1.0f,0.0f,0.0f), true, true );
 					}
 					else {
@@ -33747,7 +33866,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				// 	camRotX
 				// );
 				
-				if (bShift) {
+				if (strafeMode) {
 					deltaAng = ca->turnTowardsPointDelta(
 						
 						ca->getCenterPoint(E_BDG_CENTER) +
@@ -33964,7 +34083,7 @@ void Singleton::handleMovement ()
 			
 			if (gem->firstPerson) {
 				targetCameraPos.setBTV(
-					skullPos
+					skullPos - lookAtVec.getBTV()*1.0f + btVector3(0.0f,0.0f,0.5f)
 				);
 				//targetCameraPos.addXYZ(0.0f,0.0f,2.0f);
 			}
@@ -36478,20 +36597,23 @@ void Singleton::ComputeFOVProjection (float * result, float fov, float aspect, f
 	    result[getMatrixInd(2,3)] = 1;
 	    result[getMatrixInd(3,3)] = 0;
 	}
-void Singleton::getLSMatrix (Matrix4 & lsMat, float orthoSize)
-                                                          {
-		Matrix4 lightProjection;
-		GLfloat near_plane = clipDist[0];
-		GLfloat far_plane = clipDist[1];//+conVals[E_CONST_LIGHTDIS];
-		lightProjection.orthoProjection(orthoSize, orthoSize, near_plane, far_plane);
-		lsMat = lightProjection * lightView;
-	}
-void Singleton::updateLightPos ()
-                              {
+void Singleton::getLSMatrix (FIVector4 * lightPosParam, Matrix4 & lsMat, float orthoSize)
+                                                                                    {
 		
-		lightPos.copyFrom(cameraGetPosNoShake());
-		lightPos.addXYZRef(&lightVec,conVals[E_CONST_LIGHTDIS]);
-		lightLookAt.copyFrom(cameraGetPosNoShake());
+		FIVector4 newCamPos;
+				
+		if (gem->getCurActor() == NULL) {
+			newCamPos.copyFrom(cameraGetPosNoShake());
+		}
+		else {
+			newCamPos.setBTV(gem->getCurActor()->getCenterPoint(0));
+		}
+		
+		
+		
+		lightPosParam->copyFrom(&newCamPos);
+		lightPosParam->addXYZRef(&lightVec,conVals[E_CONST_LIGHTDIS]);
+		lightLookAt.copyFrom(&newCamPos);
 		
 		
 		
@@ -36501,14 +36623,24 @@ void Singleton::updateLightPos ()
 			lightLookAt[0],
 			lightLookAt[1],
 			lightLookAt[2],
-			lightPos[0],
-			lightPos[1],
-			lightPos[2],
+			lightPosParam->getFX(),
+			lightPosParam->getFY(),
+			lightPosParam->getFZ(),
 			0.0f,
 			0.0f,
 			1.0f
 		);
 		glGetFloatv(GL_MODELVIEW_MATRIX, lightView.get());
+		
+		
+		Matrix4 lightProjection;
+		GLfloat near_plane = clipDist[0];
+		GLfloat far_plane = clipDist[1];//+conVals[E_CONST_LIGHTDIS];
+		lightProjection.orthoProjection(orthoSize, orthoSize, near_plane, far_plane);
+		lsMat = lightProjection * lightView;
+	}
+void Singleton::updateLightPos ()
+                              {
 		
 		
 	}
@@ -37501,22 +37633,6 @@ void DynBuffer::clearSharedMem ()
 	    {
 	        glDeleteBuffersARB(2, pboIds);
 	    }
-	}
-void DynBuffer::initLights ()
-        {
-	    // set up light colors (ambient, diffuse, specular)
-	    GLfloat lightKa[] = {.2f, .2f, .2f, 1.0f};  // ambient light
-	    GLfloat lightKd[] = {.7f, .7f, .7f, 1.0f};  // diffuse light
-	    GLfloat lightKs[] = {1, 1, 1, 1};           // specular light
-	    glLightfv(GL_LIGHT0, GL_AMBIENT, lightKa);
-	    glLightfv(GL_LIGHT0, GL_DIFFUSE, lightKd);
-	    glLightfv(GL_LIGHT0, GL_SPECULAR, lightKs);
-
-	    // position the light
-	    float lightPos[4] = {0, 0, 20, 1}; // positional light
-	    glLightfv(GL_LIGHT0, GL_POSITION, lightPos);
-
-	    glEnable(GL_LIGHT0);                        // MUST enable each light source after configuration
 	}
 void DynBuffer::setCamera (float posX, float posY, float posZ, float targetX, float targetY, float targetZ)
         {
@@ -44859,6 +44975,32 @@ void GameFluid::addGeom (FIVector4 * newPos, int templateId, int orientation)
 		os.offset = newPos->getVec3();
 		
 		singleton->tempPrimList.push_back(os);
+		
+		
+		
+		
+		
+		// btTransform trans;
+		// trans.setOrigin(btVector3(
+		// 	os.offset.x,os.offset.y,os.offset.z
+		// ));
+		// btVector3 boxRad = btVector3(5.0f,5.05,5.0f);
+		// btBoxShape* boxShape = new btBoxShape(boxRad);
+		// btRigidBody* myBody = singleton->gamePhysics->example->createRigidBodyMask(
+		// 	0,
+		// 	trans,
+		// 	boxShape,
+		// 	COL_STATIC,
+		// 	staticCollidesWith
+		// );
+		// myBody->setFriction(btScalar(0.9f));
+		// myBody->bodyUID = -11;
+		// singleton->gamePhysics->example->updateGraphicsObjects();
+		
+		
+		
+		
+		
 		
 	}
 void GameFluid::fetchGeom ()
@@ -54743,8 +54885,6 @@ void GamePageHolder::fillVBO ()
 		
 		
 		
-		
-		
 		/////////////////////
 		
 		if (
@@ -54763,54 +54903,65 @@ void GamePageHolder::fillVBO ()
 			//hasData = true;
 		}
 		
-		
+		btVector3 boxRad = btVector3(0.5f,0.5f,0.5f);
 		
 		/////////////////////
 		
 		
-		//float fk;
+		float fi, fj, fk;
 		
-		// if (GEN_COLLISION) {
-		// 	for (q = 0; q < collideIndices.size(); q += 2) {
-				
-		// 		p = collideIndices[q];
-		// 		p2 = collideIndices[q+1];
-				
-		// 		kk = p/(cellsPerHolder*cellsPerHolder);
-		// 		jj = (p-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
-		// 		ii = p-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
-				
-		// 		kk2 = p2/(cellsPerHolder*cellsPerHolder);
-				
-		// 		fk = (kk2-kk)+1;
-				
-				
-		// 		btTransform trans;
-		// 		trans.setOrigin(btVector3(
-		// 			ii,jj,(kk+kk2)*0.5f
-		// 		));
-				
-		// 		// todo: mem leak
-				
-		// 		btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(0.5f,fk);
-		// 		btRigidBody* myBody = singleton->gamePhysics->example->createRigidBody(0,trans,capsuleShape);
-		// 		myBody->setFriction(btScalar(0.9));
-				
-		// 		// q3BoxDef boxDef;
-		// 		// boxDef.SetRestitution( 0 );
-		// 		// q3Transform tx;
-		// 		// q3Identity( tx );
-		// 		// tx.position.Set(ii,jj,(kk+kk2)*0.5f);
-		// 		// boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, fk ) );
-		// 		// body->AddBox( boxDef );
-				
-				
-		// 	}
-		// }
+		btBoxShape* boxShape;
+		//btRigidBody* myBody;
 		
-		//singleton->gamePhysics->example->updateGraphicsObjects();
+		if (GEN_COLLISION && hasData && (collideIndices.size() > 0)) {
+			//cout << "yay\n";
+			for (q = 0; q < collideIndices.size(); q ++) {
+				
+				p = collideIndices[q];
+				// p2 = collideIndices[q+1];
+				
+				kk = p/(cellsPerHolder*cellsPerHolder);
+				jj = (p-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+				ii = p-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+				
+				//kk2 = p2/(cellsPerHolder*cellsPerHolder);
+				
+				//fk = (kk2-kk)+1;
+				
+				fi = ii + gphMinInCells.getIX();
+				fj = jj + gphMinInCells.getIY();
+				fk = kk + gphMinInCells.getIZ();
+				
+				btTransform trans;
+				trans.setIdentity();
+				trans.setOrigin(btVector3(
+					fi+0.5f,fj+0.5f,fk+0.5f//(kk+kk2)*0.5f
+				));
+				
+				// todo: mem leak
+				
+				boxShape = new btBoxShape(boxRad);
+				collideBodies.push_back(
+					singleton->gamePhysics->example->createRigidBodyMask(
+						0,
+						trans,
+						boxShape,
+						COL_STATIC,
+						staticCollidesWith
+						)
+				);
+				collideBodies.back()->setFriction(btScalar(0.9f));
+				collideBodies.back()->bodyUID = -1;
+				collideBodies.back()->limbUID = -1;
+				collideBodies.back()->setCollisionFlags(btCollisionObject::CF_STATIC_OBJECT); //
+			}
+			
+			singleton->gamePhysics->example->updateGraphicsObjects();
+		}
 		
-		//cout << "collideIndices.size() " << collideIndices.size() << "\n";
+		
+		
+		// cout << "collideIndices.size() " << collideIndices.size() << "\n";
 		
 		
 		
@@ -54948,10 +55099,12 @@ void GamePageHolder::generateList ()
 			return;
 		}
 		
+		collideIndices.clear();
+		vertexVec.clear();//beginFill();
 		
 		uint tempHF = gatherData();		
 		
-		vertexVec.clear();//beginFill();
+		
 		
 		if (
 			(
@@ -54977,7 +55130,7 @@ void GamePageHolder::generateList ()
 				
 			}
 			
-			if (POLYS_FOR_CELLS) {
+			if (GEN_COLLISION) {
 				wrapPolys();
 			}
 			
@@ -55149,11 +55302,9 @@ void GamePageHolder::wrapPolys ()
 						// 		procFlag;
 						// }
 						
-						// if (GEN_COLLISION) {
-						// 	if (doProcAny) {
-						// 		collideIndices.push_back(i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder);
-						// 	}
-						// }
+						if (doProcAny) {
+							collideIndices.push_back(i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder);
+						}
 						
 						
 						
@@ -55211,15 +55362,15 @@ void GamePageHolder::wrapPolys ()
 							
 						// }
 						
-						if (doProcAny) {
-							// vboWrapper.vboBox(
-							// 	bpX,bpY,bpZ,
-							// 	iv0,iv1,
-							// 	procFlag,
-							// 	ZERO_FLOATS,
-							// 	4
-							// );
-						}
+						// if (doProcAny) {
+						// 	// vboWrapper.vboBox(
+						// 	// 	bpX,bpY,bpZ,
+						// 	// 	iv0,iv1,
+						// 	// 	procFlag,
+						// 	// 	ZERO_FLOATS,
+						// 	// 	4
+						// 	// );
+						// }
 						
 						
 					}
@@ -63026,6 +63177,9 @@ void MyShapeDrawer::drawSceneInternal (btDiscreteDynamicsWorld const * dynamicsW
 						doProc = ge->bodies[body->limbUID].isVisible;
 					}
 				}
+				else {
+					doProc = true;
+				}
 				
 				
 				
@@ -63538,7 +63692,6 @@ GamePhysics::GamePhysics ()
 		lastBodyPick = NULL;
 		lastBodyUID = -1;
 		
-		
 	}
 void GamePhysics::init (Singleton * _singleton)
         {
@@ -63669,6 +63822,7 @@ void GamePhysics::remBoxFromObj (BaseObjType _uid)
 		// ge->orgId = -1;
 		
 		ge->bodies.clear();
+		//ge->blockers.clear();
 	}
 void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
                                                                 {
@@ -63678,6 +63832,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 		//cout << "\n\nADD BOX\n\n";
 		
 		int i;
+		int j;
 		int bodInd;
 		GameOrg* curOrg = NULL;
 		
@@ -63694,6 +63849,10 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 		btTransform trans;
 		trans.setIdentity();
 		trans.setOrigin(ge->startPoint);
+		
+		btTransform trans2;
+		trans2.setIdentity();
+		trans2.setOrigin(ge->startPoint);
 		
 		GamePhysRig* curPhysRig;
 		
@@ -63750,6 +63909,43 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 										COL_MARKER,
 										markerCollidesWith
 									);
+									
+									// for (j = 0; j < E_BLOCKER_LENGTH; j++) {
+										
+									// 	switch(j) {
+									// 		case E_BLOCKER_GRAV:
+									// 			trans2.setOrigin(ge->startPoint + btVector3(0.0f,0.0f,-5.0f));
+									// 		break;
+									// 	}
+										
+									// 	ge->blockers.push_back(BodyStruct());
+									// 	ge->blockers[j].body = example->createRigidBodyMask(
+									// 		9999.0, //mass
+									// 		trans2,
+									// 		new btSphereShape(BLOCKER_RADIUS),
+									// 		COL_BLOCKER,
+									// 		blockerCollidesWith
+									// 	);
+										
+									// 	ge->blockers[j].body->bodyUID = _uid;
+									// 	ge->blockers[j].body->limbUID = -7;
+									// 	ge->blockers[j].body->setDamping(0.0f,0.0f);
+									// 	ge->blockers[j].body->setContactProcessingThreshold(CONTACT_THRESH);
+									// 	ge->blockers[j].isVisible = true;
+									// 	ge->blockers[j].body->setGravity(btVector3(0.0f,0.0f,0.0f));
+									// 	ge->blockers[j].mass = 0.0;
+									// 	ge->blockers[j].hasContact = false;
+									// 	ge->blockers[j].isInside = false;
+									// 	ge->blockers[j].isFalling = false;
+									// 	ge->blockers[j].inWater = false;
+									// 	ge->blockers[j].lastVel = orig;
+									// 	ge->blockers[j].totAV = orig;
+									// 	ge->blockers[j].totLV = orig;
+										
+										
+										
+									// }
+									
 								}
 								else {
 									// ge->bodies[i].body = example->createRigidBodyMask(
@@ -63884,8 +64080,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 			ge->bodies[bodInd].body->bodyUID = _uid;
 			ge->bodies[bodInd].body->limbUID = bodInd;
 			
-			
-			ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
+			ge->bodies[bodInd].body->setDamping(0.0f,0.9f);
 			
 			ge->bodies[bodInd].body->setContactProcessingThreshold(CONTACT_THRESH);
 			
@@ -64257,6 +64452,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 		float angDamp = singleton->conVals[E_CONST_ANGDAMP];
 		
 		
+		
 		if (VOXEL_COLLISION) {
 			for(k = 0; k < singleton->gem->visObjects.size(); k++) {
 				ge = &(singleton->gem->gameObjects[singleton->gem->visObjects[k]]);
@@ -64267,16 +64463,19 @@ void GamePhysics::collideWithWorld (double curStepTime)
 					
 				}
 				else {
-					for (bodInd = 0; bodInd < ge->bodies.size(); bodInd++) {
+					for (bodInd = 0; bodInd < 1; bodInd++) { //ge->bodies.size()
 						curBody = &(ge->bodies[bodInd]);
 						
 						switch (curBody->jointType) {
 							case E_JT_LIMB:
 							case E_JT_BALL:
 							case E_JT_OBJ:
-								segCount = 1;
-								segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
-									btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_LIMB]);
+								
+								segCount = 0;
+								
+								// segCount = 1;
+								// segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
+								// 	btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_LIMB]);
 							break;
 							break;
 							case E_JT_NORM:
@@ -64308,6 +64507,12 @@ void GamePhysics::collideWithWorld (double curStepTime)
 									
 								}
 								else {
+									
+									// ge->setBlockerPosXY(
+									// 	E_BLOCKER_GRAV,
+									// 	curBody->body->getCenterOfMassPosition()
+									// );
+									
 									segCount = 2;
 									segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
 										btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_CONT]);
@@ -64350,6 +64555,47 @@ void GamePhysics::collideWithWorld (double curStepTime)
 							norVal = singleton->gw->getNormalAtCoord(
 								segPos[p], cellVal
 							);
+							
+							
+							// if (!VOXEL_COLLISION) {
+							// 	if (p == 0) {
+							// 		// collision below body
+									
+							// 		lastInside = curBody->isInside;
+							// 		curBody->isInside = (cellVal[3] > 0.5f);
+									
+							// 		curBody->hasContact = (curBody->hasContact)||(cellVal[3] > 0.01f);
+							// 		curBody->isFalling = !(curBody->hasContact);
+									
+							// 		if (cellVal[3] > 0.1f) {
+							// 			ge->moveOffsetBlocker(
+							// 				E_BLOCKER_GRAV,
+							// 				btVector3(0.0f,0.0f,cellVal[3]*0.1f)
+							// 			);
+										
+							// 		}
+							// 		else {
+							// 			ge->moveOffsetBlocker(
+							// 				E_BLOCKER_GRAV,
+							// 				btVector3(0.0f,0.0f,-1.0f)
+							// 			);
+							// 			if (
+							// 				ge->blockers[E_BLOCKER_GRAV].body->getCenterOfMassPosition().distance(
+							// 					ge->getCenterPoint(E_BDG_CENTER)
+							// 				) > 5.0f
+							// 			) {
+							// 				ge->moveOffsetBlocker(
+							// 					E_BLOCKER_GRAV,
+							// 					btVector3(0.0f,0.0f,1.0f)
+							// 				);
+							// 			}
+							// 		}
+									
+							// 	}
+							// }
+							
+							
+							
 							
 							if (p == 0) {
 								// collision below body
@@ -64430,14 +64676,13 @@ void GamePhysics::collideWithWorld (double curStepTime)
 									}
 									else {
 										
-											if (ge->getActionState(E_ACT_ISWALKING,RLBN_NEIT)) {
-												ge->addVel(bodInd,
-													norVal*xyMask * 
-													cellVal[3]*singleton->conVals[E_CONST_NOR_PUSH]
-												);
-											}
+										if (ge->getActionState(E_ACT_ISWALKING,RLBN_NEIT)) {
+											ge->addVel(bodInd,
+												norVal*xyMask * 
+												cellVal[3]*singleton->conVals[E_CONST_NOR_PUSH]
+											);
+										}
 										
-											
 									}
 									
 									
@@ -64521,6 +64766,12 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								
 								
 							}
+							
+							
+							
+							
+							
+							
 							
 							// if (ge->isDead()) {
 							// 	curBody->body->setGravity(btVector3(0.0f,0.0f,-5.0f));
@@ -64669,6 +64920,9 @@ void GamePhysics::collideWithWorld (double curStepTime)
 				}
 			}
 		}
+		
+		
+		
 		
 		
 		
@@ -64901,7 +65155,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								+ difVec*singleton->conVals[E_CONST_BINDING_MULT]*bindingPower,
 								bodInd
 							);
-								
+
 						}
 						
 						
@@ -65136,6 +65390,25 @@ GamePhysics::~ GamePhysics ()
                        {
 		example->exitPhysics();
 		delete example;
+	}
+#undef LZZ_INLINE
+ 
+// f00377_gamesim.h
+//
+
+#include "f00377_gamesim.e"
+#define LZZ_INLINE inline
+GameSim::GameSim ()
+                  {
+		
+	}
+void GameSim::init (Singleton * _singleton)
+        {
+		singleton = _singleton;
+	}
+GameSim::~ GameSim ()
+                   {
+		
 	}
 #undef LZZ_INLINE
  
@@ -66338,163 +66611,178 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 				myMatrix4 = Matrix4(myMat);
 				
 				
-				// header info
-				headerStart = dataInd;
-				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
-				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
-				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
-				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
-			
-				// todo: aabbMinSkel wont show weapons
-			
-				singleton->limbTBOData[dataInd] = ge->aabbMinVis.getX(); dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMinVis.getY(); dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMinVis.getZ(); dataInd++;
-				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
-				
-				
-				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getX(); dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getY(); dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getZ(); dataInd++;
-				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
 				
 				
 				float randOff;
 				
-				for (j = 0; j < ge->bodies.size(); j++) {
-					curBody = &(ge->bodies[j]);
+				
+				if (
+					singleton->gem->firstPerson &&
+					(ge->uid == singleton->gem->getCurActorUID())
+				) {
 					
-					if (
-						(curBody->jointType != E_JT_LIMB) ||
-						(curBody->boneId < 0) ||
-						(curBody->boneId == E_BONE_C_BASE) ||
-						(
-							singleton->gem->firstPerson &&
-							(curBody->boneId == E_BONE_C_SKULL) &&
-							(ge->uid == singleton->gem->getCurActorUID())
-						)
+				}
+				else {
+					
+					// header info
+					headerStart = dataInd;
+					singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+					singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+					singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+					singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+					
+					// todo: aabbMinSkel wont show weapons
+					
+					singleton->limbTBOData[dataInd] = ge->aabbMinVis.getX(); dataInd++;
+					singleton->limbTBOData[dataInd] = ge->aabbMinVis.getY(); dataInd++;
+					singleton->limbTBOData[dataInd] = ge->aabbMinVis.getZ(); dataInd++;
+					singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+					
+					
+					singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getX(); dataInd++;
+					singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getY(); dataInd++;
+					singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getZ(); dataInd++;
+					singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+					
+					
+					
+					for (j = 0; j < ge->bodies.size(); j++) {
+						curBody = &(ge->bodies[j]);
 						
-					) {
-						
+						if (
+							(curBody->jointType != E_JT_LIMB) ||
+							(curBody->boneId < 0) ||
+							(curBody->boneId == E_BONE_C_BASE)
+							
+							
+						) {
+							
+						}
+						else {
+							
+							
+							
+							curOrgNode = curOrg->allNodes[curBody->boneId];
+							
+							centerPoint = curBody->body->getCenterOfMassPosition();
+							//centerPoint += btVector3(0.0,0.0,-0.4f);
+							basis = curBody->body->getCenterOfMassTransform().getBasis();
+							
+							
+							
+							tempBTV = curOrgNode->tbnTrans[1].getBTV();
+							myVector4 = Vector4(
+								tempBTV.getX(),
+								tempBTV.getY(),
+								tempBTV.getZ(),
+								1.0f
+							);
+							resVector4 = myMatrix4*myVector4;
+							basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
+							basePos += grabber->skelOffset;
+							basePos -= centerPoint;
+							safeNorm(basePos);
+							
+							
+							
+							tanVec = basis.getColumn(0);//basis*curOrgNode->orgVecs[0].getBTV();
+							safeNorm(tanVec);
+							// bitVec = basis.getColumn(1);//basis*curOrgNode->orgVecs[1].getBTV();
+							// norVec = basis.getColumn(2);//basis*curOrgNode->orgVecs[2].getBTV();
+							
+							//tanVec = basePos[0];//basis*curOrgNode->orgVecs[0].getBTV();
+							bitVec = basePos;//basis*curOrgNode->orgVecs[1].getBTV();
+							//norVec = basePos[2];//basis*curOrgNode->orgVecs[2].getBTV();
+							
+							norVec = tanVec.cross(bitVec);
+							safeNorm(norVec);
+							
+							bitVec = norVec.cross(tanVec);
+							safeNorm(bitVec);
+							
+							
+							len0 = curOrgNode->orgVecs[E_OV_TBNRAD0].getBTV();
+							len1 = curOrgNode->orgVecs[E_OV_TBNRAD1].getBTV();
+							
+							
+							// datVec
+							randOff = abs( fSeedRand2((ge->uid*37.19232f),(curOrgNode->orgVecs[E_OV_MATPARAMS].getFX()*17.89923f)) );
+							
+							singleton->limbTBOData[dataInd] = ge->uid; dataInd++;
+							singleton->limbTBOData[dataInd] = curBody->body->limbUID; dataInd++;
+							singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_MATPARAMS].getFX(); dataInd++;
+							singleton->limbTBOData[dataInd] = randOff; dataInd++;
+							
+							//cenVec
+							
+							singleton->limbTBOData[dataInd] = centerPoint.getX(); dataInd++;
+							singleton->limbTBOData[dataInd] = centerPoint.getY(); dataInd++;
+							singleton->limbTBOData[dataInd] = centerPoint.getZ(); dataInd++;
+							singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFX(); dataInd++;
+							
+							singleton->limbTBOData[dataInd] = tanVec.getX(); dataInd++;
+							singleton->limbTBOData[dataInd] = tanVec.getY(); dataInd++;
+							singleton->limbTBOData[dataInd] = tanVec.getZ(); dataInd++;
+							singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFY(); dataInd++;
+							
+							singleton->limbTBOData[dataInd] = bitVec.getX(); dataInd++;
+							singleton->limbTBOData[dataInd] = bitVec.getY(); dataInd++;
+							singleton->limbTBOData[dataInd] = bitVec.getZ(); dataInd++;
+							singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFZ(); dataInd++;
+							
+							// if (singleton->doPathReport) {
+							// 	cout << curOrgNode->orgVecs[E_OV_MATPARAMS].getFX() << "\n";
+							// }
+							
+							singleton->limbTBOData[dataInd] = norVec.getX(); dataInd++;
+							singleton->limbTBOData[dataInd] = norVec.getY(); dataInd++;
+							singleton->limbTBOData[dataInd] = norVec.getZ(); dataInd++;
+							singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFW(); dataInd++;
+							
+							// ln0Vec
+							
+							singleton->limbTBOData[dataInd] = len0.getX(); dataInd++;
+							singleton->limbTBOData[dataInd] = len0.getY(); dataInd++;
+							singleton->limbTBOData[dataInd] = len0.getZ(); dataInd++;
+							singleton->limbTBOData[dataInd] = ge->entType; dataInd++;
+							
+							// ln1Vec
+							
+							singleton->limbTBOData[dataInd] = len1.getX(); dataInd++;
+							singleton->limbTBOData[dataInd] = len1.getY(); dataInd++;
+							singleton->limbTBOData[dataInd] = len1.getZ(); dataInd++;
+							singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_TBNOFFSET].getFW(); dataInd++;
+							
+							
+						}
 					}
-					else {
-						
-						
-						
-						curOrgNode = curOrg->allNodes[curBody->boneId];
-						
-						centerPoint = curBody->body->getCenterOfMassPosition();
-						//centerPoint += btVector3(0.0,0.0,-0.4f);
-						basis = curBody->body->getCenterOfMassTransform().getBasis();
-						
-						
-						
-						tempBTV = curOrgNode->tbnTrans[1].getBTV();
-						myVector4 = Vector4(
-							tempBTV.getX(),
-							tempBTV.getY(),
-							tempBTV.getZ(),
-							1.0f
-						);
-						resVector4 = myMatrix4*myVector4;
-						basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
-						basePos += grabber->skelOffset;
-						basePos -= centerPoint;
-						safeNorm(basePos);
-						
-						
-						
-						tanVec = basis.getColumn(0);//basis*curOrgNode->orgVecs[0].getBTV();
-						safeNorm(tanVec);
-						// bitVec = basis.getColumn(1);//basis*curOrgNode->orgVecs[1].getBTV();
-						// norVec = basis.getColumn(2);//basis*curOrgNode->orgVecs[2].getBTV();
-						
-						//tanVec = basePos[0];//basis*curOrgNode->orgVecs[0].getBTV();
-						bitVec = basePos;//basis*curOrgNode->orgVecs[1].getBTV();
-						//norVec = basePos[2];//basis*curOrgNode->orgVecs[2].getBTV();
-						
-						norVec = tanVec.cross(bitVec);
-						safeNorm(norVec);
-						
-						bitVec = norVec.cross(tanVec);
-						safeNorm(bitVec);
-						
-						
-						len0 = curOrgNode->orgVecs[E_OV_TBNRAD0].getBTV();
-						len1 = curOrgNode->orgVecs[E_OV_TBNRAD1].getBTV();
-						
-						
-						// datVec
-						randOff = abs( fSeedRand2((ge->uid*37.19232f),(curOrgNode->orgVecs[E_OV_MATPARAMS].getFX()*17.89923f)) );
-						
-						singleton->limbTBOData[dataInd] = ge->uid; dataInd++;
-						singleton->limbTBOData[dataInd] = curBody->body->limbUID; dataInd++;
-						singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_MATPARAMS].getFX(); dataInd++;
-						singleton->limbTBOData[dataInd] = randOff; dataInd++;
-						
-						//cenVec
-						
-						singleton->limbTBOData[dataInd] = centerPoint.getX(); dataInd++;
-						singleton->limbTBOData[dataInd] = centerPoint.getY(); dataInd++;
-						singleton->limbTBOData[dataInd] = centerPoint.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFX(); dataInd++;
-						
-						singleton->limbTBOData[dataInd] = tanVec.getX(); dataInd++;
-						singleton->limbTBOData[dataInd] = tanVec.getY(); dataInd++;
-						singleton->limbTBOData[dataInd] = tanVec.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFY(); dataInd++;
-						
-						singleton->limbTBOData[dataInd] = bitVec.getX(); dataInd++;
-						singleton->limbTBOData[dataInd] = bitVec.getY(); dataInd++;
-						singleton->limbTBOData[dataInd] = bitVec.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFZ(); dataInd++;
-						
-						// if (singleton->doPathReport) {
-						// 	cout << curOrgNode->orgVecs[E_OV_MATPARAMS].getFX() << "\n";
-						// }
-						
-						singleton->limbTBOData[dataInd] = norVec.getX(); dataInd++;
-						singleton->limbTBOData[dataInd] = norVec.getY(); dataInd++;
-						singleton->limbTBOData[dataInd] = norVec.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFW(); dataInd++;
-						
-						// ln0Vec
-						
-						singleton->limbTBOData[dataInd] = len0.getX(); dataInd++;
-						singleton->limbTBOData[dataInd] = len0.getY(); dataInd++;
-						singleton->limbTBOData[dataInd] = len0.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = ge->entType; dataInd++;
-						
-						// ln1Vec
-						
-						singleton->limbTBOData[dataInd] = len1.getX(); dataInd++;
-						singleton->limbTBOData[dataInd] = len1.getY(); dataInd++;
-						singleton->limbTBOData[dataInd] = len1.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_TBNOFFSET].getFW(); dataInd++;
-						
-						
-					}
+					
+					
+					singleton->limbTBOData[headerStart+0] = dataInd/4;
+					singleton->limbTBOData[headerStart+1] = 0.0f;
+					singleton->limbTBOData[headerStart+2] = 0.0f;
+					singleton->limbTBOData[headerStart+3] = 0.0f;
+					
+					
+					limbAP = singleton->limbArrPos*8;
+					//texelRes1
+					singleton->limbArr[limbAP + 0] = ge->aabbMinVis[0];
+					singleton->limbArr[limbAP + 1] = ge->aabbMinVis[1];
+					singleton->limbArr[limbAP + 2] = ge->aabbMinVis[2];
+					singleton->limbArr[limbAP + 3] = (headerStart)/4;
+					
+					//texelRes2
+					singleton->limbArr[limbAP + 4] = ge->aabbMaxVis[0];
+					singleton->limbArr[limbAP + 5] = ge->aabbMaxVis[1];
+					singleton->limbArr[limbAP + 6] = ge->aabbMaxVis[2];
+					singleton->limbArr[limbAP + 7] = 0;
+					singleton->limbArrPos++;
+					
 				}
 				
-				singleton->limbTBOData[headerStart+0] = dataInd/4;
-				singleton->limbTBOData[headerStart+1] = 0.0f;
-				singleton->limbTBOData[headerStart+2] = 0.0f;
-				singleton->limbTBOData[headerStart+3] = 0.0f;
 				
 				
-				limbAP = singleton->limbArrPos*8;
-				//texelRes1
-				singleton->limbArr[limbAP + 0] = ge->aabbMinVis[0];
-				singleton->limbArr[limbAP + 1] = ge->aabbMinVis[1];
-				singleton->limbArr[limbAP + 2] = ge->aabbMinVis[2];
-				singleton->limbArr[limbAP + 3] = (headerStart)/4;
 				
-				//texelRes2
-				singleton->limbArr[limbAP + 4] = ge->aabbMaxVis[0];
-				singleton->limbArr[limbAP + 5] = ge->aabbMaxVis[1];
-				singleton->limbArr[limbAP + 6] = ge->aabbMaxVis[2];
-				singleton->limbArr[limbAP + 7] = 0;
-				singleton->limbArrPos++;
 				
 				
 				
@@ -66857,7 +67145,7 @@ void GameWorld::drawOrg (GameOrg * curOrg, bool drawAll)
 			drawNodeEnt((curOrg->baseNode),&(curOrg->basePosition), scale, 3, drawAll);
 		}
 		
-		
+		// cout << "yay\n";
 		
 	}
 void GameWorld::drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll)
@@ -69576,7 +69864,11 @@ void GameWorld::drawBasicPrims (bool doShadow)
 		
 		numCubes = singleton->primArrPos;
 		
-		singleton->getLSMatrix(singleton->lightSpaceMatrixLow,singleton->conVals[E_CONST_LIGHTORTHOSIZE_LOW]);
+		singleton->getLSMatrix(
+			&(singleton->lightPosDynamic),
+			singleton->lightSpaceMatrixLow,
+			singleton->conVals[E_CONST_LIGHTORTHOSIZE_LOW]
+		);
 		
 		singleton->bindShader("BasicPrimShader");
 		for (i = 0; i < 2; i++) {
@@ -69605,14 +69897,14 @@ void GameWorld::drawBasicPrims (bool doShadow)
 				//singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 				singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 				singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-				singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
+				singleton->setShaderfVec3("lightPos", &(singleton->lightPosDynamic));
 				
 				if (i == 0) {
 					singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 					singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
 				}
 				else {
-					singleton->setShaderfVec3("cameraPos", &(singleton->lightPos));
+					singleton->setShaderfVec3("cameraPos", &(singleton->lightPosDynamic));
 					singleton->setShaderMatrix4x4("pmMatrix",singleton->lightSpaceMatrixLow.get(),1);
 				}
 				
@@ -69659,7 +69951,7 @@ void GameWorld::drawBasicPrims (bool doShadow)
 				
 				//singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
 				//singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
-				singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
+				singleton->setShaderfVec3("lightPos", &(singleton->lightPosDynamic));
 				singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 				singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 				if (i == 0) {
@@ -69667,7 +69959,7 @@ void GameWorld::drawBasicPrims (bool doShadow)
 					singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
 				}
 				else {
-					singleton->setShaderfVec3("cameraPos", &(singleton->lightPos));
+					singleton->setShaderfVec3("cameraPos", &(singleton->lightPosDynamic));
 					singleton->setShaderMatrix4x4("pmMatrix",singleton->lightSpaceMatrixLow.get(),1);
 				}
 				
@@ -69720,8 +70012,12 @@ void GameWorld::rasterHolders (bool doShadow)
 			// 	singleton->clipDist[1]+singleton->conVals[E_CONST_LIGHTDIS]
 			// );
 			
-			singleton->updateLightPos();
-			singleton->getLSMatrix(singleton->lightSpaceMatrix,singleton->conVals[E_CONST_LIGHTORTHOSIZE]);
+			//singleton->updateLightPos();
+			singleton->getLSMatrix(
+				&(singleton->lightPosStatic),
+				singleton->lightSpaceMatrix,
+				singleton->conVals[E_CONST_LIGHTORTHOSIZE]
+			);
 			
 			
 			singleton->bindShader("ShadowMapShader");
@@ -69729,7 +70025,7 @@ void GameWorld::rasterHolders (bool doShadow)
 			
 			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-			singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
+			singleton->setShaderfVec3("lightPos", &(singleton->lightPosStatic));
 			//singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 			singleton->setShaderMatrix4x4("lightSpaceMatrix",singleton->lightSpaceMatrix.get(),1);
 			
@@ -69922,7 +70218,8 @@ void GameWorld::rasterHolders (bool doShadow)
 		singleton->setShaderfVec2("mouseCoords",&(singleton->lastMouseZO));
 		singleton->setShaderFloat("gammaVal", singleton->gammaVal);
 		singleton->setShaderFloat("cellsPerChunk",singleton->cellsPerChunk);
-		singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
+		singleton->setShaderfVec3("lightPosStatic", &(singleton->lightPosStatic));
+		singleton->setShaderfVec3("lightPosDynamic", &(singleton->lightPosDynamic));
 		// singleton->setShaderfVec3("minBounds",&(minShadowBounds));
 		// singleton->setShaderfVec3("maxBounds",&(maxShadowBounds));
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
@@ -69961,6 +70258,8 @@ void GameWorld::rasterHolders (bool doShadow)
 	}
 void GameWorld::renderDebug ()
                            {
+		
+		//drawScene
 		
 		BaseObj* ge = singleton->gem->getCurActor();
 		
@@ -70130,6 +70429,10 @@ void GameWorld::renderDebug ()
 			
 		}
 		
+		singleton->setShaderFloat("isWire", 0.0f);
+		singleton->setShaderVec3("matVal", 255, 0, 0);
+		singleton->drawOrient = false;
+		singleton->gamePhysics->example->renderScene();
 		
 		
 		// if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {

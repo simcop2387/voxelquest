@@ -221,7 +221,7 @@ const float S2O2 = 0.70710678118;
 const float MAX_DIAG_RAD = 40.0;
 const float MAX_DIAG_RAD2 = MAX_DIAG_RAD*S2O2*S2O2;
 
-int primIdList[16]; // this is related to MAX_PRIM_IDS
+int primIdList[24]; // this is related to MAX_PRIM_IDS
 float primAlreadyTested[8]; // this is related to MAX_PRIMTEST
 int primIdListLength;
 

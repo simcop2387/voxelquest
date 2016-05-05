@@ -28,6 +28,7 @@ class ThreadPoolWrapper;
 class GameLogic;
 class MyGLHelper;
 class GamePhysics;
+class GameSim;
 class GameWorld;
 class DynBuffer;
  

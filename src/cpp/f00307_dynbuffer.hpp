@@ -345,22 +345,22 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// initialize lights
 	///////////////////////////////////////////////////////////////////////////////
-	void initLights()
-	{
-	    // set up light colors (ambient, diffuse, specular)
-	    GLfloat lightKa[] = {.2f, .2f, .2f, 1.0f};  // ambient light
-	    GLfloat lightKd[] = {.7f, .7f, .7f, 1.0f};  // diffuse light
-	    GLfloat lightKs[] = {1, 1, 1, 1};           // specular light
-	    glLightfv(GL_LIGHT0, GL_AMBIENT, lightKa);
-	    glLightfv(GL_LIGHT0, GL_DIFFUSE, lightKd);
-	    glLightfv(GL_LIGHT0, GL_SPECULAR, lightKs);
+	// void initLights()
+	// {
+	//     // set up light colors (ambient, diffuse, specular)
+	//     GLfloat lightKa[] = {.2f, .2f, .2f, 1.0f};  // ambient light
+	//     GLfloat lightKd[] = {.7f, .7f, .7f, 1.0f};  // diffuse light
+	//     GLfloat lightKs[] = {1, 1, 1, 1};           // specular light
+	//     glLightfv(GL_LIGHT0, GL_AMBIENT, lightKa);
+	//     glLightfv(GL_LIGHT0, GL_DIFFUSE, lightKd);
+	//     glLightfv(GL_LIGHT0, GL_SPECULAR, lightKs);
 
-	    // position the light
-	    float lightPos[4] = {0, 0, 20, 1}; // positional light
-	    glLightfv(GL_LIGHT0, GL_POSITION, lightPos);
+	//     // position the light
+	//     float lightPos[4] = {0, 0, 20, 1}; // positional light
+	//     glLightfv(GL_LIGHT0, GL_POSITION, lightPos);
 
-	    glEnable(GL_LIGHT0);                        // MUST enable each light source after configuration
-	}
+	//     glEnable(GL_LIGHT0);                        // MUST enable each light source after configuration
+	// }
 
 
 

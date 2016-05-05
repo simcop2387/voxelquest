@@ -1,4 +1,4 @@
-﻿Build started 5/2/2016 12:15:23 PM.
+﻿Build started 5/5/2016 7:47:24 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -48,13 +48,14 @@
          .\src\cpp\f00373_myshapedrawer.hpp
          .\src\cpp\f00374_myglhelper.hpp
          .\src\cpp\f00375_gamephysics.hpp
+         .\src\cpp\f00377_gamesim.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         45 File(s) copied
+         46 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         29
+         30
          copying headers to one file
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
@@ -84,11 +85,12 @@
          .\f00373_myshapedrawer.e
          .\f00374_myglhelper.e
          .\f00375_gamephysics.e
+         .\f00377_gamesim.e
          .\f00380_gameworld.e
                  1 file(s) copied.
          Missing operator.
          tot e
-         29
+         30
          .
          copying files to compiled
          .\temp\f00293_gamesound.e
@@ -119,8 +121,9 @@
          .\temp\f00373_myshapedrawer.e
          .\temp\f00374_myglhelper.e
          .\temp\f00375_gamephysics.e
+         .\temp\f00377_gamesim.e
          .\temp\f00380_gameworld.e
-         29 File(s) copied
+         30 File(s) copied
          .\temp\f00020_includes.h
          .\temp\f00022_enums.h
          .\temp\f00024_mat.h
@@ -165,6 +168,7 @@
          .\temp\f00373_myshapedrawer.h
          .\temp\f00374_myglhelper.h
          .\temp\f00375_gamephysics.h
+         .\temp\f00377_gamesim.h
          .\temp\f00380_gameworld.h
          .\temp\f00500_mainfuncs.h
                  1 file(s) copied.
@@ -369,11 +373,11 @@
          cellsPerNodeXY: 16
          cellsPerNodeZ: 8
          holdersPerBlock: 64
-         cellsPerBlock: 256
-         terDataBufPitchScaledXY 16
-         cellsPerHolder: 4
+         cellsPerBlock: 512
+         terDataBufPitchScaledXY 32
+         cellsPerHolder: 8
          cellsPerWorld: 32768
-         blocksPerWorld: 128
+         blocksPerWorld: 64
          MAX_UNIFORMS: 65536
          
          
@@ -1025,191 +1029,91 @@
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
          GL_MAX_TEXTURE_BUFFER_SIZE 134217728
-         cur step: E_GEOM_POINTS_OFFSET
+         reshape
+         iNumSteps:  8         
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
          Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         SHADER_DUMP
-         Save Successful
-         Valid JSON
-                   
-         Shaders Refreshed
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         SHADER_DUMP
-         Save Successful
-         Valid JSON
-                   
-         Shaders Refreshed
          Loading:  ..\data\orgdata\E_PG_WPSWORD_N0.js         
          Load Successful          
          
          Valid JSON
                    
-         No code for key: 119
-         iNumSteps:  32         
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         SHADER_DUMP
-         Save Successful
-         Valid JSON
-                   
-         Shaders Refreshed
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         SHADER_DUMP
-         Save Successful
-         Valid JSON
-                   
-         Shaders Refreshed
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         SHADER_DUMP
-         Save Successful
-         Valid JSON
-                   
-         Shaders Refreshed
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         SHADER_DUMP
-         Save Successful
-         Valid JSON
-                   
-         Shaders Refreshed
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         SHADER_DUMP
-         Save Successful
-         Valid JSON
-                   
-         Shaders Refreshed
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         SHADER_DUMP
-         Save Successful
-         Valid JSON
-                   
-         Shaders Refreshed
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         SHADER_DUMP
-         Save Successful
-         Valid JSON
-                   
-         Shaders Refreshed
-         Loading:  ..\data\orgdata\E_PG_TPOSE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PG_TPOSE_N0
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         SHADER_DUMP
-         Save Successful
-         Valid JSON
-                   
-         Shaders Refreshed
+         firstPerson 1
          firstPerson 0
-         reshape
+         
+         Number of voxels (in millions): 4.28811
+         Available pdPool: 6
+         FPS: 161.517
+         Microseconds per frame: 6191.32
+         Microseconds per million voxels: 1443.85
+         
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         
+         Number of voxels (in millions): 4.28811
+         Available pdPool: 6
+         FPS: 168.565
+         Microseconds per frame: 5932.79
+         Microseconds per million voxels: 1383.58
+         
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         SHADER_DUMP
+         Save Successful
+         Valid JSON
+                   
+         Shaders Refreshed
+         
+         Number of voxels (in millions): 4.28811
+         Available pdPool: 6
+         FPS: 189.411
+         Microseconds per frame: 5279.54
+         Microseconds per million voxels: 1231.25
+         
          iNumSteps:  16         
-         iNumSteps:  32         
-         iNumSteps:  64         
-         firstPerson 0
+         firstPerson 1
          Loading:  ..\data\constants.js         
          Load Successful          
          
@@ -1226,124 +1130,12 @@
          Valid JSON
                    
          Shaders Refreshed
-         medianCount 1
-         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         firstPerson 0
-         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         firstPerson 0
-         medianCount 2
-         medianCount 3
-         medianCount 0
-         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         medianCount 1
-         medianCount 2
-         medianCount 3
-         medianCount 0
-         medianCount 1
-         medianCount 2
-         medianCount 3
-         medianCount 0
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         SHADER_DUMP
-         Save Successful
-         Valid JSON
-                   
-         Shaders Refreshed
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         SHADER_DUMP
-         Save Successful
-         Valid JSON
-                   
-         Shaders Refreshed
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         SHADER_DUMP
-         Save Successful
-         Valid JSON
-                   
-         Shaders Refreshed
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         SHADER_DUMP
-         Save Successful
-         Valid JSON
-                   
-         Shaders Refreshed
-         medianCount 1
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         SHADER_DUMP
-         Save Successful
-         Valid JSON
-                   
-         Shaders Refreshed
-         medianCount 2
-         medianCount 3
-         medianCount 0
+         iNumSteps:  8         
+         iNumSteps:  4         
+         iNumSteps:  4         
+         iNumSteps:  4         
+         iNumSteps:  8         
+         iNumSteps:  16         
          Loading:  ..\data\constants.js         
          Load Successful          
          
@@ -1361,94 +1153,11 @@
                    
          Shaders Refreshed
          firstPerson 0
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         SHADER_DUMP
-         Save Successful
-         Valid JSON
-                   
-         Shaders Refreshed
-         refreshContainers
-         refreshContainers
-         medianCount 1
-         medianCount 2
-         medianCount 3
-         medianCount 0
-         firstPerson 0
-         Saving External JSON Values
-         Save SuccessfulSave SuccessfulSave SuccessfulSave SuccessfulSave SuccessfulSave SuccessfulEnd Saving External JSON Values
-         Saving GUI Values
-         Save SuccessfulEnd Saving GUI Values
-         Loading:  ..\data\orgdata\E_PG_TPOSE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PG_TPOSE_N0
-         poseInd  0 1
-         Current Pose: E_PG_TPOSE_N0
-         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PG_NONPOSE_N0
-         firstPerson 0
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         SHADER_DUMP
-         Save Successful
-         Valid JSON
-                   
-         Shaders Refreshed
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         SHADER_DUMP
-         Save Successful
-         Valid JSON
-                   
-         Shaders Refreshed
-         medianCount 1
-         medianCount 2
-         medianCount 3
-         medianCount 0
-         iNumSteps:  128         
-         iNumSteps:  64         
-         No code for key: 33
-         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
+         No code for key: 173
+         iNumSteps:  8         
+         firstPerson 1
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:54:56.83
+Time Elapsed 00:22:04.60
